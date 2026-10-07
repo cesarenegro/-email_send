@@ -1,7 +1,7 @@
 ================================================================================
 ARKITECNA MAILER - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-07 19:28 +08:00
+Last updated: 2026-10-07 19:35 +08:00
 Project / Application: ARKITECNA MAILER (V1)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://emailbulk.vercel.app (Vercel Production)
@@ -19,11 +19,12 @@ Package Manager: npm (11.9.0)
 Database Provider: Supabase (PostgreSQL)
 Authentication: Supabase Auth (Email / Password, minimal internal)
 Access Library: @supabase/supabase-js (^2.49.0), @supabase/ssr (^0.6.0)
-Database Migrations: supabase/migrations/ (001_campaigns.sql, 002_campaign_leads.sql, 003_email_logs.sql, 004_claim_lead_rpc.sql, all_migrations.sql)
+Database Migrations: supabase/migrations/ (001_campaigns.sql, 002_campaign_leads.sql, 003_email_logs.sql, 004_claim_lead_rpc.sql, 005_app_settings.sql, all_migrations.sql)
 Tables:
   - public.campaigns
   - public.campaign_leads
   - public.email_logs
+  - public.app_settings (dynamic key-value config for sender identity: from_name, from_email, reply_to)
 Stored Procedures / RPCs:
   - public.claim_next_campaign_lead (atomic row lock via FOR UPDATE SKIP LOCKED)
   - public.set_updated_at (trigger function)
@@ -35,8 +36,10 @@ Host: smtp.hostinger.com
 Port: 465
 Security: SSL/TLS (SMTP_SECURE=true)
 Library: Nodemailer (^6.10.0)
-Default Sender Name: Stefano Martini | ARKITECNA
-Default Sender Email: cesare@arkitecna.com
+Default Sender Identity: Configurable via /settings (saved in public.app_settings with fallback to env)
+Configured Sender Name: Stefano Martini | ARKITECNA
+Configured Sender Email: info@arkitecna.com (Hostinger alias supported over master SMTP authentication)
+Configured Reply-To: info@arkitecna.com
 Concurrency: Strictly 1 outbound email globally per cron execution
 Minimum Interval: 60 seconds (default 240 seconds / 4 minutes)
 Default Daily Cap: 80 emails / day per campaign

@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export function getSmtpTransporter() {
   const host = process.env.SMTP_HOST || 'smtp.hostinger.com';
@@ -26,10 +27,25 @@ export function getSmtpTransporter() {
   });
 }
 
-export function getSenderIdentity() {
+export async function getSenderIdentity() {
+  try {
+    const supabase = createAdminClient();
+    const { data: rows } = await supabase.from('app_settings').select('key, value');
+    if (rows && rows.length > 0) {
+      const map: Record<string, string> = Object.fromEntries(rows.map((r: any) => [r.key, r.value]));
+      return {
+        fromName: map.from_name || process.env.SMTP_FROM_NAME || 'Stefano Martini | ARKITECNA',
+        fromEmail: map.from_email || process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'info@arkitecna.com',
+        replyTo: map.reply_to || process.env.SMTP_REPLY_TO || map.from_email || process.env.SMTP_FROM_EMAIL || 'info@arkitecna.com',
+      };
+    }
+  } catch (err) {
+    console.error('Error fetching sender identity from app_settings:', err);
+  }
+
   return {
     fromName: process.env.SMTP_FROM_NAME || 'Stefano Martini | ARKITECNA',
-    fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'cesare@arkitecna.com',
+    fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'info@arkitecna.com',
     replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'info@arkitecna.com',
   };
 }
