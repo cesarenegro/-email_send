@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { CampaignInput } from '@/lib/validations/campaign';
-import { Loader2, Save, CheckCircle2 } from 'lucide-react';
+import { Loader2, Save, CheckCircle2, Send } from 'lucide-react';
 
 interface CampaignFormProps {
   initialData?: Partial<CampaignInput>;
@@ -280,6 +280,16 @@ export default function CampaignForm({
               Lunedì — Venerdì
             </div>
           </div>
+        </div>
+
+        <div className="bg-white p-3 border border-[#D8D2C8] rounded text-xs space-y-1">
+          <div className="flex items-center space-x-1.5 font-semibold text-[#1A1A1E]">
+            <Send className="w-3.5 h-3.5" />
+            <span>Opzione di Invio Immediato (&quot;INVIA ORA&quot;)</span>
+          </div>
+          <p className="text-[#666666] leading-relaxed">
+            Dalla schermata di gestione della campagna è disponibile il pulsante <strong>INVIA ORA</strong> per avviare ed inviare subito la prima email in tempo reale, senza attendere il cron o la finestra oraria. Gli invii successivi proseguiranno automaticamente secondo l&apos;intervallo specificato sopra.
+          </p>
         </div>
       </div>
 

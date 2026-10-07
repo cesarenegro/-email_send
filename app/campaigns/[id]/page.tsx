@@ -24,6 +24,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  Send,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
 
@@ -74,6 +75,25 @@ export default function CampaignDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Impossibile avviare la campagna');
       setMessage({ type: 'success', text: 'Campagna avviata! Il cron invierà le email secondo gli intervalli.' });
+      fetchCampaignData();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSendNow = async () => {
+    setActionLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/campaigns/${id}/send-now`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Errore durante l'invio immediato");
+      setMessage({
+        type: data.success ? 'success' : 'error',
+        text: data.message || 'Invio eseguito con successo!',
+      });
       fetchCampaignData();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message });
@@ -190,14 +210,32 @@ export default function CampaignDetailPage() {
 
         {/* Action Buttons (Section 33, 34, 35, 50) */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Send Now Button (Immediate Send) */}
+          {campaign.pending_count > 0 && campaign.status !== 'completed' && (
+            <button
+              onClick={handleSendNow}
+              disabled={actionLoading}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-[#1A1A1E] text-white text-xs font-semibold rounded hover:bg-[#333333] transition-colors shadow-sm disabled:opacity-50"
+              title="Avvia e/o invia subito la prima o prossima email adesso"
+            >
+              {actionLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              <span>INVIA ORA</span>
+            </button>
+          )}
+
           {isDraft && (
             <button
               onClick={handleStart}
               disabled={actionLoading}
               className="inline-flex items-center space-x-1.5 px-4 py-2 bg-emerald-700 text-white text-xs font-medium rounded hover:bg-emerald-800 transition-colors shadow-sm disabled:opacity-50"
+              title="Avvia la campagna rispettando la pianificazione oraria"
             >
               <Play className="w-4 h-4" />
-              <span>AVVIA CAMPAGNA</span>
+              <span>AVVIA PIANIFICATO</span>
             </button>
           )}
 

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { computeNextSendTime, computeSubsequentSendTime, isAllowedWeekday } from '@/lib/scheduling/next-send-time';
+import { computeNextSendTime, isAllowedWeekday } from '@/lib/scheduling/next-send-time';
 import { hasReachedDailyLimit } from '@/lib/scheduling/daily-limit';
-import { renderTemplate } from '@/lib/email/render-template';
-import { sendEmail } from '@/lib/email/send-email';
+import { dispatchNextEmailForCampaign } from '@/lib/email/dispatcher';
 import { DateTime } from 'luxon';
-import { Campaign, CampaignLead } from '@/types/database';
+import { Campaign } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Up to 60 seconds runtime on Vercel
@@ -110,161 +109,15 @@ async function handleCron(request: NextRequest) {
     });
   }
 
-  // 5. Atomically claim one lead using PostgreSQL RPC (FOR UPDATE SKIP LOCKED)
-  const { data: claimedRows, error: claimError } = await supabase.rpc(
-    'claim_next_campaign_lead',
-    { p_campaign_id: campaign.id }
-  );
-
-  if (claimError) {
-    console.error('Error claiming lead via RPC:', claimError);
-    return NextResponse.json({ error: claimError.message }, { status: 500 });
-  }
-
-  // 6. If no lead was returned, check if campaign is completed
-  if (!claimedRows || claimedRows.length === 0) {
-    const { count: remainingCount } = await supabase
-      .from('campaign_leads')
-      .select('id', { count: 'exact', head: true })
-      .eq('campaign_id', campaign.id)
-      .in('status', ['pending', 'retry', 'sending']);
-
-    if (!remainingCount || remainingCount === 0) {
-      await supabase
-        .from('campaigns')
-        .update({
-          status: 'completed',
-          next_send_at: null,
-        })
-        .eq('id', campaign.id);
-
-      return NextResponse.json({
-        status: 'completed',
-        message: 'Campaign has no more eligible leads. Marked as completed.',
-      });
-    }
-
-    // Leads might be in retry state with future retry_at
-    const subsequent = computeSubsequentSendTime(new Date(), {
-      timezone: campaign.timezone,
-      send_window_start: campaign.send_window_start,
-      send_window_end: campaign.send_window_end,
-      send_interval_seconds: campaign.send_interval_seconds,
-    });
-
-    await supabase
-      .from('campaigns')
-      .update({ next_send_at: subsequent })
-      .eq('id', campaign.id);
-
-    return NextResponse.json({
-      status: 'waiting',
-      message: 'No leads immediately due for claim; retries may be pending.',
-      next_send_at: subsequent,
-    });
-  }
-
-  const lead: CampaignLead = claimedRows[0];
-
-  // 7. Render subject and HTML
-  const renderedSubject = renderTemplate(campaign.subject_template, {
-    company_name: lead.company_name,
-    email: lead.email,
-  });
-
-  const renderedHtml = renderTemplate(campaign.html_template, {
-    company_name: lead.company_name,
-    email: lead.email,
-  });
-
-  let sendResult: any = null;
-  let sendError: any = null;
-
+  // 5. Dispatch next email atomically
   try {
-    sendResult = await sendEmail({
-      to: lead.email,
-      subject: renderedSubject,
-      html: renderedHtml,
+    const result = await dispatchNextEmailForCampaign(supabase, campaign);
+    return NextResponse.json({
+      ...result,
+      campaign_id: campaign.id,
     });
   } catch (err: any) {
-    sendError = err;
-    console.error('Error sending email to lead ' + lead.email + ':', err);
+    console.error('Error during cron dispatch:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
-
-  const nowTimestamp = DateTime.utc().toISO()!;
-
-  // 8. Handle result
-  if (!sendError && sendResult) {
-    // SUCCESS
-    await supabase
-      .from('campaign_leads')
-      .update({
-        status: 'sent',
-        sent_at: nowTimestamp,
-        smtp_message_id: sendResult.messageId || null,
-        last_error: null,
-      })
-      .eq('id', lead.id);
-
-    await supabase.from('email_logs').insert({
-      campaign_id: campaign.id,
-      campaign_lead_id: lead.id,
-      event_type: 'sent',
-      smtp_message_id: sendResult.messageId || null,
-    });
-  } else {
-    // ERROR - Retry Policy
-    const errorMessage = sendError?.message || 'Unknown SMTP error';
-    const isPermanent = /invalid address|syntax error|recipient rejected/i.test(errorMessage);
-    const attempts = lead.attempts || 1;
-
-    if (attempts >= 3 || isPermanent) {
-      await supabase
-        .from('campaign_leads')
-        .update({
-          status: 'failed',
-          retry_at: null,
-          last_error: errorMessage,
-        })
-        .eq('id', lead.id);
-    } else {
-      const retryAt = DateTime.utc().plus({ minutes: 15 }).toISO();
-      await supabase
-        .from('campaign_leads')
-        .update({
-          status: 'retry',
-          retry_at: retryAt,
-          last_error: errorMessage,
-        })
-        .eq('id', lead.id);
-    }
-
-    await supabase.from('email_logs').insert({
-      campaign_id: campaign.id,
-      campaign_lead_id: lead.id,
-      event_type: 'error',
-      error_message: errorMessage,
-    });
-  }
-
-  // 9. Advance campaign next_send_at
-  const nextSendAt = computeSubsequentSendTime(new Date(), {
-    timezone: campaign.timezone,
-    send_window_start: campaign.send_window_start,
-    send_window_end: campaign.send_window_end,
-    send_interval_seconds: campaign.send_interval_seconds,
-  });
-
-  await supabase
-    .from('campaigns')
-    .update({ next_send_at: nextSendAt })
-    .eq('id', campaign.id);
-
-  return NextResponse.json({
-    status: sendError ? 'error_handled' : 'sent',
-    campaign_id: campaign.id,
-    lead_id: lead.id,
-    recipient: lead.email,
-    next_send_at: nextSendAt,
-  });
 }
