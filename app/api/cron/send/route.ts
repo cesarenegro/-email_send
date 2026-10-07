@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
 
 async function handleCron(request: NextRequest) {
   // 1. Validate CRON_SECRET
-  const expectedSecret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get('authorization');
+  const expectedSecret = process.env.CRON_SECRET?.trim();
+  const authHeader = request.headers.get('authorization')?.trim();
 
   if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
