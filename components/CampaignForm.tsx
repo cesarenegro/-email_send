@@ -38,7 +38,13 @@ export default function CampaignForm({
     setError(null);
 
     try {
-      await onSubmit(formData);
+      const payload = {
+        ...formData,
+        start_at: formData.start_at && typeof formData.start_at === 'string' && formData.start_at.trim() !== ''
+          ? formData.start_at
+          : null,
+      };
+      await onSubmit(payload);
     } catch (err: any) {
       setError(err.message || 'Errore durante il salvataggio');
     } finally {

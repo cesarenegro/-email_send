@@ -71,9 +71,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     );
   }
 
+  const updatePayload = {
+    ...parsed.data,
+    ...(parsed.data.start_at !== undefined ? { start_at: parsed.data.start_at || null } : {}),
+  };
+
   const { data, error } = await supabase
     .from('campaigns')
-    .update(parsed.data)
+    .update(updatePayload)
     .eq('id', id)
     .select()
     .single();

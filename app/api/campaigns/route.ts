@@ -49,9 +49,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Dati non validi' }, { status: 400 });
   }
 
+  const insertPayload = {
+    ...parsed.data,
+    start_at: parsed.data.start_at || null,
+  };
+
   const { data, error } = await supabase
     .from('campaigns')
-    .insert([parsed.data])
+    .insert([insertPayload])
     .select()
     .single();
 
