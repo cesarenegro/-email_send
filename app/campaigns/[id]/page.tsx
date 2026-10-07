@@ -23,10 +23,12 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  Calendar,
   Clock,
   Send,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
+import { estimateCampaignCompletion } from '@/lib/scheduling/estimate-completion';
 
 export default function CampaignDetailPage() {
   const params = useParams();
@@ -324,19 +326,48 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
-      {/* Next send info banner if active */}
-      {isActive && campaign.next_send_at && (
-        <div className="bg-[#FFFFFF] border border-emerald-200 rounded-lg p-3 flex items-center space-x-2 text-xs text-[#1A1A1E]">
-          <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>
-            Prossimo invio programmato per il:{' '}
-            <strong>
-              {DateTime.fromISO(campaign.next_send_at).setZone(campaign.timezone).toFormat('dd/MM/yyyy HH:mm:ss')}
-            </strong>{' '}
-            (fuso: {campaign.timezone}, intervallo: {campaign.send_interval_seconds}s)
-          </span>
-        </div>
-      )}
+      {/* Schedule and estimated completion banner */}
+      {(() => {
+        const est = estimateCampaignCompletion(campaign);
+        return (
+          <div className="bg-[#FFFFFF] border border-[#D8D2C8] rounded-lg p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-[#1A1A1E]">
+            <div className="flex items-center space-x-2">
+              <Clock className="w-4 h-4 text-[#666666] shrink-0" />
+              <span>
+                {isActive && campaign.next_send_at ? (
+                  <>
+                    Prossimo invio programmato:{' '}
+                    <strong>
+                      {DateTime.fromISO(campaign.next_send_at).setZone(campaign.timezone).toFormat('dd/MM/yyyy HH:mm:ss')}
+                    </strong>
+                  </>
+                ) : isPaused ? (
+                  <span className="text-[#666666] font-medium">Campagna in pausa</span>
+                ) : isCompleted ? (
+                  <span className="text-emerald-700 font-medium">Campagna completata</span>
+                ) : (
+                  <span className="text-[#666666] font-medium">Bozza (non ancora avviata)</span>
+                )}
+                <span className="text-[#666666]">
+                  {' '}• Intervallo: <strong>{campaign.send_interval_seconds}s</strong> • Limite giornaliero:{' '}
+                  <strong>{campaign.daily_limit} email/gg</strong> (lun-ven 09:00-18:00)
+                </span>
+              </span>
+            </div>
+
+            <div className="flex items-center space-x-2 bg-[#F7F5F0] border border-[#D8D2C8] px-3 py-1.5 rounded shrink-0">
+              <Calendar className="w-3.5 h-3.5 text-[#666666] shrink-0" />
+              <span>
+                Fine Stimata:{' '}
+                <strong className={est.isCompleted ? 'text-emerald-700' : 'text-[#1A1A1E]'}>
+                  {est.label}
+                </strong>
+                {est.subLabel && <span className="text-[#666666] ml-1">({est.subLabel})</span>}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Tab Navigation */}
       <div className="border-b border-[#D8D2C8]">
