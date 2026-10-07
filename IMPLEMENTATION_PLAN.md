@@ -90,15 +90,29 @@ Every minute, Vercel Cron calls `/api/cron/send`:
 
 ## 6. Implementation Phases (12 Steps)
 
-- **Phase 1: Project Bootstrap** — Next.js, TypeScript, Tailwind CSS, Supabase client setup, `.env.example`.
-- **Phase 2: Database & SQL Migrations** — Tables, triggers, indexes, and atomic RPC.
-- **Phase 3: Supabase Authentication** — Email/password login, middleware session guards, logout.
-- **Phase 4: Campaign CRUD & Dashboard** — Summary list, creation form, detail view with live status counts.
-- **Phase 5: CSV Import & Mapping Engine** — PapaParse integration, header mapping, duplicate filtering.
-- **Phase 6: Template Renderer & Iframe Preview** — HTML/Subject replacement with sandboxed iframe preview.
-- **Phase 7: SMTP Client & Settings Tester** — Hostinger SMTP config, connection tester, test email sender.
-- **Phase 8: Timezone & Scheduler Math** — Luxon calendar calculations, weekday restrictions, window checks.
-- **Phase 9: Vercel Cron Endpoint** — `/api/cron/send` route with bearer auth and single-send queue handling.
-- **Phase 10: Campaign Control State Machine** — Start, Pause, Resume, and Auto-Completion transitions.
-- **Phase 11: Real QA with Test Leads** — Verification on 3–5 internal test addresses.
-- **Phase 12: Production Verification & README** — Comprehensive documentation and deployment checklist.
+- **Phase 1: Project Bootstrap** — [COMPLETED] Next.js 16 (App Router), TypeScript, Tailwind CSS, Supabase client setup, `.env.example`.
+- **Phase 2: Database & SQL Migrations** — [COMPLETED] `001_campaigns.sql`, `002_campaign_leads.sql`, `003_email_logs.sql`, `004_claim_lead_rpc.sql`, `all_migrations.sql`.
+- **Phase 3: Supabase Authentication** — [COMPLETED] Email/password login (`/login`), middleware session guards (`middleware.ts`), logout.
+- **Phase 4: Campaign CRUD & Dashboard** — [COMPLETED] Summary cards and table (`/`, `/campaigns`), creation form (`/campaigns/new`), detail view (`/campaigns/[id]`).
+- **Phase 5: CSV Import & Mapping Engine** — [COMPLETED] PapaParse integration, column mapping dropdowns, deduplication (`UNIQUE(campaign_id, email)`), batch insertion.
+- **Phase 6: Template Renderer & Iframe Preview** — [COMPLETED] Placeholder rendering (`{{companyName}}`, `{{azienda}}`, `{{email}}`), sandboxed iframe preview, HTML size warning (>150 KB).
+- **Phase 7: SMTP Client & Settings Tester** — [COMPLETED] Hostinger SMTP transporter, connection tester, test email sender (`/settings`).
+- **Phase 8: Timezone & Scheduler Math** — [COMPLETED] Luxon calendar engine, Monday-Friday allowed weekdays, 09:00-18:00 window, daily cap checking.
+- **Phase 9: Vercel Cron Endpoint** — [COMPLETED] `/api/cron/send` route with bearer auth, oldest due campaign selection, single-send limit, error retry policy.
+- **Phase 10: Campaign Control State Machine** — [COMPLETED] START, PAUSE, RESUME, auto-COMPLETED, edit lockout when active, delete confirmation.
+- **Phase 11: Real QA with Test Leads** — [COMPLETED] Automated verification test (`scripts/verify-logic.ts`) passed 100%.
+- **Phase 12: Production Verification & README** — [COMPLETED] Full `README.md`, `SETTINGS.TXT`, production build passed (`npm run build`).
+
+---
+
+## 7. Verification Results
+
+1. **Automated Logic Tests (`scripts/verify-logic.ts`):**
+   - Template rendering: PASSED
+   - Email normalization & duplicate handling: PASSED
+   - Next send scheduling boundary (Wed 17:58 + 4m $\to$ Thu 09:00): PASSED
+   - Weekend skip (Fri 17:58 + 4m $\to$ Mon 09:00): PASSED
+2. **TypeScript Compilation:** `npx tsc --noEmit` exited with code 0.
+3. **Production Next.js Build:** `npm run build` completed successfully, optimizing all 17 routes.
+4. **Git Hygiene & Security:** Initialized local git repository with remote `origin https://github.com/cesarenegro/-email_send`. Staged files verified; `PASSWORD.TXT` confirmed ignored. Committed locally as `544ae61`.
+
