@@ -65,6 +65,14 @@ export default function CampaignDetailPage() {
 
   useEffect(() => {
     fetchCampaignData();
+
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchCampaignData();
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, [fetchCampaignData]);
 
   const handleStart = async () => {
