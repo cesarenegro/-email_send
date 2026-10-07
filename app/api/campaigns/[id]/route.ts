@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { CampaignSchema } from '@/lib/validations/campaign';
+import { getCampaignStats } from '@/lib/campaigns/stats';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -20,23 +21,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'Campagna non trovata' }, { status: 404 });
   }
 
-  // Count stats
-  const { data: leads } = await supabase
-    .from('campaign_leads')
-    .select('status')
-    .eq('campaign_id', id);
-
-  const total = leads?.length || 0;
-  const sent = leads?.filter((l) => l.status === 'sent').length || 0;
-  const failed = leads?.filter((l) => l.status === 'failed').length || 0;
-  const pending = total - sent - failed;
+  // Count stats without 1000 row limitation
+  const stats = await getCampaignStats(supabase, id);
 
   return NextResponse.json({
     ...campaign,
-    total_leads: total,
-    sent_count: sent,
-    pending_count: pending,
-    failed_count: failed,
+    ...stats,
   });
 }
 

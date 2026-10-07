@@ -35,13 +35,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'Nessun contatto fornito per l’importazione' }, { status: 400 });
   }
 
-  // Fetch existing emails for this campaign
-  const { data: existingRows } = await supabase
-    .from('campaign_leads')
-    .select('email')
-    .eq('campaign_id', id);
+  // Fetch ALL existing emails for this campaign via pagination (avoiding 1000 row cap)
+  const existingEmails = new Set<string>();
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data: pageRows } = await supabase
+      .from('campaign_leads')
+      .select('email')
+      .eq('campaign_id', id)
+      .range(from, from + pageSize - 1);
 
-  const existingEmails = new Set<string>((existingRows || []).map((r) => r.email.toLowerCase()));
+    if (!pageRows || pageRows.length === 0) break;
+    for (const r of pageRows) {
+      existingEmails.add(r.email.toLowerCase());
+    }
+    if (pageRows.length < pageSize) break;
+    from += pageSize;
+  }
 
   // Validate and deduplicate
   const result = validateAndDeduplicateLeads(rawLeads, existingEmails);
@@ -60,7 +71,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
       const { error: insertError } = await supabase
         .from('campaign_leads')
-        .insert(slice);
+        .upsert(slice, { onConflict: 'campaign_id,email', ignoreDuplicates: true });
 
       if (insertError) {
         console.error('Batch insert error:', insertError);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { CampaignSchema } from '@/lib/validations/campaign';
+import { enrichCampaignsWithStats } from '@/lib/campaigns/stats';
 
 export async function GET() {
   const supabase = await createClient();
@@ -14,28 +15,8 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Fetch count stats for each campaign
-  const campaignsWithStats = await Promise.all(
-    (campaigns || []).map(async (camp) => {
-      const { data: leads } = await supabase
-        .from('campaign_leads')
-        .select('status')
-        .eq('campaign_id', camp.id);
-
-      const total = leads?.length || 0;
-      const sent = leads?.filter((l) => l.status === 'sent').length || 0;
-      const failed = leads?.filter((l) => l.status === 'failed').length || 0;
-      const pending = total - sent - failed;
-
-      return {
-        ...camp,
-        total_leads: total,
-        sent_count: sent,
-        pending_count: pending,
-        failed_count: failed,
-      };
-    })
-  );
+  // Fetch count stats for each campaign accurately
+  const campaignsWithStats = await enrichCampaignsWithStats(supabase, campaigns || []);
 
   return NextResponse.json(campaignsWithStats);
 }
