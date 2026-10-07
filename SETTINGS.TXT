@@ -1,7 +1,7 @@
 ================================================================================
 ARKITECNA MAILER - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-07 19:15 +08:00
+Last updated: 2026-10-07 19:28 +08:00
 Project / Application: ARKITECNA MAILER (V1)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://emailbulk.vercel.app (Vercel Production)
@@ -69,6 +69,7 @@ SMTP_USER
 SMTP_PASS
 SMTP_FROM_NAME
 SMTP_FROM_EMAIL
+SMTP_REPLY_TO
 CRON_SECRET
 NEXT_PUBLIC_APP_NAME
 
