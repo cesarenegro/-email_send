@@ -25,8 +25,8 @@ export default function CampaignForm({
     html_template: initialData?.html_template || '',
     timezone: initialData?.timezone || 'Europe/Rome',
     start_at: initialData?.start_at || '',
-    send_window_start: initialData?.send_window_start || '09:00',
-    send_window_end: initialData?.send_window_end || '18:00',
+    send_window_start: initialData?.send_window_start ? initialData.send_window_start.slice(0, 5) : '09:00',
+    send_window_end: initialData?.send_window_end ? initialData.send_window_end.slice(0, 5) : '18:00',
     send_interval_seconds: initialData?.send_interval_seconds || 240,
     daily_limit: initialData?.daily_limit || 80,
   });
@@ -36,6 +36,8 @@ export default function CampaignForm({
       setFormData((prev) => ({
         ...prev,
         ...initialData,
+        send_window_start: initialData.send_window_start ? initialData.send_window_start.slice(0, 5) : prev.send_window_start,
+        send_window_end: initialData.send_window_end ? initialData.send_window_end.slice(0, 5) : prev.send_window_end,
       }));
     }
   }, [initialData]);
@@ -53,17 +55,21 @@ export default function CampaignForm({
   const [htmlSavedMsg, setHtmlSavedMsg] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const buildPayload = () => ({
+    ...formData,
+    send_window_start: formData.send_window_start ? formData.send_window_start.slice(0, 5) : '09:00',
+    send_window_end: formData.send_window_end ? formData.send_window_end.slice(0, 5) : '18:00',
+    start_at: formData.start_at && typeof formData.start_at === 'string' && formData.start_at.trim() !== ''
+      ? formData.start_at
+      : null,
+  });
+
   const handleQuickSaveHtml = async (e: React.MouseEvent) => {
     e.preventDefault();
     setHtmlSaving(true);
     setError(null);
     try {
-      const payload = {
-        ...formData,
-        start_at: formData.start_at && typeof formData.start_at === 'string' && formData.start_at.trim() !== ''
-          ? formData.start_at
-          : null,
-      };
+      const payload = buildPayload();
       await onSubmit(payload);
       setHtmlSavedMsg(true);
       setTimeout(() => setHtmlSavedMsg(false), 3000);
@@ -80,12 +86,7 @@ export default function CampaignForm({
     setError(null);
 
     try {
-      const payload = {
-        ...formData,
-        start_at: formData.start_at && typeof formData.start_at === 'string' && formData.start_at.trim() !== ''
-          ? formData.start_at
-          : null,
-      };
+      const payload = buildPayload();
       await onSubmit(payload);
     } catch (err: any) {
       setError(err.message || 'Errore durante il salvataggio');
