@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { CampaignInput } from '@/lib/validations/campaign';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, CheckCircle2 } from 'lucide-react';
 
 interface CampaignFormProps {
   initialData?: Partial<CampaignInput>;
@@ -49,7 +49,30 @@ export default function CampaignForm({
   };
 
   const [loading, setLoading] = useState(false);
+  const [htmlSaving, setHtmlSaving] = useState(false);
+  const [htmlSavedMsg, setHtmlSavedMsg] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleQuickSaveHtml = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setHtmlSaving(true);
+    setError(null);
+    try {
+      const payload = {
+        ...formData,
+        start_at: formData.start_at && typeof formData.start_at === 'string' && formData.start_at.trim() !== ''
+          ? formData.start_at
+          : null,
+      };
+      await onSubmit(payload);
+      setHtmlSavedMsg(true);
+      setTimeout(() => setHtmlSavedMsg(false), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Errore durante il salvataggio');
+    } finally {
+      setHtmlSaving(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,19 +144,65 @@ export default function CampaignForm({
       </div>
 
       {/* HTML Template */}
-      <div>
-        <label className="block text-sm font-medium text-[#1A1A1E] mb-1">
-          Email HTML (Incolla codice sorgente preparato esternamente) <span className="text-rose-600">*</span>
-        </label>
+      <div className="space-y-2 bg-[#FAF9F6] p-4 border border-[#D8D2C8] rounded-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#E6E2DC]">
+          <div>
+            <label className="block text-sm font-semibold text-[#1A1A1E]">
+              Email HTML (Codice Sorgente) <span className="text-rose-600">*</span>
+            </label>
+            <p className="text-xs text-[#666666]">
+              Incolla o modifica qui il codice HTML. Clicca &quot;Salva Codice HTML&quot; per salvare subito.
+            </p>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            {htmlSavedMsg && (
+              <span className="text-xs text-emerald-700 font-medium flex items-center space-x-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Salvato!</span>
+              </span>
+            )}
+            <button
+              type="button"
+              disabled={disabled || htmlSaving || loading}
+              onClick={handleQuickSaveHtml}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-[#1A1A1E] text-white text-xs font-semibold rounded hover:bg-[#333333] transition-colors disabled:opacity-50 shadow-sm"
+              title="Salva immediatamente le modifiche al codice HTML"
+            >
+              {htmlSaving ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Salvataggio...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Salva Codice HTML</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
         <textarea
-          rows={10}
+          rows={12}
           required
           disabled={disabled}
           placeholder="<!DOCTYPE html><html><body><p>Buongiorno {{azienda}}, ...</p></body></html>"
           value={formData.html_template}
           onChange={(e) => updateFormData((prev) => ({ ...prev, html_template: e.target.value }))}
-          className="w-full px-3 py-2 font-mono text-xs border border-[#D8D2C8] rounded text-[#1A1A1E] bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] disabled:bg-[#F7F5F0]"
+          className="w-full px-3 py-2.5 font-mono text-xs border border-[#D8D2C8] rounded text-[#1A1A1E] bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] disabled:bg-[#F7F5F0] leading-relaxed"
+          spellCheck={false}
         />
+
+        <div className="flex justify-between items-center text-xs text-[#666666] pt-1">
+          <span>
+            Dimensione stimata: <strong>{Math.round(new Blob([formData.html_template || '']).size / 1024)} KB</strong>
+          </span>
+          {formData.html_template !== initialData?.html_template && (
+            <span className="text-amber-700 font-medium">● Modifiche HTML non ancora salvate</span>
+          )}
+        </div>
       </div>
 
       {/* Scheduling Card */}

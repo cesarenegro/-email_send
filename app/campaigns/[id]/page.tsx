@@ -352,6 +352,22 @@ export default function CampaignDetailPage() {
           subjectTemplate={liveFormData?.subject_template ?? campaign.subject_template}
           htmlTemplate={liveFormData?.html_template ?? campaign.html_template}
           leads={sampleLeads}
+          hasUnsavedChanges={
+            Boolean(
+              liveFormData &&
+                ((liveFormData.html_template !== undefined && liveFormData.html_template !== campaign.html_template) ||
+                  (liveFormData.subject_template !== undefined && liveFormData.subject_template !== campaign.subject_template))
+            )
+          }
+          onSave={async () => {
+            if (liveFormData) {
+              await handleUpdate({
+                ...campaign,
+                ...liveFormData,
+              });
+            }
+          }}
+          disabled={isActive}
         />
       </div>
 
