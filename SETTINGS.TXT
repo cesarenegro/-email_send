@@ -1,7 +1,7 @@
 ================================================================================
 ARKITECNA MAILER - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-07 18:58 +08:00
+Last updated: 2026-10-07 19:07 +08:00
 Project / Application: ARKITECNA MAILER (V1)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://emailbulk.vercel.app (Vercel Production)
@@ -40,6 +40,7 @@ Default Sender Email: cesare@arkitecna.com
 Concurrency: Strictly 1 outbound email globally per cron execution
 Minimum Interval: 60 seconds (default 240 seconds / 4 minutes)
 Default Daily Cap: 80 emails / day per campaign
+Immediate Dispatch: POST /api/campaigns/[id]/send-now (manual immediate send bypassing schedule)
 
 4. SCHEDULER & CRON
 --------------------------------------------------------------------------------
