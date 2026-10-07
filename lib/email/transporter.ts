@@ -30,5 +30,6 @@ export function getSenderIdentity() {
   return {
     fromName: process.env.SMTP_FROM_NAME || 'Stefano Martini | ARKITECNA',
     fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'cesare@arkitecna.com',
+    replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'info@arkitecna.com',
   };
 }
