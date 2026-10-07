@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CampaignWithStats, CampaignLead } from '@/types/database';
+import { CampaignInput } from '@/lib/validations/campaign';
 import StatusBadge from '@/components/StatusBadge';
 import CampaignForm from '@/components/CampaignForm';
 import CsvImporter from '@/components/CsvImporter';
@@ -38,6 +39,7 @@ export default function CampaignDetailPage() {
   const [activeTab, setActiveTab] = useState<'details' | 'leads' | 'preview'>('details');
   const [showImporter, setShowImporter] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [liveFormData, setLiveFormData] = useState<Partial<CampaignInput> | null>(null);
 
   const fetchCampaignData = useCallback(async () => {
     try {
@@ -332,28 +334,29 @@ export default function CampaignDetailPage() {
       </div>
 
       {/* TAB 1: DETAILS */}
-      {activeTab === 'details' && (
+      <div className={activeTab === 'details' ? 'block' : 'hidden'}>
         <div className="bg-[#FFFFFF] border border-[#D8D2C8] rounded-lg p-6 shadow-sm">
           <CampaignForm
             initialData={campaign}
             isEditing={true}
             disabled={isActive}
             onSubmit={handleUpdate}
+            onChangeValues={(data) => setLiveFormData(data)}
           />
         </div>
-      )}
+      </div>
 
       {/* TAB 2: PREVIEW */}
-      {activeTab === 'preview' && (
+      <div className={activeTab === 'preview' ? 'block' : 'hidden'}>
         <EmailPreview
-          subjectTemplate={campaign.subject_template}
-          htmlTemplate={campaign.html_template}
+          subjectTemplate={liveFormData?.subject_template ?? campaign.subject_template}
+          htmlTemplate={liveFormData?.html_template ?? campaign.html_template}
           leads={sampleLeads}
         />
-      )}
+      </div>
 
       {/* TAB 3: LEADS */}
-      {activeTab === 'leads' && (
+      <div className={activeTab === 'leads' ? 'block' : 'hidden'}>
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold text-[#1A1A1E]">Gestione Destinatari</h3>
@@ -380,7 +383,7 @@ export default function CampaignDetailPage() {
 
           <LeadTable campaignId={id} />
         </div>
-      )}
+      </div>
     </div>
   );
 }

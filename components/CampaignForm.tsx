@@ -9,6 +9,7 @@ interface CampaignFormProps {
   isEditing?: boolean;
   disabled?: boolean;
   onSubmit: (data: CampaignInput) => Promise<void>;
+  onChangeValues?: (data: CampaignInput) => void;
 }
 
 export default function CampaignForm({
@@ -16,6 +17,7 @@ export default function CampaignForm({
   isEditing = false,
   disabled = false,
   onSubmit,
+  onChangeValues,
 }: CampaignFormProps) {
   const [formData, setFormData] = useState<CampaignInput>({
     name: initialData?.name || '',
@@ -28,6 +30,23 @@ export default function CampaignForm({
     send_interval_seconds: initialData?.send_interval_seconds || 240,
     daily_limit: initialData?.daily_limit || 80,
   });
+
+  React.useEffect(() => {
+    if (initialData) {
+      setFormData((prev) => ({
+        ...prev,
+        ...initialData,
+      }));
+    }
+  }, [initialData]);
+
+  const updateFormData = (updater: (prev: CampaignInput) => CampaignInput) => {
+    setFormData((prev) => {
+      const next = updater(prev);
+      onChangeValues?.(next);
+      return next;
+    });
+  };
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +96,7 @@ export default function CampaignForm({
           disabled={disabled}
           placeholder="es. Mobili Italia"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={(e) => updateFormData((prev) => ({ ...prev, name: e.target.value }))}
           className="w-full px-3 py-2 border border-[#D8D2C8] rounded text-sm text-[#1A1A1E] bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] disabled:bg-[#F7F5F0]"
         />
       </div>
@@ -93,7 +112,7 @@ export default function CampaignForm({
           disabled={disabled}
           placeholder="es. Render per {{azienda}}"
           value={formData.subject_template}
-          onChange={(e) => setFormData({ ...formData, subject_template: e.target.value })}
+          onChange={(e) => updateFormData((prev) => ({ ...prev, subject_template: e.target.value }))}
           className="w-full px-3 py-2 border border-[#D8D2C8] rounded text-sm text-[#1A1A1E] bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] disabled:bg-[#F7F5F0]"
         />
         <p className="text-xs text-[#666666] mt-1">
@@ -112,7 +131,7 @@ export default function CampaignForm({
           disabled={disabled}
           placeholder="<!DOCTYPE html><html><body><p>Buongiorno {{azienda}}, ...</p></body></html>"
           value={formData.html_template}
-          onChange={(e) => setFormData({ ...formData, html_template: e.target.value })}
+          onChange={(e) => updateFormData((prev) => ({ ...prev, html_template: e.target.value }))}
           className="w-full px-3 py-2 font-mono text-xs border border-[#D8D2C8] rounded text-[#1A1A1E] bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] disabled:bg-[#F7F5F0]"
         />
       </div>
@@ -128,7 +147,7 @@ export default function CampaignForm({
               type="text"
               disabled={disabled}
               value={formData.timezone}
-              onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+              onChange={(e) => updateFormData((prev) => ({ ...prev, timezone: e.target.value }))}
               className="w-full px-3 py-1.5 border border-[#D8D2C8] rounded text-xs bg-white text-[#1A1A1E] disabled:bg-[#F7F5F0]"
             />
           </div>
@@ -139,7 +158,7 @@ export default function CampaignForm({
               type="time"
               disabled={disabled}
               value={formData.send_window_start}
-              onChange={(e) => setFormData({ ...formData, send_window_start: e.target.value })}
+              onChange={(e) => updateFormData((prev) => ({ ...prev, send_window_start: e.target.value }))}
               className="w-full px-3 py-1.5 border border-[#D8D2C8] rounded text-xs bg-white text-[#1A1A1E] disabled:bg-[#F7F5F0]"
             />
           </div>
@@ -150,7 +169,7 @@ export default function CampaignForm({
               type="time"
               disabled={disabled}
               value={formData.send_window_end}
-              onChange={(e) => setFormData({ ...formData, send_window_end: e.target.value })}
+              onChange={(e) => updateFormData((prev) => ({ ...prev, send_window_end: e.target.value }))}
               className="w-full px-3 py-1.5 border border-[#D8D2C8] rounded text-xs bg-white text-[#1A1A1E] disabled:bg-[#F7F5F0]"
             />
           </div>
@@ -165,7 +184,7 @@ export default function CampaignForm({
               step={10}
               disabled={disabled}
               value={formData.send_interval_seconds}
-              onChange={(e) => setFormData({ ...formData, send_interval_seconds: Number(e.target.value) })}
+              onChange={(e) => updateFormData((prev) => ({ ...prev, send_interval_seconds: Number(e.target.value) }))}
               className="w-full px-3 py-1.5 border border-[#D8D2C8] rounded text-xs bg-white text-[#1A1A1E] disabled:bg-[#F7F5F0]"
             />
             <span className="text-[11px] text-[#666666]">
@@ -180,7 +199,7 @@ export default function CampaignForm({
               min={1}
               disabled={disabled}
               value={formData.daily_limit}
-              onChange={(e) => setFormData({ ...formData, daily_limit: Number(e.target.value) })}
+              onChange={(e) => updateFormData((prev) => ({ ...prev, daily_limit: Number(e.target.value) }))}
               className="w-full px-3 py-1.5 border border-[#D8D2C8] rounded text-xs bg-white text-[#1A1A1E] disabled:bg-[#F7F5F0]"
             />
           </div>
