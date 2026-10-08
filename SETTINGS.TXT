@@ -1,7 +1,7 @@
 ================================================================================
 ARKITECNA MAILER - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-08 10:18 +08:00
+Last updated: 2026-10-08 10:31 +08:00
 Project / Application: ARKITECNA MAILER (V1)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://emailbulk.vercel.app (Vercel Production)
@@ -81,5 +81,5 @@ CRITICAL OPERATIONAL RULES & SCOPE LOCK:
 - NO CRM, NO lead scoring, NO AI, NO tracking pixels, NO redirect tracking
 - NO mass-send / batch send endpoint
 - Atomic lead claiming via PostgreSQL to prevent duplicate sends
-- Plain text / HTML template personalization: {{companyName}}, {{azienda}}, {{email}}
+- Plain text / HTML template personalization: {{companyName}}, {{azienda}}, {{NOME_AZIENDA}}, {{email}} (case-insensitive & whitespace-tolerant)
 ================================================================================

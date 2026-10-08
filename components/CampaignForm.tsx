@@ -143,7 +143,7 @@ export default function CampaignForm({
           className="w-full px-3 py-2 border border-[#D8D2C8] rounded text-sm text-[#1A1A1E] bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] disabled:bg-[#F7F5F0]"
         />
         <p className="text-xs text-[#666666] mt-1">
-          Supporta i segnaposto: <code>&#123;&#123;azienda&#125;&#125;</code>, <code>&#123;&#123;companyName&#125;&#125;</code>, <code>&#123;&#123;email&#125;&#125;</code>
+          Supporta i segnaposto: <code>&#123;&#123;NOME_AZIENDA&#125;&#125;</code>, <code>&#123;&#123;azienda&#125;&#125;</code>, <code>&#123;&#123;companyName&#125;&#125;</code>, <code>&#123;&#123;email&#125;&#125;</code> (anche con spazi o maiuscole/minuscole)
         </p>
       </div>
 

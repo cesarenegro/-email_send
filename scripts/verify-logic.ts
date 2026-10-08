@@ -25,6 +25,25 @@ const renderedBoth = renderTemplate('Gentile {{companyName}} <{{email}}>', {
 });
 assert(renderedBoth === 'Gentile Rossi Arredi <info@rossiarredi.it>', '{{companyName}} and {{email}} replace properly');
 
+const renderedUserCase = renderTemplate('Hello {{NOME_AZIENDA}} team, contact {{EMAIL}}', {
+  company_name: 'Acme Corp',
+  email: 'contact@acme.com',
+});
+assert(
+  renderedUserCase === 'Hello Acme Corp team, contact contact@acme.com',
+  'Placeholder {{NOME_AZIENDA}} and {{EMAIL}} replace properly'
+);
+
+const renderedSpacedAndAliases = renderTemplate(
+  'Buongiorno {{ nome_azienda }}, info at {{ mail }} or {{ company_name }}',
+  { company_name: 'Delta SRL', email: 'info@delta.it' }
+);
+assert(
+  renderedSpacedAndAliases === 'Buongiorno Delta SRL, info at info@delta.it or Delta SRL',
+  'Spaced {{ nome_azienda }} and {{ mail }} replace properly'
+);
+
+
 console.log('--- TEST 2: Email Normalization ---');
 const normalized = normalizeEmail('  INFO@ROSSI.IT  ');
 assert(normalized === 'info@rossi.it', 'Trims and lowercases email');
