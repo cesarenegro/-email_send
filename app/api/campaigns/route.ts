@@ -5,10 +5,18 @@ import { enrichCampaignsWithStats } from '@/lib/campaigns/stats';
 
 export async function GET() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
+  }
 
   const { data: campaigns, error } = await supabase
     .from('campaigns')
     .select('*')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -23,6 +31,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
+  }
+
   const body = await request.json();
 
   const parsed = CampaignSchema.safeParse(body);
@@ -32,6 +48,7 @@ export async function POST(request: NextRequest) {
 
   const insertPayload = {
     ...parsed.data,
+    user_id: user.id,
     start_at: parsed.data.start_at || null,
   };
 

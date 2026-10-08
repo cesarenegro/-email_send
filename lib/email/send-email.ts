@@ -5,11 +5,12 @@ interface SendEmailParams {
   subject: string;
   html: string;
   replyTo?: string;
+  userId?: string | null;
 }
 
-export async function sendEmail({ to, subject, html, replyTo }: SendEmailParams) {
+export async function sendEmail({ to, subject, html, replyTo, userId }: SendEmailParams) {
   const transporter = getSmtpTransporter();
-  const { fromName, fromEmail, replyTo: defaultReplyTo } = await getSenderIdentity();
+  const { fromName, fromEmail, replyTo: defaultReplyTo } = await getSenderIdentity(userId);
 
   const info = await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,

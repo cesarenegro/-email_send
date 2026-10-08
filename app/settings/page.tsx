@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Server, Send, CheckCircle2, AlertCircle, Loader2, Save, Mail, UserCheck } from 'lucide-react';
+import { Server, Send, CheckCircle2, AlertCircle, Loader2, Save, Mail, UserCheck, Sparkles } from 'lucide-react';
+
 
 export default function SettingsPage() {
   const [loadingSettings, setLoadingSettings] = useState(true);
@@ -118,11 +119,27 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1E]">Impostazioni & SMTP</h1>
-        <p className="text-sm text-[#666666]">
-          Gestione mittente, credenziali server SMTP Hostinger e strumenti di verifica
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1E]">Impostazioni & SMTP</h1>
+          <p className="text-sm text-[#666666]">
+            Gestione mittente, credenziali server SMTP Hostinger e strumenti di verifica
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('open-onboarding-walkthrough'));
+            }
+          }}
+          className="inline-flex items-center space-x-1.5 px-3 py-2 border border-[#D8D2C8] bg-white text-[#1A1A1E] text-xs font-semibold rounded-lg hover:bg-[#F7F5F0] transition-colors shadow-sm self-start sm:self-auto"
+          title="Riapri la guida a popup per la configurazione dell'account"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+          <span>Riavvia Guida Introduttiva</span>
+        </button>
       </div>
 
       {/* Editable Sender Identity Card */}

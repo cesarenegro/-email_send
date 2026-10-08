@@ -155,3 +155,28 @@ BEGIN
   RETURNING cl.*;
 END;
 $$;
+
+-- 5. MULTI-TENANT & USER SETTINGS
+ALTER TABLE public.campaigns 
+ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_campaigns_user_id ON public.campaigns(user_id);
+
+CREATE TABLE IF NOT EXISTS public.user_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  from_name text NOT NULL DEFAULT 'Stefano Martini | ARKITECNA',
+  from_email text NOT NULL DEFAULT 'cesare@arkitecna.com',
+  reply_to text NOT NULL DEFAULT 'cesare@arkitecna.com',
+  preferred_timezone text NOT NULL DEFAULT 'Europe/Rome',
+  send_window_start time NOT NULL DEFAULT '09:00',
+  send_window_end time NOT NULL DEFAULT '18:00',
+  onboarding_completed boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.campaign_leads ENABLE ROW LEVEL SECURITY;
+

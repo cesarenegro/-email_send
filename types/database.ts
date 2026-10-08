@@ -15,9 +15,25 @@ export interface Campaign {
   send_interval_seconds: number;
   daily_limit: number;
   next_send_at: string | null;
+  user_id?: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export interface UserSettings {
+  id: string;
+  user_id: string;
+  from_name: string;
+  from_email: string;
+  reply_to: string;
+  preferred_timezone: string;
+  send_window_start: string;
+  send_window_end: string;
+  onboarding_completed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 
 export interface CampaignWithStats extends Campaign {
   total_leads: number;

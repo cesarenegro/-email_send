@@ -99,6 +99,7 @@ export async function dispatchNextEmailForCampaign(
       to: lead.email,
       subject: renderedSubject,
       html: renderedHtml,
+      userId: campaign.user_id,
     });
   } catch (err: any) {
     sendError = err;

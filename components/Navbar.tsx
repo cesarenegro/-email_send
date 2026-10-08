@@ -22,6 +22,10 @@ export default function Navbar() {
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
+  if (pathname === '/login') {
+    return null;
+  }
+
   return (
     <header className="bg-[#FFFFFF] border-b border-[#D8D2C8] sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
