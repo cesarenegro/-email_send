@@ -2,7 +2,10 @@
 
 import React, { useState } from 'react';
 import { CampaignInput } from '@/lib/validations/campaign';
-import { Loader2, Save, CheckCircle2, Send } from 'lucide-react';
+import { Loader2, Save, CheckCircle2, Send, Globe } from 'lucide-react';
+import { SUPPORTED_TIMEZONES, getTimezoneConfig } from '@/lib/constants/timezones';
+import { DateTime } from 'luxon';
+
 
 interface CampaignFormProps {
   initialData?: Partial<CampaignInput>;
@@ -212,14 +215,38 @@ export default function CampaignForm({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-medium text-[#1A1A1E] mb-1">Fuso Orario</label>
-            <input
-              type="text"
+            <label className="block text-xs font-medium text-[#1A1A1E] mb-1">
+              Fuso Orario di Invio
+            </label>
+            <select
               disabled={disabled}
               value={formData.timezone}
               onChange={(e) => updateFormData((prev) => ({ ...prev, timezone: e.target.value }))}
-              className="w-full px-3 py-1.5 border border-[#D8D2C8] rounded text-xs bg-white text-[#1A1A1E] disabled:bg-[#F7F5F0]"
-            />
+              className="w-full px-3 py-1.5 border border-[#D8D2C8] rounded text-xs bg-white text-[#1A1A1E] font-medium disabled:bg-[#F7F5F0] focus:outline-none focus:ring-1 focus:ring-[#1A1A1E]"
+            >
+              {SUPPORTED_TIMEZONES.map((tz) => (
+                <option key={tz.value} value={tz.value}>
+                  {tz.label} ({tz.utcOffset})
+                </option>
+              ))}
+              {!SUPPORTED_TIMEZONES.some((tz) => tz.value === formData.timezone) && (
+                <option value={formData.timezone}>
+                  {formData.timezone} (Personalizzato)
+                </option>
+              )}
+            </select>
+            <div className="mt-1 text-[11px] text-[#666666] flex items-center justify-between">
+              <span className="truncate pr-1">{getTimezoneConfig(formData.timezone).shortLabel}</span>
+              <span className="font-mono text-[#1A1A1E] font-medium shrink-0">
+                {(() => {
+                  try {
+                    return `Ora: ${DateTime.now().setZone(formData.timezone || 'Europe/Rome').toFormat('HH:mm')}`;
+                  } catch {
+                    return '';
+                  }
+                })()}
+              </span>
+            </div>
           </div>
 
           <div>

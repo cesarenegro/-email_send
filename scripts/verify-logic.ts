@@ -66,4 +66,39 @@ const dtFri = DateTime.fromISO(nextSlotFri).setZone('Europe/Rome');
 assert(dtFri.weekday === 1, 'Friday after window boundary moves to Monday (weekday 1)');
 assert(dtFri.hour === 9 && dtFri.minute === 0, 'Moves to Monday 09:00');
 
+console.log('--- TEST 5: Verification of All 5 Requested Timezones ---');
+const testZones = [
+  { key: 'Europe/Rome', name: 'Roma' },
+  { key: 'America/New_York', name: 'USA EST' },
+  { key: 'America/Los_Angeles', name: 'USA WEST' },
+  { key: 'Asia/Dubai', name: 'DUBAI' },
+  { key: 'Asia/Makassar', name: 'ASIA WITA' },
+];
+
+for (const tz of testZones) {
+  const localNow = DateTime.now().setZone(tz.key);
+  assert(localNow.isValid, `Luxon timezone "${tz.key}" (${tz.name}) is valid`);
+  
+  // Test computation of next send slot inside window for that timezone
+  const tuesdayMorning = DateTime.fromISO('2026-10-06T10:30:00', { zone: tz.key });
+  const nextSlot = computeNextSendTime(tuesdayMorning, {
+    timezone: tz.key,
+    send_window_start: '09:00',
+    send_window_end: '18:00',
+  });
+  const localSlot = nextSlot.setZone(tz.key);
+  assert(localSlot.hour === 10 && localSlot.minute === 30, `${tz.name} preserves in-window slot`);
+
+  // Test subsequent slot calculation (e.g. 240s = 4 min)
+  const subsequent = computeSubsequentSendTime(tuesdayMorning.toJSDate(), {
+    timezone: tz.key,
+    send_window_start: '09:00',
+    send_window_end: '18:00',
+    send_interval_seconds: 240,
+  });
+  const subDt = DateTime.fromISO(subsequent).setZone(tz.key);
+  assert(subDt.hour === 10 && subDt.minute === 34, `${tz.name} adds interval correctly in local timezone`);
+}
+
 console.log('\n🎉 ALL CORE BUSINESS LOGIC TESTS PASSED SUCCESSFULLY!');
+

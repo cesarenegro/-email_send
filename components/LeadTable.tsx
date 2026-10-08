@@ -8,9 +8,10 @@ import { DateTime } from 'luxon';
 
 interface LeadTableProps {
   campaignId: string;
+  timezone?: string;
 }
 
-export default function LeadTable({ campaignId }: LeadTableProps) {
+export default function LeadTable({ campaignId, timezone = 'Europe/Rome' }: LeadTableProps) {
   const [leads, setLeads] = useState<CampaignLead[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -132,7 +133,7 @@ export default function LeadTable({ campaignId }: LeadTableProps) {
                   </td>
                   <td className="px-4 py-2.5 text-xs text-[#666666]">
                     {lead.sent_at
-                      ? DateTime.fromISO(lead.sent_at).setZone('Europe/Rome').toFormat('dd/MM/yyyy HH:mm:ss')
+                      ? DateTime.fromISO(lead.sent_at).setZone(timezone).toFormat('dd/MM/yyyy HH:mm:ss')
                       : '-'}
                   </td>
                   <td className="px-4 py-2.5 text-xs text-[#666666]">{lead.attempts}</td>

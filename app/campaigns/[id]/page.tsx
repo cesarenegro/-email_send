@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { estimateCampaignCompletion } from '@/lib/scheduling/estimate-completion';
+import { getTimezoneConfig } from '@/lib/constants/timezones';
+
 
 export default function CampaignDetailPage() {
   const params = useParams();
@@ -340,6 +342,7 @@ export default function CampaignDetailPage() {
                     <strong>
                       {DateTime.fromISO(campaign.next_send_at).setZone(campaign.timezone).toFormat('dd/MM/yyyy HH:mm:ss')}
                     </strong>
+                    <span className="text-[#666666] font-normal"> ({getTimezoneConfig(campaign.timezone).shortLabel})</span>
                   </>
                 ) : isPaused ? (
                   <span className="text-[#666666] font-medium">Campagna in pausa</span>
@@ -349,8 +352,10 @@ export default function CampaignDetailPage() {
                   <span className="text-[#666666] font-medium">Bozza (non ancora avviata)</span>
                 )}
                 <span className="text-[#666666]">
-                  {' '}• Intervallo: <strong>{campaign.send_interval_seconds}s</strong> • Limite giornaliero:{' '}
-                  <strong>{campaign.daily_limit} email/gg</strong> (lun-ven 09:00-18:00)
+                  {' '}• Fuso: <strong>{getTimezoneConfig(campaign.timezone).shortLabel}</strong> • Finestra:{' '}
+                  <strong>{campaign.send_window_start.slice(0, 5)}-{campaign.send_window_end.slice(0, 5)}</strong> • Intervallo:{' '}
+                  <strong>{campaign.send_interval_seconds}s</strong> • Limite:{' '}
+                  <strong>{campaign.daily_limit} email/gg</strong>
                 </span>
               </span>
             </div>
@@ -474,7 +479,7 @@ export default function CampaignDetailPage() {
             />
           )}
 
-          <LeadTable campaignId={id} />
+          <LeadTable campaignId={id} timezone={campaign.timezone} />
         </div>
       </div>
     </div>

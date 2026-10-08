@@ -7,6 +7,8 @@ import StatusBadge from './StatusBadge';
 import { ArrowRight, Calendar, Clock } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { estimateCampaignCompletion } from '@/lib/scheduling/estimate-completion';
+import { getTimezoneConfig } from '@/lib/constants/timezones';
+
 
 interface CampaignTableProps {
   campaigns: CampaignWithStats[];
@@ -71,12 +73,17 @@ export default function CampaignTable({ campaigns }: CampaignTableProps) {
                   </td>
                   <td className="px-5 py-3 text-xs text-[#666666]">
                     {camp.status === 'active' && camp.next_send_at ? (
-                      <span className="flex items-center space-x-1 text-[#1A1A1E] font-medium">
-                        <Clock className="w-3.5 h-3.5 text-[#666666]" />
-                        <span>
-                          {DateTime.fromISO(camp.next_send_at).setZone(camp.timezone).toFormat('dd/MM HH:mm')}
+                      <div className="space-y-0.5">
+                        <span className="flex items-center space-x-1 text-[#1A1A1E] font-medium">
+                          <Clock className="w-3.5 h-3.5 text-[#666666]" />
+                          <span>
+                            {DateTime.fromISO(camp.next_send_at).setZone(camp.timezone).toFormat('dd/MM HH:mm')}
+                          </span>
                         </span>
-                      </span>
+                        <span className="text-[10px] text-[#888888] font-medium block">
+                          {getTimezoneConfig(camp.timezone).shortLabel}
+                        </span>
+                      </div>
                     ) : (
                       <span className="text-[#999999]">-</span>
                     )}

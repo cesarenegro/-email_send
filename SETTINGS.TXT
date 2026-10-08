@@ -1,7 +1,7 @@
 ================================================================================
 ARKITECNA MAILER - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-07 19:35 +08:00
+Last updated: 2026-10-08 10:18 +08:00
 Project / Application: ARKITECNA MAILER (V1)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://emailbulk.vercel.app (Vercel Production)
@@ -51,8 +51,8 @@ Scheduler Provider: Vercel Cron
 Schedule: * * * * * (every minute)
 Endpoint: /api/cron/send
 Authentication: Bearer Token (CRON_SECRET)
-Timezone Engine: Luxon (^3.5.0) (Europe/Rome timezone-aware calculations)
-Allowed Days: Monday through Friday (09:00 - 18:00 send window)
+Timezone Engine: Luxon (^3.7.2) (Multi-timezone calculations supporting Europe/Rome [Roma], America/New_York [USA EST], America/Los_Angeles [USA WEST], Asia/Dubai [DUBAI], Asia/Makassar [ASIA WITA])
+Allowed Days: Monday through Friday (sending window evaluated in campaign local timezone, default 09:00 - 18:00)
 
 5. LIBRARIES & UTILITIES
 --------------------------------------------------------------------------------

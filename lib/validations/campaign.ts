@@ -1,10 +1,19 @@
 import { z } from 'zod';
+import { DateTime } from 'luxon';
 
 export const CampaignSchema = z.object({
   name: z.string().min(1, 'Il nome della campagna è obbligatorio'),
   subject_template: z.string().default(''),
   html_template: z.string().default(''),
-  timezone: z.string().default('Europe/Rome'),
+  timezone: z
+    .string()
+    .nullish()
+    .transform((val) => (val && val.trim() !== '' ? val : 'Europe/Rome'))
+    .refine((tz) => DateTime.now().setZone(tz).isValid, {
+      message: 'Fuso orario non valido',
+    })
+    .default('Europe/Rome'),
+
   start_at: z
     .string()
     .nullish()
