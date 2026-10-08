@@ -485,7 +485,11 @@ export default function CampaignDetailPage() {
             />
           )}
 
-          <LeadTable campaignId={id} timezone={campaign.timezone} />
+          <LeadTable
+            campaignId={id}
+            timezone={campaign.timezone}
+            onBouncesSynced={fetchCampaignData}
+          />
         </div>
       </div>
     </div>

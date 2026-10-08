@@ -3,18 +3,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CampaignLead } from '@/types/database';
 import StatusBadge from './StatusBadge';
-import { Loader2, RefreshCw, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Loader2, RefreshCw, ChevronLeft, ChevronRight, AlertCircle, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { DateTime } from 'luxon';
 
 interface LeadTableProps {
   campaignId: string;
   timezone?: string;
+  onBouncesSynced?: () => void;
 }
 
-export default function LeadTable({ campaignId, timezone = 'Europe/Rome' }: LeadTableProps) {
+export default function LeadTable({ campaignId, timezone = 'Europe/Rome', onBouncesSynced }: LeadTableProps) {
   const [leads, setLeads] = useState<CampaignLead[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [syncingBounces, setSyncingBounces] = useState(false);
+  const [bounceResult, setBounceResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(0);
   const pageSize = 25;
@@ -50,8 +53,60 @@ export default function LeadTable({ campaignId, timezone = 'Europe/Rome' }: Lead
     return DateTime.now().diff(updated, 'minutes').minutes > 30;
   };
 
+  const handleSyncBounces = async () => {
+    setSyncingBounces(true);
+    setBounceResult(null);
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/sync-bounces`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore durante la verifica dei rimbalzi');
+      
+      setBounceResult({
+        type: 'success',
+        message: data.message || `Verifica completata: ${data.leadsUpdated} contatti aggiornati.`,
+      });
+      await fetchLeads();
+      if (onBouncesSynced) {
+        onBouncesSynced();
+      }
+    } catch (err: any) {
+      setBounceResult({
+        type: 'error',
+        message: err.message || 'Impossibile verificare i rimbalzi dalla casella email',
+      });
+    } finally {
+      setSyncingBounces(false);
+    }
+  };
+
   return (
     <div className="bg-[#FFFFFF] border border-[#D8D2C8] rounded-lg shadow-sm overflow-hidden">
+      {/* Bounce sync feedback alert */}
+      {bounceResult && (
+        <div
+          className={`px-4 py-2.5 text-xs border-b flex items-center justify-between ${
+            bounceResult.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-rose-50 border-rose-200 text-rose-800'
+          }`}
+        >
+          <div className="flex items-center space-x-2">
+            {bounceResult.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            )}
+            <span>{bounceResult.message}</span>
+          </div>
+          <button
+            onClick={() => setBounceResult(null)}
+            className="text-xs font-semibold hover:opacity-75 ml-3"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div className="p-4 border-b border-[#D8D2C8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
           <h3 className="text-base font-semibold text-[#1A1A1E]">Contatti della Campagna</h3>
@@ -60,7 +115,21 @@ export default function LeadTable({ campaignId, timezone = 'Europe/Rome' }: Lead
           </span>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-wrap gap-y-2">
+          <button
+            onClick={handleSyncBounces}
+            disabled={syncingBounces || loading}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 border border-amber-300 rounded text-xs font-medium text-amber-900 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 transition-colors shadow-xs"
+            title="Controlla la casella email per notifiche di rimbalzo (es. 550 User unknown) e aggiorna i contatti respinti"
+          >
+            {syncingBounces ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700" />
+            ) : (
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
+            )}
+            <span>{syncingBounces ? 'Controllo in corso...' : 'Verifica Rimbalzi'}</span>
+          </button>
+
           <select
             value={statusFilter}
             onChange={(e) => {

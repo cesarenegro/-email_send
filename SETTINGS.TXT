@@ -1,7 +1,7 @@
 ================================================================================
 ARKITECNA MAILER - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-08 18:30 +08:00
+Last updated: 2026-10-08 19:35 +08:00
 Project / Application: ARKITECNA MAILER (V1)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://emailbulk.vercel.app (Vercel Production)
@@ -22,8 +22,8 @@ Access Library: @supabase/supabase-js (^2.49.0), @supabase/ssr (^0.6.0)
 Database Migrations: supabase/migrations/ (001_campaigns.sql, 002_campaign_leads.sql, 003_email_logs.sql, 004_claim_lead_rpc.sql, 005_app_settings.sql, 006_multi_tenant.sql, all_migrations.sql)
 Tables:
   - public.campaigns (includes user_id uuid FK to auth.users, RLS protected)
-  - public.campaign_leads (RLS protected per campaign ownership)
-  - public.email_logs
+  - public.campaign_leads (RLS protected per campaign ownership; statuses: pending, sending, sent, retry, failed)
+  - public.email_logs (events: sent, error; records bounce error details)
   - public.app_settings (global fallback key-value config)
   - public.user_settings (per-user sender identity: from_name, from_email, reply_to, preferred_timezone, onboarding_completed)
 Stored Procedures / RPCs:
@@ -46,7 +46,22 @@ Minimum Interval: 60 seconds (default 240 seconds / 4 minutes)
 Default Daily Cap: 80 emails / day per campaign
 Immediate Dispatch: POST /api/campaigns/[id]/send-now (manual immediate send bypassing schedule)
 
-4. SCHEDULER & CRON
+4. BOUNCE MONITORING & DELIVERY STATUS NOTIFICATIONS (IMAP)
+--------------------------------------------------------------------------------
+IMAP Provider: Hostinger
+Host: imap.hostinger.com (IMAP_HOST)
+Port: 993 (SSL/TLS, IMAP_PORT)
+Mode: Strictly Read-Only (flag { markSeen: false } ensures ZERO emails are marked as read in the mailbox)
+Search Scope: Targets only MAILER-DAEMON / postmaster / DSN reports
+Parser: RFC 3464, MailChannels, Postfix, Exim, and Microsoft 365 bounce detection
+Library: ImapFlow (^2.2.11), Mailparser (^3.9.37)
+Endpoints:
+  - POST /api/campaigns/[id]/sync-bounces (UI on-demand button in LeadTable)
+  - POST /api/bounces/sync (Global sync)
+  - POST /api/cron/bounces (Automated cron check)
+  - POST /api/settings/test-imap (Connection test in Settings)
+
+5. SCHEDULER & CRON
 --------------------------------------------------------------------------------
 Scheduler Provider: Vercel Cron
 Schedule: * * * * * (every minute)
@@ -55,13 +70,15 @@ Authentication: Bearer Token (CRON_SECRET)
 Timezone Engine: Luxon (^3.7.2) (Multi-timezone calculations supporting Europe/Rome [Roma], America/New_York [USA EST], America/Los_Angeles [USA WEST], Asia/Dubai [DUBAI], Asia/Makassar [ASIA WITA])
 Allowed Days: Monday through Friday (sending window evaluated in campaign local timezone, default 09:00 - 18:00)
 
-5. LIBRARIES & UTILITIES
+6. LIBRARIES & UTILITIES
 --------------------------------------------------------------------------------
 CSV Parsing: PapaParse (^5.5.0) (header mapping, BOM/semicolon support, deduplication)
+IMAP Client: ImapFlow (^2.2.11) (TLS stream, mailbox locking, peek fetching)
+Mail Parser: Mailparser (^3.9.37) (RFC MIME multipart and DSN attachment extraction)
 Validation: Zod (^3.24.0) (runtime validation for schemas & payloads)
 Icons: Lucide React (^0.479.0) (lightweight clean icons)
 
-6. REQUIRED ENVIRONMENT VARIABLE NAMES (NO SECRETS STORED HERE)
+7. REQUIRED ENVIRONMENT VARIABLE NAMES (NO SECRETS STORED HERE)
 --------------------------------------------------------------------------------
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -74,6 +91,11 @@ SMTP_PASS
 SMTP_FROM_NAME
 SMTP_FROM_EMAIL
 SMTP_REPLY_TO
+IMAP_HOST
+IMAP_PORT
+IMAP_SECURE
+IMAP_USER
+IMAP_PASS
 CRON_SECRET
 NEXT_PUBLIC_APP_NAME
 
@@ -82,5 +104,6 @@ CRITICAL OPERATIONAL RULES & SCOPE LOCK:
 - NO CRM, NO lead scoring, NO AI, NO tracking pixels, NO redirect tracking
 - NO mass-send / batch send endpoint
 - Atomic lead claiming via PostgreSQL to prevent duplicate sends
+- Read-only IMAP bounce detection: NEVER marks user or customer emails as read
 - Plain text / HTML template personalization: {{companyName}}, {{azienda}}, {{NOME_AZIENDA}}, {{email}} (case-insensitive & whitespace-tolerant)
 ================================================================================

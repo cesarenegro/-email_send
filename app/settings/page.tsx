@@ -22,9 +22,11 @@ export default function SettingsPage() {
 
   // Diagnostic states
   const [testingConnection, setTestingConnection] = useState(false);
+  const [testingImap, setTestingImap] = useState(false);
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [testRecipient, setTestRecipient] = useState('');
   const [connectionResult, setConnectionResult] = useState<{ success: boolean; text: string } | null>(null);
+  const [imapResult, setImapResult] = useState<{ success: boolean; text: string } | null>(null);
   const [sendResult, setSendResult] = useState<{ success: boolean; text: string } | null>(null);
 
   useEffect(() => {
@@ -91,6 +93,22 @@ export default function SettingsPage() {
       setConnectionResult({ success: false, text: err.message });
     } finally {
       setTestingConnection(false);
+    }
+  };
+
+  const handleTestImap = async () => {
+    setTestingImap(true);
+    setImapResult(null);
+
+    try {
+      const res = await fetch('/api/settings/test-imap', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Test IMAP fallito');
+      setImapResult({ success: true, text: data.message });
+    } catch (err: any) {
+      setImapResult({ success: false, text: err.message });
+    } finally {
+      setTestingImap(false);
     }
   };
 
@@ -324,6 +342,54 @@ export default function SettingsPage() {
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               )}
               <span>{connectionResult.text}</span>
+            </div>
+          )}
+        </div>
+
+        {/* IMAP Bounce Receiver Section */}
+        <div className="pt-4 border-t border-[#D8D2C8] space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-semibold text-[#1A1A1E]">Ricezione Rimbalzi (IMAP Hostinger)</h4>
+              <p className="text-xs text-[#666666]">
+                Connessione protetta a <span className="font-mono text-[#1A1A1E]">imap.hostinger.com:993 (SSL)</span> per rilevamento automatico rifiuti (550 User unknown, DSN).
+                <br />
+                <span className="text-emerald-700 font-medium">Modalità sicura: non segna mai le email dei clienti come lette.</span>
+              </p>
+            </div>
+            <button
+              onClick={handleTestImap}
+              disabled={testingImap}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium rounded hover:bg-amber-100 transition-colors disabled:opacity-50 self-start sm:self-auto"
+            >
+              {testingImap ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-700" />
+                  <span>Verifica IMAP...</span>
+                </>
+              ) : (
+                <>
+                  <Server className="w-4 h-4 text-amber-700" />
+                  <span>TEST IMAP CONNECTION</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {imapResult && (
+            <div
+              className={`p-3 rounded text-xs flex items-center space-x-2 ${
+                imapResult.success
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                  : 'bg-rose-50 border border-rose-200 text-rose-800'
+              }`}
+            >
+              {imapResult.success ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              ) : (
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              )}
+              <span>{imapResult.text}</span>
             </div>
           )}
         </div>
