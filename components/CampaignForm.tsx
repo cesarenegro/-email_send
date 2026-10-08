@@ -34,18 +34,45 @@ export default function CampaignForm({
     daily_limit: initialData?.daily_limit || 80,
   });
 
+  const isDirtyRef = React.useRef(false);
+  const initialLoadedRef = React.useRef(false);
+
   React.useEffect(() => {
-    if (initialData) {
-      setFormData((prev) => ({
-        ...prev,
-        ...initialData,
-        send_window_start: initialData.send_window_start ? initialData.send_window_start.slice(0, 5) : prev.send_window_start,
-        send_window_end: initialData.send_window_end ? initialData.send_window_end.slice(0, 5) : prev.send_window_end,
-      }));
+    if (!initialData) return;
+
+    // First time initialData arrives: populate form
+    if (!initialLoadedRef.current) {
+      setFormData({
+        name: initialData.name || '',
+        subject_template: initialData.subject_template || '',
+        html_template: initialData.html_template || '',
+        timezone: initialData.timezone || 'Europe/Rome',
+        start_at: initialData.start_at || '',
+        send_window_start: initialData.send_window_start ? initialData.send_window_start.slice(0, 5) : '09:00',
+        send_window_end: initialData.send_window_end ? initialData.send_window_end.slice(0, 5) : '18:00',
+        send_interval_seconds: initialData.send_interval_seconds || 240,
+        daily_limit: initialData.daily_limit || 80,
+      });
+      initialLoadedRef.current = true;
+      return;
     }
+
+    // If user has unsaved edits in the form, NEVER overwrite with background data
+    if (isDirtyRef.current) {
+      return;
+    }
+
+    // Only sync if form is clean (e.g. after a save)
+    setFormData((prev) => ({
+      ...prev,
+      ...initialData,
+      send_window_start: initialData.send_window_start ? initialData.send_window_start.slice(0, 5) : prev.send_window_start,
+      send_window_end: initialData.send_window_end ? initialData.send_window_end.slice(0, 5) : prev.send_window_end,
+    }));
   }, [initialData]);
 
   const updateFormData = (updater: (prev: CampaignInput) => CampaignInput) => {
+    isDirtyRef.current = true;
     setFormData((prev) => {
       const next = updater(prev);
       onChangeValues?.(next);
@@ -74,6 +101,7 @@ export default function CampaignForm({
     try {
       const payload = buildPayload();
       await onSubmit(payload);
+      isDirtyRef.current = false;
       setHtmlSavedMsg(true);
       setTimeout(() => setHtmlSavedMsg(false), 3000);
     } catch (err: any) {
@@ -91,6 +119,7 @@ export default function CampaignForm({
     try {
       const payload = buildPayload();
       await onSubmit(payload);
+      isDirtyRef.current = false;
     } catch (err: any) {
       setError(err.message || 'Errore durante il salvataggio');
     } finally {

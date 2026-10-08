@@ -69,6 +69,11 @@ export default function CampaignDetailPage() {
 
   useEffect(() => {
     fetchCampaignData();
+  }, [fetchCampaignData]);
+
+  // Only auto-poll if the campaign is currently ACTIVE (running and dispatching emails)
+  useEffect(() => {
+    if (campaign?.status !== 'active') return;
 
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && !document.hidden) {
@@ -77,7 +82,8 @@ export default function CampaignDetailPage() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [fetchCampaignData]);
+  }, [fetchCampaignData, campaign?.status]);
+
 
   const handleStart = async () => {
     setActionLoading(true);
