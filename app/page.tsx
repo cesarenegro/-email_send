@@ -1,26 +1,73 @@
 import { createClient } from '@/lib/supabase/server';
-import DashboardLiveView from '@/components/DashboardLiveView';
-import { CampaignWithStats } from '@/types/database';
-import { enrichCampaignsWithStats } from '@/lib/campaigns/stats';
+import HubLiveView from '@/components/HubLiveView';
 
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage() {
-  let campaignsWithStats: CampaignWithStats[] = [];
+export default async function HomePage() {
+  let campaignsTotal = 0;
+  let campaignsActive = 0;
+  let newslettersTotal = 0;
+  let newslettersScheduled = 0;
+  let newslettersSending = 0;
 
   try {
     const supabase = await createClient();
-    const { data: campaigns } = await supabase
-      .from('campaigns')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (campaigns && campaigns.length > 0) {
-      campaignsWithStats = await enrichCampaignsWithStats(supabase, campaigns);
+    if (user) {
+      const [
+        totalCampRes,
+        activeCampRes,
+        totalNlRes,
+        schedNlRes,
+        sendNlRes,
+      ] = await Promise.all([
+        supabase
+          .from('campaigns')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id),
+        supabase
+          .from('campaigns')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'active'),
+        supabase
+          .from('newsletters')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id),
+        supabase
+          .from('newsletters')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'scheduled'),
+        supabase
+          .from('newsletters')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'sending'),
+      ]);
+
+      campaignsTotal = totalCampRes.count || 0;
+      campaignsActive = activeCampRes.count || 0;
+      newslettersTotal = totalNlRes.count || 0;
+      newslettersScheduled = schedNlRes.count || 0;
+      newslettersSending = sendNlRes.count || 0;
     }
   } catch (err) {
-    console.error('Error loading dashboard campaigns:', err);
+    console.error('Error fetching hub data:', err);
   }
 
-  return <DashboardLiveView initialCampaigns={campaignsWithStats} />;
+  return (
+    <HubLiveView
+      stats={{
+        campaignsTotal,
+        campaignsActive,
+        newslettersTotal,
+        newslettersScheduled,
+        newslettersSending,
+      }}
+    />
+  );
 }

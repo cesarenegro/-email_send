@@ -66,3 +66,43 @@ export interface EmailLog {
   error_message: string | null;
   created_at: string;
 }
+
+export type NewsletterStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused';
+export type SubscriberStatus = 'pending' | 'sending' | 'sent' | 'failed';
+
+export interface Newsletter {
+  id: string;
+  user_id?: string | null;
+  title: string;
+  subject: string;
+  html_content: string;
+  status: NewsletterStatus;
+  scheduled_at: string | null;
+  timezone: string;
+  send_interval_seconds: number;
+  next_send_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewsletterWithStats extends Newsletter {
+  total_subscribers: number;
+  sent_count: number;
+  pending_count: number;
+  failed_count: number;
+}
+
+export interface NewsletterSubscriber {
+  id: string;
+  newsletter_id: string;
+  email: string;
+  name?: string | null;
+  status: SubscriberStatus;
+  attempts: number;
+  sent_at: string | null;
+  smtp_message_id: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+

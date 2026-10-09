@@ -6,18 +6,20 @@ import { CampaignLead } from '@/types/database';
 import { AlertTriangle, Eye, Save, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface EmailPreviewProps {
-  subjectTemplate: string;
+  subjectTemplate?: string;
   htmlTemplate: string;
-  leads: CampaignLead[];
+  leads?: (CampaignLead | { email: string; company_name?: string | null; name?: string | null })[];
+  sampleData?: { email: string; company_name?: string | null; name?: string | null };
   onSave?: () => Promise<void>;
   hasUnsavedChanges?: boolean;
   disabled?: boolean;
 }
 
 export default function EmailPreview({
-  subjectTemplate,
+  subjectTemplate = '',
   htmlTemplate,
   leads,
+  sampleData,
   onSave,
   hasUnsavedChanges = false,
   disabled = false,
@@ -40,9 +42,11 @@ export default function EmailPreview({
     }
   };
 
-  const activeLead = leads[selectedIndex] || {
-    company_name: 'Rossi Arredi',
-    email: 'info@rossiarredi.it',
+  const previewList = leads || [];
+  const activeLead = (previewList.length > 0 ? previewList[selectedIndex] : null) || sampleData || {
+    company_name: 'Mario Rossi',
+    name: 'Mario Rossi',
+    email: 'mario.rossi@example.com',
   };
 
   const resolvedSubject = renderTemplate(subjectTemplate || '', activeLead);
@@ -95,7 +99,7 @@ export default function EmailPreview({
             </button>
           )}
 
-          {leads.length > 0 && (
+          {previewList.length > 0 && (
             <div className="flex items-center space-x-2 text-xs">
               <span className="text-[#666666]">Contatto di prova:</span>
               <select
@@ -103,7 +107,7 @@ export default function EmailPreview({
                 onChange={(e) => setSelectedIndex(Number(e.target.value))}
                 className="px-2 py-1 border border-[#D8D2C8] rounded bg-white text-xs text-[#1A1A1E] focus:outline-none"
               >
-                {leads.slice(0, 20).map((l, idx) => (
+                {previewList.slice(0, 20).map((l, idx) => (
                   <option key={idx} value={idx}>
                     {l.company_name ? `${l.company_name} (${l.email})` : l.email}
                   </option>

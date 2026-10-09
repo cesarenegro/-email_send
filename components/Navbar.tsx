@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Mail, LayoutDashboard, Send, Settings, LogOut } from 'lucide-react';
+import { Mail, LayoutDashboard, Send, Newspaper, Settings, LogOut } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -17,9 +17,10 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/campaigns', label: 'Campaigns', icon: Send },
-    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/', label: 'Hub', icon: LayoutDashboard },
+    { href: '/campaigns', label: 'Email Massive', icon: Send },
+    { href: '/newsletters', label: 'Newsletter', icon: Newspaper },
+    { href: '/settings', label: 'Impostazioni', icon: Settings },
   ];
 
   if (pathname === '/login') {

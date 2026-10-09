@@ -14,14 +14,23 @@
  */
 export function renderTemplate(
   template: string,
-  lead: {
+  data: {
     company_name?: string | null;
+    name?: string | null;
     email: string;
   }
 ): string {
   if (!template) return '';
-  const company = lead.company_name ?? '';
-  const email = lead.email ?? '';
+  const company = data.company_name ?? data.name ?? '';
+  const name = data.name ?? data.company_name ?? '';
+  const email = data.email ?? '';
+
+  const NAME_TAGS = new Set([
+    'nome',
+    'name',
+    'destinatario',
+    'iscritto',
+  ]);
 
   const COMPANY_TAGS = new Set([
     'azienda',
@@ -44,6 +53,10 @@ export function renderTemplate(
   return template.replace(/{{\s*([^}]+?)\s*}}/g, (match, rawKey) => {
     // Normalize key: lowercase, strip all spaces, underscores, and hyphens
     const normalizedKey = rawKey.trim().toLowerCase().replace(/[\s_-]+/g, '');
+
+    if (NAME_TAGS.has(normalizedKey)) {
+      return name;
+    }
 
     if (COMPANY_TAGS.has(normalizedKey)) {
       return company;

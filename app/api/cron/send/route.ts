@@ -35,7 +35,32 @@ async function handleCron(request: NextRequest) {
 
   const nowIso = DateTime.utc().toISO()!;
 
-  // 2. Find the oldest active campaign that is due for sending
+  // 2. Check if a scheduled newsletter is due or currently sending
+  const { data: dueNewsletters, error: newsletterError } = await supabase
+    .from('newsletters')
+    .select('*')
+    .or(`and(status.eq.scheduled,scheduled_at.lte.${nowIso}),and(status.eq.sending,next_send_at.lte.${nowIso})`)
+    .order('created_at', { ascending: true })
+    .limit(1);
+
+  if (newsletterError) {
+    console.warn('Error checking due newsletters:', newsletterError.message);
+  } else if (dueNewsletters && dueNewsletters.length > 0) {
+    const { dispatchNextEmailForNewsletter } = await import('@/lib/email/newsletter-dispatcher');
+    try {
+      const result = await dispatchNextEmailForNewsletter(supabase, dueNewsletters[0]);
+      return NextResponse.json({
+        ...result,
+        type: 'newsletter',
+        newsletter_id: dueNewsletters[0].id,
+      });
+    } catch (err: any) {
+      console.error('Error during newsletter cron dispatch:', err);
+      return NextResponse.json({ error: err.message, type: 'newsletter' }, { status: 500 });
+    }
+  }
+
+  // 3. Find the oldest active campaign that is due for sending
   const { data: campaigns, error: campaignError } = await supabase
     .from('campaigns')
     .select('*')
