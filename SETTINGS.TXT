@@ -1,7 +1,7 @@
 ================================================================================
 ARKITECNA MAILER - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-09 09:55 +08:00
+Last updated: 2026-10-09 15:17 +08:00
 Project / Application: ARKITECNA MAILER (V1)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://emailbulk.vercel.app (Vercel Production)
@@ -17,7 +17,7 @@ Package Manager: npm (11.9.0)
 2. DATABASE & BACKEND SERVICES
 --------------------------------------------------------------------------------
 Database Provider: Supabase (PostgreSQL)
-Authentication: Supabase Auth (Email / Password, Sign Up, Deep Link Password Reset, Multi-Tenant User Metadata)
+Authentication: Supabase Auth (Email / Password, Sign Up with emailRedirectTo, Deep Link Auth Callback /auth/callback, Password Reset, Multi-Tenant User Metadata)
 Access Library: @supabase/supabase-js (^2.49.0), @supabase/ssr (^0.6.0)
 Database Migrations: supabase/migrations/ (001_campaigns.sql, 002_campaign_leads.sql, 003_email_logs.sql, 004_claim_lead_rpc.sql, 005_app_settings.sql, 006_multi_tenant.sql, all_migrations.sql)
 Tables:
@@ -99,6 +99,7 @@ IMAP_USER
 IMAP_PASS
 CRON_SECRET
 NEXT_PUBLIC_APP_NAME
+NEXT_PUBLIC_APP_URL
 
 ================================================================================
 CRITICAL OPERATIONAL RULES & SCOPE LOCK:

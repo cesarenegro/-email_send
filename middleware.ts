@@ -4,10 +4,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Bypass static files and cron endpoint
+  // Bypass static files, cron endpoint, and auth callbacks
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api/cron') ||
+    pathname.startsWith('/auth') ||
     pathname.includes('.') ||
     pathname === '/favicon.ico'
   ) {
@@ -71,5 +72,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/cron).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/cron|auth).*)'],
 };

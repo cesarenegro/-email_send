@@ -32,12 +32,19 @@ function LoginFormContent() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Check URL params for reset password callback
+  // Check URL params for reset password callback or auth error
   useEffect(() => {
     const view = searchParams.get('view');
     const type = searchParams.get('type');
+    const err = searchParams.get('error');
+
     if (view === 'reset-password' || type === 'recovery') {
       setMode('reset_password');
+    }
+    if (err === 'missing_env') {
+      setError('Configurazione Supabase mancante. Configura le variabili d’ambiente.');
+    } else if (err === 'auth_callback_failed') {
+      setError('Verifica del link non riuscita o token di conferma scaduto. Riprova ad accedere o richiedi una nuova email.');
     }
   }, [searchParams]);
 
@@ -95,11 +102,17 @@ function LoginFormContent() {
     try {
       const supabase = createClient();
       const cleanEmail = email.trim().toLowerCase();
+      const appOrigin =
+        typeof window !== 'undefined' && window.location.origin
+          ? window.location.origin
+          : process.env.NEXT_PUBLIC_APP_URL || 'https://emailbulk.vercel.app';
+      const redirectUrl = `${appOrigin}/auth/callback`;
 
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             full_name: fullName.trim(),
             onboarding_completed: false,
@@ -135,7 +148,11 @@ function LoginFormContent() {
     try {
       const supabase = createClient();
       const cleanEmail = email.trim().toLowerCase();
-      const redirectUrl = `${window.location.origin}/login?view=reset-password`;
+      const appOrigin =
+        typeof window !== 'undefined' && window.location.origin
+          ? window.location.origin
+          : process.env.NEXT_PUBLIC_APP_URL || 'https://emailbulk.vercel.app';
+      const redirectUrl = `${appOrigin}/login?view=reset-password`;
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: redirectUrl,
