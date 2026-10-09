@@ -58,6 +58,15 @@ export async function syncBouncesFromImap(
     const lock = await client.getMailboxLock('INBOX', { readOnly: true });
 
     try {
+      // Guardia difensiva: la protezione di \Seen si basa sull'apertura in sola lettura (EXAMINE)
+      // e sul recupero dei contenuti tramite BODY.PEEK[], senza alterare flag o marcare le email come lette.
+      // Procedi solo se la libreria conferma che la casella è aperta in modalità read-only.
+      // Questa verifica riduce i rischi applicativi lato client senza garantire in modo assoluto
+      // il comportamento di server IMAP remoti o configurazioni esterne.
+      if (!client.mailbox || client.mailbox.readOnly !== true) {
+        throw new Error('Accesso IMAP non confermato in modalità read-only: sincronizzazione interrotta per sicurezza.');
+      }
+
       const status = await client.status('INBOX', { messages: true });
       const totalMessages = (status && typeof status === 'object' && typeof status.messages === 'number')
         ? status.messages
@@ -103,6 +112,8 @@ export async function syncBouncesFromImap(
       // 2. Inspect candidate bounce messages
       for (const uid of candidateUids) {
         try {
+          // Download del messaggio completo: con { source: true } ImapFlow richiede BODY.PEEK[],
+          // preservando lo stato \Seen delle email analizzate.
           const fullMsg = await client.fetchOne(uid.toString(), {
             source: true,
           }, { uid: true });
@@ -195,7 +206,15 @@ export async function syncBouncesFromImap(
     await client.logout();
   } catch (connErr: any) {
     result.success = false;
-    result.errors.push(`Errore connessione IMAP: ${connErr.message}`);
+    result.errors.push(`Errore sincronizzazione IMAP: ${connErr.message}`);
+  } finally {
+    try {
+      if (client.usable) {
+        await client.logout();
+      }
+    } catch {
+      // Ignora errori di chiusura socket se già disconnesso
+    }
   }
 
   return result;

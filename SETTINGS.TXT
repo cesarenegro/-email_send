@@ -1,7 +1,7 @@
 ================================================================================
 ARKITECNA MAILER - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-08 19:35 +08:00
+Last updated: 2026-10-09 09:55 +08:00
 Project / Application: ARKITECNA MAILER (V1)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://emailbulk.vercel.app (Vercel Production)
@@ -51,21 +51,22 @@ Immediate Dispatch: POST /api/campaigns/[id]/send-now (manual immediate send byp
 IMAP Provider: Hostinger
 Host: imap.hostinger.com (IMAP_HOST)
 Port: 993 (SSL/TLS, IMAP_PORT)
-Mode: Strictly Read-Only (flag { markSeen: false } ensures ZERO emails are marked as read in the mailbox)
+Mode: Strictly Read-Only (apertura casella con comando IMAP EXAMINE e download contenuti con BODY.PEEK[], con guardia a runtime su mailbox.readOnly; non imposta il flag \Seen)
 Search Scope: Targets only MAILER-DAEMON / postmaster / DSN reports
 Parser: RFC 3464, MailChannels, Postfix, Exim, and Microsoft 365 bounce detection
 Library: ImapFlow (^2.2.11), Mailparser (^3.9.37)
 Endpoints:
   - POST /api/campaigns/[id]/sync-bounces (UI on-demand button in LeadTable)
   - POST /api/bounces/sync (Global sync)
-  - POST /api/cron/bounces (Automated cron check)
+  - POST /api/cron/bounces (Automated cron check - endpoint disponibile nel codice, non pianificato in vercel.json)
   - POST /api/settings/test-imap (Connection test in Settings)
 
 5. SCHEDULER & CRON
 --------------------------------------------------------------------------------
 Scheduler Provider: Vercel Cron
 Schedule: * * * * * (every minute)
-Endpoint: /api/cron/send
+Endpoint: /api/cron/send (spedizione sequenziale messaggi)
+Note: /api/cron/bounces è implementato nel codice ma non è pianificato in vercel.json
 Authentication: Bearer Token (CRON_SECRET)
 Timezone Engine: Luxon (^3.7.2) (Multi-timezone calculations supporting Europe/Rome [Roma], America/New_York [USA EST], America/Los_Angeles [USA WEST], Asia/Dubai [DUBAI], Asia/Makassar [ASIA WITA])
 Allowed Days: Monday through Friday (sending window evaluated in campaign local timezone, default 09:00 - 18:00)
@@ -104,6 +105,6 @@ CRITICAL OPERATIONAL RULES & SCOPE LOCK:
 - NO CRM, NO lead scoring, NO AI, NO tracking pixels, NO redirect tracking
 - NO mass-send / batch send endpoint
 - Atomic lead claiming via PostgreSQL to prevent duplicate sends
-- Read-only IMAP bounce detection: NEVER marks user or customer emails as read
+- Read-only IMAP bounce detection: protezione \Seen basata su EXAMINE e BODY.PEEK[], con guardia difensiva se read-only non confermato
 - Plain text / HTML template personalization: {{companyName}}, {{azienda}}, {{NOME_AZIENDA}}, {{email}} (case-insensitive & whitespace-tolerant)
 ================================================================================
