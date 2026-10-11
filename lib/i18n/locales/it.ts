@@ -245,6 +245,7 @@ export const it: Translations = {
     subtext: 'Accedi o registrati istantaneamente con Google o Facebook, oppure utilizza le credenziali email.',
     googleButton: 'accedi con Google',
     facebookButton: 'accedi con Facebook',
+    linkedinButton: 'accedi con LinkedIn',
     orDivider: 'oppure con email e password',
     emailLabel: 'Email Aziendale',
     emailPlaceholder: 'nome@azienda.com',

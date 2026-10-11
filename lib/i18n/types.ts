@@ -245,6 +245,7 @@ export interface Translations {
     subtext: string;
     googleButton: string;
     facebookButton: string;
+    linkedinButton: string;
     orDivider: string;
     emailLabel: string;
     emailPlaceholder: string;

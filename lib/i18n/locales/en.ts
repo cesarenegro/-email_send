@@ -245,6 +245,7 @@ export const en: Translations = {
     subtext: 'Sign in or register instantly with Google or Facebook, or continue with email credentials.',
     googleButton: 'Sign in with Google',
     facebookButton: 'Sign in with Facebook',
+    linkedinButton: 'Sign in with LinkedIn',
     orDivider: 'or with email and password',
     emailLabel: 'Work Email',
     emailPlaceholder: 'name@company.com',
