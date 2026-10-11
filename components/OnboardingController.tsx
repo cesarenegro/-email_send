@@ -33,6 +33,11 @@ export default function OnboardingController() {
         const metadataCompleted = user.user_metadata?.onboarding_completed;
         if (metadataCompleted) return;
 
+        // Check localStorage dismissal
+        if (typeof window !== 'undefined' && localStorage.getItem('mailk_onboarding_dismissed') === 'true') {
+          return;
+        }
+
         // Verify from user_settings table
         const { data: userSet } = await supabase
           .from('user_settings')
@@ -52,6 +57,9 @@ export default function OnboardingController() {
 
     // Listen for manual trigger from settings page
     const handleManualOpen = () => {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('mailk_onboarding_dismissed');
+      }
       setShowWalkthrough(true);
     };
 

@@ -90,6 +90,22 @@ export default function AccountSetupWalkthrough({
     }
   };
 
+  const handleSkip = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mailk_onboarding_dismissed', 'true');
+    }
+    onComplete();
+
+    // Fire and forget server sync
+    fetch('/api/settings/onboarding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed: true }),
+    }).catch((err) => {
+      console.warn('Failed to sync skip to server:', err);
+    });
+  };
+
   const handleFinish = async (action: 'dashboard' | 'create_campaign') => {
     setSaving(true);
     setError(null);
@@ -115,6 +131,10 @@ export default function AccountSetupWalkthrough({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed: true }),
       });
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('mailk_onboarding_dismissed', 'true');
+      }
 
       onComplete();
 
@@ -143,11 +163,13 @@ export default function AccountSetupWalkthrough({
             </span>
           </div>
           <button
-            onClick={() => handleFinish('dashboard')}
-            className="text-xs text-[#666666] hover:text-[#1A1A1E] transition-colors p-1"
+            type="button"
+            onClick={handleSkip}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#666666] hover:text-[#1A1A1E] bg-white hover:bg-[#eae8e5] border border-[#d8d2c8] rounded-md transition-all duration-150 ease-out active:scale-90 active:bg-[#d8d2c8] shadow-2xs hover:shadow-xs cursor-pointer select-none"
             title={t.onboarding.skip}
           >
-            {t.onboarding.skip}
+            <span>{t.onboarding.skip}</span>
+            <span className="text-[10px] text-[#999999]">✕</span>
           </button>
         </div>
 
