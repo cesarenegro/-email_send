@@ -1,7 +1,7 @@
 ================================================================================
 MAIL-K (PRECISION OUTBOUND) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-11 13:18 +08:00
+Last updated: 2026-10-11 13:51 +08:00
 Project / Application: MAIL-K (Precision Outbound)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://mailk.arkai.dev (Vercel Project: mail-k)
@@ -120,11 +120,28 @@ IMAP_PASS
 CRON_SECRET
 NEXT_PUBLIC_APP_NAME
 NEXT_PUBLIC_APP_URL
+NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+NEXT_PUBLIC_BING_SITE_VERIFICATION
 OPENAI_API_KEY
 TAVILY_API_KEY
 LEAD_RESEARCH_ENABLED
 LEAD_RESEARCH_OPENAI_MODEL
 LEAD_RESEARCH_PRICING_VERSION
+
+9. SEARCH ENGINE INDEXING & SEO (GOOGLE & BING)
+--------------------------------------------------------------------------------
+Primary Canonical Domain: https://mailk.arkai.dev
+Crawler Policy: app/robots.ts (Allow: /, /landing, /faq, /guida, /login, /downloads/, /icon.png, /favicon.ico, /google553873ac7a4cf4f1.html; Disallow: /api/, /campaigns/, /newsletters/, /lead-research/, /settings/, /auth/)
+Dynamic Sitemap: app/sitemap.ts (Served dynamically at https://mailk.arkai.dev/sitemap.xml)
+Structured Data: Schema.org JSON-LD (WebApplication & Organization) in app/layout.tsx
+Google Search Console Verification:
+  - Meta Tag: <meta name="google-site-verification" content="UfDvYGqTqwxgoCTr6og8gFZhvJ9kwW9XUD4h0gtNBeI" />
+  - Static HTML verification file: public/google553873ac7a4cf4f1.html (served at /google553873ac7a4cf4f1.html)
+  - Environment variable fallback: NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+Bing Webmaster Tools Verification:
+  - 1-Click Import directly from Google Search Console (Recommended, syncs sitemaps and verification instantly)
+  - Meta Tag support: msvalidate.01 via NEXT_PUBLIC_BING_SITE_VERIFICATION in app/layout.tsx
+  - Static XML verification: public/BingSiteAuth.xml (if manual verification is chosen)
 
 ===============================================================================
 CRITICAL OPERATIONAL RULES & SCOPE LOCK:
@@ -136,3 +153,4 @@ CRITICAL OPERATIONAL RULES & SCOPE LOCK:
 - Plain text / HTML template personalization: {{companyName}}, {{azienda}}, {{NOME_AZIENDA}}, {{email}}
 - Zero invented data in Lead Research: null returned if field is not supported by source evidence
 ===============================================================================
+
