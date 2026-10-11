@@ -10,29 +10,13 @@ import CampaignForm from '@/components/CampaignForm';
 import CsvImporter from '@/components/CsvImporter';
 import EmailPreview from '@/components/EmailPreview';
 import LeadTable from '@/components/LeadTable';
-import {
-  ChevronLeft,
-  Play,
-  Pause,
-  RotateCw,
-  Trash2,
-  UploadCloud,
-  Eye,
-  Settings,
-  Users,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-  Calendar,
-  Clock,
-  Send,
-} from 'lucide-react';
 import { DateTime } from 'luxon';
 import { estimateCampaignCompletion } from '@/lib/scheduling/estimate-completion';
 import { getTimezoneConfig } from '@/lib/constants/timezones';
-
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function CampaignDetailPage() {
+  const { t, locale } = useTranslation();
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -41,7 +25,7 @@ export default function CampaignDetailPage() {
   const [sampleLeads, setSampleLeads] = useState<CampaignLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'leads' | 'preview'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'leads' | 'preview'>('preview');
   const [showImporter, setShowImporter] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [liveFormData, setLiveFormData] = useState<Partial<CampaignInput> | null>(null);
@@ -55,7 +39,7 @@ export default function CampaignDetailPage() {
       }
 
       // Fetch sample leads for preview
-      const leadsRes = await fetch(`/api/campaigns/${id}/leads?limit=10`);
+      const leadsRes = await fetch(`/api/campaigns/${id}/leads?limit=30`);
       const leadsData = await leadsRes.json();
       if (leadsRes.ok) {
         setSampleLeads(leadsData.leads || []);
@@ -84,15 +68,17 @@ export default function CampaignDetailPage() {
     return () => clearInterval(interval);
   }, [fetchCampaignData, campaign?.status]);
 
-
   const handleStart = async () => {
     setActionLoading(true);
     setMessage(null);
     try {
       const res = await fetch(`/api/campaigns/${id}/start`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Impossibile avviare la campagna');
-      setMessage({ type: 'success', text: 'Campagna avviata! Il cron invierà le email secondo gli intervalli.' });
+      if (!res.ok) throw new Error(data.error || (locale === 'en' ? 'Unable to start campaign' : 'Impossibile avviare la campagna'));
+      setMessage({
+        type: 'success',
+        text: locale === 'en' ? 'Campaign started! Cron will dispatch emails according to the scheduled intervals.' : 'Campagna avviata! Il cron invierà le email secondo gli intervalli.',
+      });
       fetchCampaignData();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message });
@@ -107,10 +93,10 @@ export default function CampaignDetailPage() {
     try {
       const res = await fetch(`/api/campaigns/${id}/send-now`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Errore durante l'invio immediato");
+      if (!res.ok) throw new Error(data.error || (locale === 'en' ? 'Error during immediate send' : "Errore durante l'invio immediato"));
       setMessage({
         type: data.success ? 'success' : 'error',
-        text: data.message || 'Invio eseguito con successo!',
+        text: data.message || (locale === 'en' ? 'Email sent successfully!' : 'Invio eseguito con successo!'),
       });
       fetchCampaignData();
     } catch (err: any) {
@@ -126,8 +112,11 @@ export default function CampaignDetailPage() {
     try {
       const res = await fetch(`/api/campaigns/${id}/pause`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Impossibile mettere in pausa la campagna');
-      setMessage({ type: 'success', text: 'Campagna messa in pausa. Nessun invio verrà effettuato.' });
+      if (!res.ok) throw new Error(data.error || (locale === 'en' ? 'Unable to pause campaign' : 'Impossibile mettere in pausa la campagna'));
+      setMessage({
+        type: 'success',
+        text: locale === 'en' ? 'Campaign paused. No emails will be dispatched.' : 'Campagna messa in pausa. Nessun invio verrà effettuato.',
+      });
       fetchCampaignData();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message });
@@ -142,8 +131,11 @@ export default function CampaignDetailPage() {
     try {
       const res = await fetch(`/api/campaigns/${id}/resume`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Impossibile riprendere la campagna');
-      setMessage({ type: 'success', text: 'Campagna ripresa! Gli invii ripartono regolarmente da adesso.' });
+      if (!res.ok) throw new Error(data.error || (locale === 'en' ? 'Unable to resume campaign' : 'Impossibile riprendere la campagna'));
+      setMessage({
+        type: 'success',
+        text: locale === 'en' ? 'Campaign resumed! Dispatch cycles restart regularly from now.' : 'Campagna ripresa! Gli invii ripartono regolarmente da adesso.',
+      });
       fetchCampaignData();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message });
@@ -153,7 +145,7 @@ export default function CampaignDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Sei sicuro di voler eliminare questa campagna e tutti i contatti associati?')) {
+    if (!window.confirm(t.campaigns.detail.deleteConfirm)) {
       return;
     }
 
@@ -162,8 +154,8 @@ export default function CampaignDetailPage() {
     try {
       const res = await fetch(`/api/campaigns/${id}`, { method: 'DELETE' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Impossibile eliminare la campagna');
-      router.push('/');
+      if (!res.ok) throw new Error(data.error || (locale === 'en' ? 'Unable to delete campaign' : 'Impossibile eliminare la campagna'));
+      router.push('/campaigns');
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message });
       setActionLoading(false);
@@ -178,16 +170,19 @@ export default function CampaignDetailPage() {
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Errore salvataggio modifiche');
-    setMessage({ type: 'success', text: 'Modifiche salvate con successo' });
+    if (!res.ok) throw new Error(data.error || (locale === 'en' ? 'Error saving changes' : 'Errore salvataggio modifiche'));
+    setMessage({
+      type: 'success',
+      text: locale === 'en' ? 'Changes saved successfully' : 'Modifiche salvate con successo',
+    });
     fetchCampaignData();
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-24 text-[#666666]">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        <span>Caricamento campagna...</span>
+      <div className="flex justify-center items-center py-24 text-[#5c5e63]">
+        <span className="material-symbols-outlined text-[24px] animate-spin mr-2 text-[#036e13]">sync</span>
+        <span>{t.campaigns.detail.loadingCampaign}</span>
       </div>
     );
   }
@@ -195,9 +190,9 @@ export default function CampaignDetailPage() {
   if (!campaign) {
     return (
       <div className="text-center py-16">
-        <h2 className="text-lg font-semibold text-[#1A1A1E]">Campagna non trovata</h2>
-        <Link href="/" className="text-xs text-[#666666] hover:underline mt-2 inline-block">
-          Torna alla dashboard
+        <h2 className="font-headline-md text-headline-md text-[#1b1c1a]">{t.campaigns.detail.campaignNotFound}</h2>
+        <Link href="/campaigns" className="text-body-md text-[#5c5e63] hover:underline mt-2 inline-block">
+          {t.campaigns.detail.backToCampaigns}
         </Link>
       </div>
     );
@@ -206,42 +201,44 @@ export default function CampaignDetailPage() {
   const isActive = campaign.status === 'active';
   const isPaused = campaign.status === 'paused';
   const isDraft = campaign.status === 'draft';
-  const isCompleted = campaign.status === 'completed';
+  const est = estimateCampaignCompletion(campaign);
+  const sentPercent =
+    campaign.total_leads > 0 ? Math.round((campaign.sent_count / campaign.total_leads) * 100) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="relative w-full overflow-hidden px-gutter pb-space-xl pt-space-md flex flex-col gap-space-lg">
+      {/* Decorative glow */}
+      <div className="absolute top-0 right-1/4 -z-10 w-96 h-96 rounded-full bg-[#5cb855]/10 blur-3xl pointer-events-none"></div>
+
       {/* Top Breadcrumb & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-space-md">
+        <div className="flex flex-col">
           <Link
-            href="/"
-            className="inline-flex items-center text-xs text-[#666666] hover:text-[#1A1A1E] transition-colors mb-1"
+            href="/campaigns"
+            className="inline-flex items-center gap-1 font-label-sm text-label-sm text-[#5c5e63] hover:text-[#1b1c1a] transition-colors mb-1.5"
           >
-            <ChevronLeft className="w-4 h-4 mr-0.5" />
-            Dashboard
+            <span className="material-symbols-outlined text-[14px]">arrow_back</span>
+            <span>{t.campaigns.detail.backButton}</span>
           </Link>
-          <div className="flex items-center space-x-3">
-            <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1E]">{campaign.name}</h1>
+          <div className="flex items-center gap-space-sm flex-wrap">
+            <h1 className="font-headline-xl text-headline-xl text-[#1b1c1a] tracking-tight">{campaign.name}</h1>
             <StatusBadge status={campaign.status} />
           </div>
         </div>
 
-        {/* Action Buttons (Section 33, 34, 35, 50) */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-space-sm">
           {/* Send Now Button (Immediate Send) */}
           {campaign.pending_count > 0 && campaign.status !== 'completed' && (
             <button
               onClick={handleSendNow}
               disabled={actionLoading}
-              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-[#1A1A1E] text-white text-xs font-semibold rounded hover:bg-[#333333] transition-colors shadow-sm disabled:opacity-50"
-              title="Avvia e/o invia subito la prima o prossima email adesso"
+              className="h-10 px-space-md bg-[#5cb855] hover:bg-[#4ea547] text-[#ffffff] font-label-md text-label-md font-semibold rounded-lg transition-colors shadow-xs flex items-center gap-2 disabled:opacity-50"
+              title={t.campaigns.detail.sendNowButton}
+              type="button"
             >
-              {actionLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-              <span>INVIA ORA</span>
+              <span className="material-symbols-outlined text-[16px]">send</span>
+              <span>{actionLoading ? t.campaigns.detail.sendingNow : t.campaigns.detail.sendNowButton}</span>
             </button>
           )}
 
@@ -249,11 +246,12 @@ export default function CampaignDetailPage() {
             <button
               onClick={handleStart}
               disabled={actionLoading}
-              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-emerald-700 text-white text-xs font-medium rounded hover:bg-emerald-800 transition-colors shadow-sm disabled:opacity-50"
-              title="Avvia la campagna rispettando la pianificazione oraria"
+              className="h-10 px-space-md bg-[#30312f] text-[#f2f0ed] hover:bg-[#5c5e63] font-label-md text-label-md font-semibold rounded-lg transition-colors shadow-xs flex items-center gap-2 disabled:opacity-50"
+              title={t.campaigns.detail.startCycle}
+              type="button"
             >
-              <Play className="w-4 h-4" />
-              <span>AVVIA PIANIFICATO</span>
+              <span className="material-symbols-outlined text-[16px]">play_arrow</span>
+              <span>{t.campaigns.detail.startCycle}</span>
             </button>
           )}
 
@@ -261,10 +259,11 @@ export default function CampaignDetailPage() {
             <button
               onClick={handlePause}
               disabled={actionLoading}
-              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-amber-600 text-white text-xs font-medium rounded hover:bg-amber-700 transition-colors shadow-sm disabled:opacity-50"
+              className="h-10 px-space-md bg-[#fff7ed] hover:bg-[#ffedd5] text-[#c2410c] border border-[#ffedd5] font-label-md text-label-md font-semibold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+              type="button"
             >
-              <Pause className="w-4 h-4" />
-              <span>METTI IN PAUSA</span>
+              <span className="material-symbols-outlined text-[16px]">pause</span>
+              <span>{t.campaigns.detail.pauseCycle}</span>
             </button>
           )}
 
@@ -272,10 +271,11 @@ export default function CampaignDetailPage() {
             <button
               onClick={handleResume}
               disabled={actionLoading}
-              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-emerald-700 text-white text-xs font-medium rounded hover:bg-emerald-800 transition-colors shadow-sm disabled:opacity-50"
+              className="h-10 px-space-md bg-[#036e13] hover:bg-[#02520e] text-[#ffffff] font-label-md text-label-md font-semibold rounded-lg transition-colors shadow-xs flex items-center gap-2 disabled:opacity-50"
+              type="button"
             >
-              <RotateCw className="w-4 h-4" />
-              <span>RIPRENDI (RESUME)</span>
+              <span className="material-symbols-outlined text-[16px]">replay</span>
+              <span>{t.campaigns.detail.resumeCycle}</span>
             </button>
           )}
 
@@ -283,147 +283,222 @@ export default function CampaignDetailPage() {
             <button
               onClick={handleDelete}
               disabled={actionLoading}
-              className="inline-flex items-center space-x-1.5 px-3 py-2 border border-[#D8D2C8] text-rose-700 text-xs font-medium rounded hover:bg-rose-50 transition-colors disabled:opacity-50"
-              title="Elimina campagna"
+              className="h-10 px-space-sm border border-[#e5e5e0] text-[#ba1a1a] hover:bg-[#ffdad6]/40 font-label-md text-label-md rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              title={t.campaigns.detail.deleteButton}
+              type="button"
             >
-              <Trash2 className="w-4 h-4" />
-              <span>Elimina</span>
+              <span className="material-symbols-outlined text-[16px]">delete</span>
+              <span>{t.campaigns.detail.deleteButton}</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Status Alert */}
+      {/* Status Alert if any */}
       {message && (
         <div
-          className={`p-3 text-sm rounded flex items-center space-x-2 ${
+          className={`p-space-sm rounded-lg flex items-center gap-space-sm font-body-md text-body-md border ${
             message.type === 'success'
-              ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-              : 'bg-rose-50 border border-rose-200 text-rose-800'
+              ? 'bg-[#ecf8eb] border-[#5cb855]/30 text-[#036e13]'
+              : 'bg-[#ffdad6] border-[#ffb4ab] text-[#ba1a1a]'
           }`}
         >
-          {message.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-          ) : (
-            <AlertCircle className="w-4 h-4 shrink-0" />
-          )}
+          <span className="material-symbols-outlined text-[20px]">
+            {message.type === 'success' ? 'check_circle' : 'error'}
+          </span>
           <span>{message.text}</span>
         </div>
       )}
 
-      {/* Progress Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-[#FFFFFF] border border-[#D8D2C8] rounded-lg p-4">
-          <span className="text-xs uppercase text-[#666666] font-semibold">Contatti Totali</span>
-          <p className="text-2xl font-bold font-mono text-[#1A1A1E] mt-1">{campaign.total_leads}</p>
+      {/* 4 Key KPI Metrics Cards (with bottom accent lines) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-space-md">
+        {/* Card 1: Contatti Totali */}
+        <div className="bg-[#ffffff] p-5 rounded-lg border border-[#e5e5e0] shadow-xs flex flex-col justify-between h-32 relative overflow-hidden">
+          <div className="flex items-center justify-between text-[#5c5e63]">
+            <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold">{t.campaigns.detail.leadsTotal}</span>
+            <span className="material-symbols-outlined text-[18px]">group</span>
+          </div>
+          <div>
+            <div className="font-metric-num text-metric-num text-[#1b1c1a]">{campaign.total_leads}</div>
+            <div className="font-label-sm text-label-sm text-[#5c5e63] mt-0.5">
+              {locale === 'en' ? 'Imported recipients' : 'Destinatari importati'}
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#efeeeb]">
+            <div className="h-full bg-[#30312f]" style={{ width: '100%' }}></div>
+          </div>
         </div>
 
-        <div className="bg-[#FFFFFF] border border-[#D8D2C8] rounded-lg p-4">
-          <span className="text-xs uppercase text-emerald-700 font-semibold">Inviati</span>
-          <p className="text-2xl font-bold font-mono text-emerald-700 mt-1">{campaign.sent_count}</p>
+        {/* Card 2: Inviati */}
+        <div className="bg-[#ffffff] p-5 rounded-lg border border-[#e5e5e0] shadow-xs flex flex-col justify-between h-32 relative overflow-hidden">
+          <div className="flex items-center justify-between text-[#5c5e63]">
+            <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold">{t.campaigns.detail.leadsSent}</span>
+            <span className="material-symbols-outlined text-[18px] text-[#036e13]">mark_email_read</span>
+          </div>
+          <div>
+            <div className="font-metric-num text-metric-num text-[#036e13]">{campaign.sent_count}</div>
+            <div className="font-label-sm text-label-sm text-[#5c5e63] mt-0.5">
+              {sentPercent}% {locale === 'en' ? 'delivered via TLS' : 'recapitati via TLS'}
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#efeeeb]">
+            <div className="h-full bg-[#5cb855]" style={{ width: `${Math.max(5, sentPercent)}%` }}></div>
+          </div>
         </div>
 
-        <div className="bg-[#FFFFFF] border border-[#D8D2C8] rounded-lg p-4">
-          <span className="text-xs uppercase text-[#666666] font-semibold">In Attesa</span>
-          <p className="text-2xl font-bold font-mono text-[#1A1A1E] mt-1">{campaign.pending_count}</p>
+        {/* Card 3: In Attesa */}
+        <div className="bg-[#ffffff] p-5 rounded-lg border border-[#e5e5e0] shadow-xs flex flex-col justify-between h-32 relative overflow-hidden">
+          <div className="flex items-center justify-between text-[#5c5e63]">
+            <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold">{t.campaigns.detail.leadsPending}</span>
+            <span className="material-symbols-outlined text-[18px] text-[#5c5e63]">hourglass_empty</span>
+          </div>
+          <div>
+            <div className="font-metric-num text-metric-num text-[#1b1c1a]">{campaign.pending_count}</div>
+            <div className="font-label-sm text-label-sm text-[#5c5e63] mt-0.5">
+              {campaign.pending_count === 0
+                ? (locale === 'en' ? 'Buffer queue cleared' : 'Coda buffer svuotata')
+                : (locale === 'en' ? 'Waiting for cron beat' : 'In attesa del cron beat')}
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#efeeeb]">
+            <div
+              className="h-full bg-[#eae8e5]"
+              style={{
+                width: `${campaign.total_leads > 0 ? (campaign.pending_count / campaign.total_leads) * 100 : 0}%`,
+              }}
+            ></div>
+          </div>
         </div>
 
-        <div className="bg-[#FFFFFF] border border-[#D8D2C8] rounded-lg p-4">
-          <span className="text-xs uppercase text-rose-700 font-semibold">Falliti</span>
-          <p className="text-2xl font-bold font-mono text-rose-700 mt-1">{campaign.failed_count}</p>
+        {/* Card 4: Falliti / Bounce */}
+        <div className="bg-[#ffffff] p-5 rounded-lg border border-[#e5e5e0] shadow-xs flex flex-col justify-between h-32 relative overflow-hidden">
+          <div className="flex items-center justify-between text-[#5c5e63]">
+            <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold">
+              {t.campaigns.detail.leadsFailed}
+            </span>
+            <span className="material-symbols-outlined text-[18px] text-[#ba1a1a]">warning</span>
+          </div>
+          <div>
+            <div
+              className={`font-metric-num text-metric-num ${
+                campaign.failed_count > 0 ? 'text-[#ba1a1a]' : 'text-[#1b1c1a]'
+              }`}
+            >
+              {campaign.failed_count}
+            </div>
+            <div className="font-label-sm text-label-sm text-[#5c5e63] mt-0.5">
+              {campaign.failed_count === 0
+                ? (locale === 'en' ? '0.0% error rate' : '0.0% tasso di errore')
+                : (locale === 'en' ? 'Check bounce logs' : 'Controllare i log di rimbalzo')}
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#efeeeb]">
+            <div
+              className="h-full bg-[#ba1a1a]"
+              style={{
+                width: `${campaign.total_leads > 0 ? (campaign.failed_count / campaign.total_leads) * 100 : 0}%`,
+              }}
+            ></div>
+          </div>
         </div>
       </div>
 
-      {/* Schedule and estimated completion banner */}
-      {(() => {
-        const est = estimateCampaignCompletion(campaign);
-        return (
-          <div className="bg-[#FFFFFF] border border-[#D8D2C8] rounded-lg p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-[#1A1A1E]">
-            <div className="flex items-center space-x-2">
-              <Clock className="w-4 h-4 text-[#666666] shrink-0" />
-              <span>
-                {isActive && campaign.next_send_at ? (
-                  <>
-                    Prossimo invio programmato:{' '}
-                    <strong>
-                      {DateTime.fromISO(campaign.next_send_at).setZone(campaign.timezone).toFormat('dd/MM/yyyy HH:mm:ss')}
-                    </strong>
-                    <span className="text-[#666666] font-normal"> ({getTimezoneConfig(campaign.timezone).shortLabel})</span>
-                  </>
-                ) : isPaused ? (
-                  <span className="text-[#666666] font-medium">Campagna in pausa</span>
-                ) : isCompleted ? (
-                  <span className="text-emerald-700 font-medium">Campagna completata</span>
-                ) : (
-                  <span className="text-[#666666] font-medium">Bozza (non ancora avviata)</span>
-                )}
-                <span className="text-[#666666]">
-                  {' '}• Fuso: <strong>{getTimezoneConfig(campaign.timezone).shortLabel}</strong> • Finestra:{' '}
-                  <strong>{campaign.send_window_start.slice(0, 5)}-{campaign.send_window_end.slice(0, 5)}</strong> • Intervallo:{' '}
-                  <strong>{campaign.send_interval_seconds}s</strong> • Limite:{' '}
-                  <strong>{campaign.daily_limit} email/gg</strong>
-                </span>
-              </span>
-            </div>
-
-            <div className="flex items-center space-x-2 bg-[#F7F5F0] border border-[#D8D2C8] px-3 py-1.5 rounded shrink-0">
-              <Calendar className="w-3.5 h-3.5 text-[#666666] shrink-0" />
-              <span>
-                Fine Stimata:{' '}
-                <strong className={est.isCompleted ? 'text-emerald-700' : 'text-[#1A1A1E]'}>
-                  {est.label}
-                </strong>
-                {est.subLabel && <span className="text-[#666666] ml-1">({est.subLabel})</span>}
-              </span>
-            </div>
+      {/* Schedule & Dispatch Window Ribbon */}
+      <div className="bg-[#f5f3f0] px-space-md py-3 rounded-lg border border-[#e5e5e0] flex flex-wrap items-center justify-between gap-space-sm shadow-xs">
+        <div className="flex items-center flex-wrap gap-x-space-md gap-y-1 font-body-md text-body-md text-[#1b1c1a]">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#036e13] text-[18px]">schedule</span>
+            <span className="text-[#5c5e63] font-label-md text-label-md">
+              {locale === 'en' ? 'Next scheduled send:' : 'Prossimo invio programmato:'}
+            </span>
+            <span className="font-semibold">
+              {isActive && campaign.next_send_at
+                ? DateTime.fromISO(campaign.next_send_at)
+                    .setZone(campaign.timezone)
+                    .toFormat('dd/MM/yyyy HH:mm:ss')
+                : t.common.pending}
+              {' '}({getTimezoneConfig(campaign.timezone).shortLabel})
+            </span>
           </div>
-        );
-      })()}
+          <div className="hidden sm:inline-block text-[#dedfe5]">•</div>
+          <div className="text-[#5c5e63] font-label-md text-label-md">
+            {locale === 'en' ? 'Active window:' : 'Finestra attiva:'}{' '}
+            <span className="text-[#1b1c1a] font-semibold">
+              {campaign.send_window_start.slice(0, 5)} — {campaign.send_window_end.slice(0, 5)}
+            </span>
+          </div>
+          <div className="hidden sm:inline-block text-[#dedfe5]">•</div>
+          <div className="text-[#5c5e63] font-label-md text-label-md">
+            {locale === 'en' ? 'Interval:' : 'Intervallo:'}{' '}
+            <span className="text-[#1b1c1a] font-semibold">{campaign.send_interval_seconds}s</span>
+          </div>
+          <div className="hidden sm:inline-block text-[#dedfe5]">•</div>
+          <div className="text-[#5c5e63] font-label-md text-label-md">
+            {locale === 'en' ? 'Limit:' : 'Limite:'}{' '}
+            <span className="text-[#1b1c1a] font-semibold">
+              {campaign.daily_limit} {locale === 'en' ? 'emails/day' : 'email/gg'}
+            </span>
+          </div>
+        </div>
 
-      {/* Tab Navigation */}
-      <div className="border-b border-[#D8D2C8]">
-        <nav className="flex space-x-8">
-          <button
-            onClick={() => setActiveTab('details')}
-            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
-              activeTab === 'details'
-                ? 'border-[#1A1A1E] text-[#1A1A1E]'
-                : 'border-transparent text-[#666666] hover:text-[#1A1A1E]'
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-            <span>Configurazione & Template</span>
-          </button>
+        <div className="flex items-center gap-2">
+          <span className="font-label-sm text-label-sm text-[#5c5e63] uppercase tracking-wider font-semibold">
+            {locale === 'en' ? 'Cycle Status:' : 'Stato Ciclo:'}
+          </span>
+          <span className="px-2.5 py-0.5 rounded-full bg-[#ffffff] text-[#036e13] font-label-sm text-label-sm font-semibold shadow-2xs flex items-center gap-1.5 border border-[#e5e5e0]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#5cb855]"></span>
+            <span>{est.isCompleted ? t.common.completed : est.label}</span>
+          </span>
+        </div>
+      </div>
 
-          <button
-            onClick={() => setActiveTab('preview')}
-            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
-              activeTab === 'preview'
-                ? 'border-[#1A1A1E] text-[#1A1A1E]'
-                : 'border-transparent text-[#666666] hover:text-[#1A1A1E]'
-            }`}
-          >
-            <Eye className="w-4 h-4" />
-            <span>Anteprima Email</span>
-          </button>
+      {/* Segmented Tab Navigation */}
+      <div className="bg-[#f5f3f0] p-1 rounded-xl border border-[#e5e5e0] flex items-center gap-1 w-fit shadow-2xs">
+        <button
+          onClick={() => setActiveTab('details')}
+          type="button"
+          className={`px-4 py-2 rounded-lg font-label-md text-label-md transition-all flex items-center gap-1.5 ${
+            activeTab === 'details'
+              ? 'bg-[#ffffff] text-[#1b1c1a] font-semibold shadow-xs'
+              : 'text-[#5c5e63] hover:text-[#1b1c1a]'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[16px]">tune</span>
+          <span>{t.campaigns.detail.tabConfig}</span>
+        </button>
 
-          <button
-            onClick={() => setActiveTab('leads')}
-            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
-              activeTab === 'leads'
-                ? 'border-[#1A1A1E] text-[#1A1A1E]'
-                : 'border-transparent text-[#666666] hover:text-[#1A1A1E]'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Contatti & CSV ({campaign.total_leads})</span>
-          </button>
-        </nav>
+        <button
+          onClick={() => setActiveTab('preview')}
+          type="button"
+          className={`px-4 py-2 rounded-lg font-label-md text-label-md transition-all flex items-center gap-2 ${
+            activeTab === 'preview'
+              ? 'bg-[#ffffff] text-[#1b1c1a] font-semibold shadow-xs'
+              : 'text-[#5c5e63] hover:text-[#1b1c1a]'
+          }`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-[#036e13]"></span>
+          <span>{t.campaigns.detail.tabPreview}</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('leads')}
+          type="button"
+          className={`px-4 py-2 rounded-lg font-label-md text-label-md transition-all flex items-center gap-2 ${
+            activeTab === 'leads'
+              ? 'bg-[#ffffff] text-[#1b1c1a] font-semibold shadow-xs'
+              : 'text-[#5c5e63] hover:text-[#1b1c1a]'
+          }`}
+        >
+          <span>{t.campaigns.detail.tabLeads}</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-[#e4e2df] font-label-sm text-label-sm text-[#1b1c1a]">
+            {campaign.total_leads}
+          </span>
+        </button>
       </div>
 
       {/* TAB 1: DETAILS */}
       <div className={activeTab === 'details' ? 'block' : 'hidden'}>
-        <div className="bg-[#FFFFFF] border border-[#D8D2C8] rounded-lg p-6 shadow-sm">
+        <div className="bg-[#ffffff] border border-[#e5e5e0] rounded-xl p-space-lg shadow-xs">
           <CampaignForm
             initialData={campaign}
             isEditing={true}
@@ -443,8 +518,10 @@ export default function CampaignDetailPage() {
           hasUnsavedChanges={
             Boolean(
               liveFormData &&
-                ((liveFormData.html_template !== undefined && liveFormData.html_template !== campaign.html_template) ||
-                  (liveFormData.subject_template !== undefined && liveFormData.subject_template !== campaign.subject_template))
+                ((liveFormData.html_template !== undefined &&
+                  liveFormData.html_template !== campaign.html_template) ||
+                  (liveFormData.subject_template !== undefined &&
+                    liveFormData.subject_template !== campaign.subject_template))
             )
           }
           onSave={async () => {
@@ -461,28 +538,44 @@ export default function CampaignDetailPage() {
 
       {/* TAB 3: LEADS */}
       <div className={activeTab === 'leads' ? 'block' : 'hidden'}>
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-[#1A1A1E]">Gestione Destinatari</h3>
+        <div className="space-y-space-md">
+          <div className="flex justify-between items-center bg-[#ffffff] p-space-md rounded-xl border border-[#e5e5e0] shadow-xs">
+            <div>
+              <h3 className="font-headline-md text-headline-md text-[#1b1c1a]">
+                {locale === 'en' ? 'Recipient Management' : 'Gestione Destinatari'}
+              </h3>
+              <p className="font-body-md text-body-md text-[#5c5e63]">
+                {locale === 'en'
+                  ? 'View delivery telemetry for each lead or import a new CSV file.'
+                  : 'Visualizza lo stato di recapito per singolo contatto o importa un nuovo file CSV.'}
+              </p>
+            </div>
             {!isActive && (
               <button
                 onClick={() => setShowImporter(!showImporter)}
-                className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-[#1A1A1E] text-white text-xs font-medium rounded hover:bg-[#333333] transition-colors"
+                className="h-10 px-space-md bg-[#30312f] text-[#f2f0ed] hover:bg-[#5c5e63] font-label-md text-label-md rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
+                type="button"
               >
-                <UploadCloud className="w-4 h-4" />
-                <span>{showImporter ? 'Chiudi Caricatore' : 'Importa CSV'}</span>
+                <span className="material-symbols-outlined text-[16px]">cloud_upload</span>
+                <span>
+                  {showImporter
+                    ? (locale === 'en' ? 'Close Importer' : 'Chiudi Caricatore')
+                    : (locale === 'en' ? 'Import CSV' : 'Importa CSV')}
+                </span>
               </button>
             )}
           </div>
 
           {showImporter && !isActive && (
-            <CsvImporter
-              campaignId={id}
-              onClose={() => setShowImporter(false)}
-              onImportCompleted={() => {
-                fetchCampaignData();
-              }}
-            />
+            <div className="bg-[#ffffff] p-space-md rounded-xl border border-[#e5e5e0] shadow-xs">
+              <CsvImporter
+                campaignId={id}
+                onClose={() => setShowImporter(false)}
+                onImportCompleted={() => {
+                  fetchCampaignData();
+                }}
+              />
+            </div>
           )}
 
           <LeadTable

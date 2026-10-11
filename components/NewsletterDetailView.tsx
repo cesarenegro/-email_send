@@ -25,6 +25,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function NewsletterDetailView({
   initialNewsletter,
@@ -32,6 +33,7 @@ export default function NewsletterDetailView({
   initialNewsletter: NewsletterWithStats;
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [newsletter, setNewsletter] = useState<NewsletterWithStats>(initialNewsletter);
   const [activeTab, setActiveTab] = useState<'subscribers' | 'preview'>('subscribers');
   const [showImporter, setShowImporter] = useState(false);
@@ -58,8 +60,8 @@ export default function NewsletterDetailView({
     try {
       const res = await fetch(`/api/newsletters/${newsletter.id}/start`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Impossibile avviare la newsletter');
-      setActionMessage({ type: 'success', text: 'Stato aggiornato con successo!' });
+      if (!res.ok) throw new Error(data.error || 'Failed to start');
+      setActionMessage({ type: 'success', text: t.newsletters.detail.statusUpdatedSuccess });
       await fetchNewsletter();
     } catch (err: any) {
       setActionMessage({ type: 'error', text: err.message });
@@ -74,8 +76,8 @@ export default function NewsletterDetailView({
     try {
       const res = await fetch(`/api/newsletters/${newsletter.id}/pause`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Impossibile mettere in pausa');
-      setActionMessage({ type: 'success', text: 'Newsletter messa in pausa.' });
+      if (!res.ok) throw new Error(data.error || 'Failed to pause');
+      setActionMessage({ type: 'success', text: t.newsletters.detail.pauseSuccess });
       await fetchNewsletter();
     } catch (err: any) {
       setActionMessage({ type: 'error', text: err.message });
@@ -85,16 +87,16 @@ export default function NewsletterDetailView({
   };
 
   const handleSendNow = async () => {
-    if (!confirm('Vuoi inviare immediatamente 1 email al prossimo iscritto in lista?')) return;
+    if (!confirm(t.newsletters.detail.sendOneNowConfirm)) return;
     setActionLoading(true);
     setActionMessage(null);
     try {
       const res = await fetch(`/api/newsletters/${newsletter.id}/send-now`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Errore durante l’invio manuale');
+      if (!res.ok) throw new Error(data.error || 'Failed to send');
       setActionMessage({
         type: 'success',
-        text: `Inviata 1 email con successo a: ${data.subscriber?.email || 'iscritto'}!`,
+        text: `${t.newsletters.detail.sendOneNowSuccess} (${data.subscriber?.email || 'subscriber'})`,
       });
       await fetchNewsletter();
     } catch (err: any) {
@@ -105,12 +107,12 @@ export default function NewsletterDetailView({
   };
 
   const handleDelete = async () => {
-    if (!confirm('Sei sicuro di voler eliminare questa newsletter e tutti i suoi iscritti? L’operazione è irreversibile.'))
+    if (!confirm(t.newsletters.detail.deleteConfirm))
       return;
 
     try {
       const res = await fetch(`/api/newsletters/${newsletter.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Errore durante l’eliminazione');
+      if (!res.ok) throw new Error('Error deleting newsletter');
       router.push('/newsletters');
       router.refresh();
     } catch (err: any) {
@@ -122,7 +124,7 @@ export default function NewsletterDetailView({
     ? DateTime.fromISO(newsletter.scheduled_at)
         .setZone(newsletter.timezone || 'Europe/Rome')
         .toFormat('dd/MM/yyyy HH:mm')
-    : 'Non programmata (invio manuale)';
+    : t.newsletters.detail.notScheduledManual;
 
   return (
     <div className="space-y-6">
@@ -141,7 +143,7 @@ export default function NewsletterDetailView({
               <StatusBadge status={newsletter.status} />
             </div>
             <p className="text-xs text-[#666666] mt-0.5">
-              Oggetto: <span className="font-medium text-[#1A1A1E]">{newsletter.subject}</span>
+              {t.newsletters.detail.subjectPrefix} <span className="font-medium text-[#1A1A1E]">{newsletter.subject}</span>
             </p>
           </div>
         </div>
@@ -151,7 +153,7 @@ export default function NewsletterDetailView({
           <button
             onClick={fetchNewsletter}
             className="p-2 rounded-lg border border-[#D8D2C8] bg-white text-[#666666] hover:text-[#1A1A1E] transition-colors"
-            title="Aggiorna dati"
+            title={t.newsletters.detail.refreshTitle}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -164,7 +166,7 @@ export default function NewsletterDetailView({
               className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 disabled:opacity-50 transition-colors shadow-sm"
             >
               {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-              <span>{newsletter.scheduled_at ? 'Attiva Programmazione' : 'Avvia Invio'}</span>
+              <span>{newsletter.scheduled_at ? t.newsletters.detail.activateSchedule : t.newsletters.detail.startDispatch}</span>
             </button>
           ) : (
             <button
@@ -173,7 +175,7 @@ export default function NewsletterDetailView({
               className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 disabled:opacity-50 transition-colors shadow-sm"
             >
               {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pause className="w-3.5 h-3.5 fill-current" />}
-              <span>Metti in Pausa</span>
+              <span>{t.newsletters.detail.pause}</span>
             </button>
           )}
 
@@ -182,17 +184,17 @@ export default function NewsletterDetailView({
             onClick={handleSendNow}
             disabled={actionLoading || newsletter.pending_count === 0}
             className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-[#1A1A1E] text-white text-xs font-semibold hover:bg-stone-800 disabled:opacity-40 transition-colors shadow-sm"
-            title="Invia subito 1 email di prova al prossimo iscritto in lista"
+            title={t.newsletters.detail.sendOneNowTitle}
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Invia 1 Ora</span>
+            <span>{t.newsletters.detail.sendOneNow}</span>
           </button>
 
           {/* Delete */}
           <button
             onClick={handleDelete}
             className="p-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors"
-            title="Elimina Newsletter"
+            title={t.newsletters.detail.deleteButton}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -222,13 +224,13 @@ export default function NewsletterDetailView({
         <div className="flex items-center space-x-2">
           <Calendar className="w-4 h-4 text-[#1A1A1E]" />
           <span>
-            Programmazione: <strong className="text-[#1A1A1E]">{scheduledFormatted}</strong> ({newsletter.timezone || 'Europe/Rome'})
+            {t.newsletters.detail.scheduleBanner} <strong className="text-[#1A1A1E]">{scheduledFormatted}</strong> ({newsletter.timezone || 'Europe/Rome'})
           </span>
         </div>
         <div className="flex items-center space-x-2">
           <Clock className="w-4 h-4 text-[#1A1A1E]" />
           <span>
-            Intervallo: <strong className="text-[#1A1A1E]">{newsletter.send_interval_seconds}s</strong> tra ciascun iscritto
+            {t.newsletters.detail.intervalBanner} <strong className="text-[#1A1A1E]">{newsletter.send_interval_seconds}s</strong>
           </span>
         </div>
       </div>
@@ -236,19 +238,19 @@ export default function NewsletterDetailView({
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white border border-[#D8D2C8] rounded-xl p-4 shadow-sm">
-          <div className="text-xs font-semibold text-[#666666] uppercase tracking-wider">Iscritti Totali</div>
+          <div className="text-xs font-semibold text-[#666666] uppercase tracking-wider">{t.newsletters.detail.totalSubscribers}</div>
           <div className="text-2xl font-bold text-[#1A1A1E] mt-1">{newsletter.total_subscribers}</div>
         </div>
         <div className="bg-white border border-emerald-200 rounded-xl p-4 shadow-sm bg-emerald-50/20">
-          <div className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Inviati</div>
+          <div className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">{t.newsletters.detail.sent}</div>
           <div className="text-2xl font-bold text-emerald-900 mt-1">{newsletter.sent_count}</div>
         </div>
         <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm bg-stone-50/40">
-          <div className="text-xs font-semibold text-stone-600 uppercase tracking-wider">In Attesa</div>
+          <div className="text-xs font-semibold text-stone-600 uppercase tracking-wider">{t.newsletters.detail.pending}</div>
           <div className="text-2xl font-bold text-stone-800 mt-1">{newsletter.pending_count}</div>
         </div>
         <div className="bg-white border border-rose-200 rounded-xl p-4 shadow-sm bg-rose-50/20">
-          <div className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Falliti</div>
+          <div className="text-xs font-semibold text-rose-700 uppercase tracking-wider">{t.newsletters.detail.failed}</div>
           <div className="text-2xl font-bold text-rose-900 mt-1">{newsletter.failed_count}</div>
         </div>
       </div>
@@ -265,7 +267,7 @@ export default function NewsletterDetailView({
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Iscritti ({newsletter.total_subscribers})</span>
+            <span>{t.newsletters.detail.subscribersTab} ({newsletter.total_subscribers})</span>
           </button>
           <button
             onClick={() => setActiveTab('preview')}
@@ -276,7 +278,7 @@ export default function NewsletterDetailView({
             }`}
           >
             <Eye className="w-4 h-4" />
-            <span>Anteprima Email</span>
+            <span>{t.newsletters.detail.previewTab}</span>
           </button>
         </div>
 
@@ -286,7 +288,7 @@ export default function NewsletterDetailView({
             className="mb-2 inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-[#D8D2C8] bg-white text-xs font-semibold text-[#1A1A1E] hover:bg-[#F7F5F0] transition-colors shadow-xs"
           >
             <UploadCloud className="w-3.5 h-3.5" />
-            <span>{showImporter ? 'Nascondi Import CSV' : 'Importa CSV Iscritti'}</span>
+            <span>{showImporter ? t.newsletters.detail.hideCsvBtn : t.newsletters.detail.importCsvBtn}</span>
           </button>
         )}
       </div>
@@ -316,7 +318,7 @@ export default function NewsletterDetailView({
       {activeTab === 'preview' && (
         <div className="bg-white border border-[#D8D2C8] rounded-xl p-5 shadow-sm space-y-4">
           <div className="text-xs text-[#666666] pb-2 border-b border-[#F0EBE1]">
-            Anteprima renderizzata del messaggio con dati di esempio:
+            {t.newsletters.detail.previewNotice}
           </div>
           <div className="border border-[#D8D2C8] rounded-lg overflow-hidden bg-white p-2">
             <EmailPreview

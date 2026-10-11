@@ -5,6 +5,7 @@ import { NewsletterSubscriber } from '@/types/database';
 import StatusBadge from '@/components/StatusBadge';
 import { Users, Filter, ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 import { DateTime } from 'luxon';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface NewsletterSubscribersTableProps {
   newsletterId: string;
@@ -15,6 +16,7 @@ export default function NewsletterSubscribersTable({
   newsletterId,
   refreshTrigger,
 }: NewsletterSubscribersTableProps) {
+  const { t } = useTranslation();
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState<number>(1);
@@ -50,16 +52,16 @@ export default function NewsletterSubscribersTable({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[#F0EBE1]">
         <div className="flex items-center space-x-2">
           <Users className="w-5 h-5 text-[#1A1A1E]" />
-          <h3 className="text-sm font-bold text-[#1A1A1E]">Elenco Iscritti ({totalCount})</h3>
+          <h3 className="text-sm font-bold text-[#1A1A1E]">{t.newsletters.subscribersTable.title} ({totalCount})</h3>
         </div>
 
         {/* Filter Pills */}
         <div className="flex items-center space-x-1 bg-[#F7F5F0] p-1 rounded-lg text-xs">
           {[
-            { id: 'all', label: 'Tutti' },
-            { id: 'pending', label: 'In Attesa' },
-            { id: 'sent', label: 'Inviati' },
-            { id: 'failed', label: 'Falliti' },
+            { id: 'all', label: t.newsletters.subscribersTable.filterAll },
+            { id: 'pending', label: t.newsletters.subscribersTable.filterPending },
+            { id: 'sent', label: t.newsletters.subscribersTable.filterSent },
+            { id: 'failed', label: t.newsletters.subscribersTable.filterFailed },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -83,21 +85,21 @@ export default function NewsletterSubscribersTable({
       {loading ? (
         <div className="py-12 flex justify-center items-center text-[#666666] text-xs">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          <span>Caricamento iscritti...</span>
+          <span>{t.newsletters.subscribersTable.loading}</span>
         </div>
       ) : subscribers.length === 0 ? (
         <div className="text-center py-10 text-xs text-[#666666]">
-          Nessun iscritto trovato per questo filtro.
+          {t.newsletters.subscribersTable.noSubscribers}
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-[#D8D2C8] text-[#666666] uppercase tracking-wider font-semibold">
-                <th className="py-2.5 px-3">Email</th>
-                <th className="py-2.5 px-3">Nome</th>
-                <th className="py-2.5 px-3">Stato</th>
-                <th className="py-2.5 px-3">Data Invio / Errore</th>
+                <th className="py-2.5 px-3">{t.newsletters.subscribersTable.colEmail}</th>
+                <th className="py-2.5 px-3">{t.newsletters.subscribersTable.colName}</th>
+                <th className="py-2.5 px-3">{t.newsletters.subscribersTable.colStatus}</th>
+                <th className="py-2.5 px-3">{t.newsletters.subscribersTable.colSentError}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F0EBE1]">
@@ -117,7 +119,7 @@ export default function NewsletterSubscribersTable({
                         <span className="truncate max-w-xs">{sub.last_error}</span>
                       </span>
                     ) : (
-                      'In attesa di invio'
+                      t.newsletters.subscribersTable.waitingToSend
                     )}
                   </td>
                 </tr>
@@ -131,7 +133,7 @@ export default function NewsletterSubscribersTable({
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-3 border-t border-[#F0EBE1] text-xs text-[#666666]">
           <span>
-            Pagina <span className="font-semibold text-[#1A1A1E]">{page}</span> di{' '}
+            {t.newsletters.subscribersTable.page} <span className="font-semibold text-[#1A1A1E]">{page}</span> {t.newsletters.subscribersTable.of}{' '}
             <span className="font-semibold text-[#1A1A1E]">{totalPages}</span>
           </span>
           <div className="flex items-center space-x-1">

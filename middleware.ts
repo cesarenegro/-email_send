@@ -2,6 +2,15 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+  const host = request.headers.get('host') || '';
+  if (host === 'emailbulk.vercel.app' || host === 'mail-k.vercel.app') {
+    const url = request.nextUrl.clone();
+    url.host = 'mailk.arkai.dev';
+    url.port = '';
+    url.protocol = 'https';
+    return NextResponse.redirect(url, 301);
+  }
+
   const { pathname } = request.nextUrl;
 
   // Bypass static files, cron endpoint, and auth callbacks
@@ -56,10 +65,19 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && pathname !== '/login') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+  const isPublicRoute = pathname === '/login' || pathname === '/landing';
+
+  if (!user) {
+    if (pathname === '/') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/landing';
+      return NextResponse.redirect(url);
+    }
+    if (!isPublicRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
   }
 
   if (user && pathname === '/login') {

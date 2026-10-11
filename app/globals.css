@@ -1,40 +1,219 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 @import "tailwindcss";
 
+@theme {
+  --font-headline: "Playfair Display", Georgia, serif;
+  --font-body: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-metric: "Plus Jakarta Sans", sans-serif;
+
+  --color-primary: #036e13;
+  --color-primary-container: #5cb855;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #004507;
+  --color-primary-fixed: #99f98d;
+  --color-primary-fixed-dim: #7edc74;
+
+  --color-secondary: #5c5e63;
+  --color-secondary-container: #dedfe5;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #606368;
+
+  --color-tertiary: #5c5f59;
+  --color-tertiary-container: #a2a59e;
+
+  --color-background: #fbf9f6;
+  --color-surface: #fbf9f6;
+  --color-surface-dim: #dbdad7;
+  --color-surface-bright: #fbf9f6;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f5f3f0;
+  --color-surface-container: #efeeeb;
+  --color-surface-container-high: #eae8e5;
+  --color-surface-container-highest: #e4e2df;
+
+  --color-on-surface: #1b1c1a;
+  --color-on-surface-variant: #3f4a3c;
+  --color-outline: #6f7a6b;
+  --color-outline-variant: #bfcab8;
+  --color-inverse-surface: #30312f;
+  --color-inverse-on-surface: #f2f0ed;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+}
+
 :root {
-  --background: #F7F5F0;
-  --foreground: #1A1A1E;
-  --card: #FFFFFF;
-  --card-foreground: #1A1A1E;
-  --muted: #666666;
-  --border: #D8D2C8;
+  --background: #fbf9f6;
+  --foreground: #1b1c1a;
+  --card: #ffffff;
+  --card-foreground: #1b1c1a;
+  --muted: #5c5e63;
+  --border: #e5e5e0;
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #fbf9f6;
+  color: #1b1c1a;
+  font-family: var(--font-body);
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom utility classes */
-.bg-canvas {
-  background-color: #F7F5F0;
+/* Material Symbols Outlined settings */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  vertical-align: middle;
 }
 
-.bg-card {
-  background-color: #FFFFFF;
+/* Stitch Spacing Scale */
+.p-space-xs, .px-space-xs, .py-space-xs { padding-inline: 0.25rem; padding-block: 0.25rem; }
+.p-space-xs { padding: 0.25rem; }
+.p-space-sm { padding: 0.5rem; }
+.p-space-md { padding: 1rem; }
+.p-space-lg { padding: 1.5rem; }
+.p-space-xl { padding: 2.5rem; }
+
+.px-space-xs { padding-left: 0.25rem; padding-right: 0.25rem; }
+.px-space-sm { padding-left: 0.5rem; padding-right: 0.5rem; }
+.px-space-md { padding-left: 1rem; padding-right: 1rem; }
+.px-space-lg { padding-left: 1.5rem; padding-right: 1.5rem; }
+.px-space-xl { padding-left: 2.5rem; padding-right: 2.5rem; }
+
+.py-space-xs { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.py-space-sm { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.py-space-md { padding-top: 1rem; padding-bottom: 1rem; }
+.py-space-lg { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+.py-space-xl { padding-top: 2.5rem; padding-bottom: 2.5rem; }
+
+.pt-space-xs { padding-top: 0.25rem; }
+.pt-space-sm { padding-top: 0.5rem; }
+.pt-space-md { padding-top: 1rem; }
+.pt-space-lg { padding-top: 1.5rem; }
+.pt-space-xl { padding-top: 2.5rem; }
+
+.pb-space-xs { padding-bottom: 0.25rem; }
+.pb-space-sm { padding-bottom: 0.5rem; }
+.pb-space-md { padding-bottom: 1rem; }
+.pb-space-lg { padding-bottom: 1.5rem; }
+.pb-space-xl { padding-bottom: 2.5rem; }
+
+.gap-space-xs { gap: 0.25rem; }
+.gap-space-sm { gap: 0.5rem; }
+.gap-space-md { gap: 1rem; }
+.gap-space-lg { gap: 1.5rem; }
+.gap-space-xl { gap: 2.5rem; }
+
+.my-space-md { margin-top: 1rem; margin-bottom: 1rem; }
+.mt-space-md { margin-top: 1rem; }
+.mt-space-lg { margin-top: 1.5rem; }
+.mt-space-xl { margin-top: 2.5rem; }
+
+.px-gutter { padding-left: 1.5rem; padding-right: 1.5rem; }
+
+/* Stitch Typography Utility Classes */
+.font-headline-xl {
+  font-family: var(--font-headline);
+  font-size: 40px;
+  line-height: 48px;
+  letter-spacing: -0.02em;
+  font-weight: 600;
 }
 
-.border-subtle {
-  border-color: #D8D2C8;
+.text-headline-xl {
+  font-size: 40px;
+  line-height: 48px;
+  letter-spacing: -0.02em;
 }
 
-.text-primary-dark {
-  color: #1A1A1E;
+.font-headline-lg {
+  font-family: var(--font-headline);
+  font-size: 30px;
+  line-height: 38px;
+  letter-spacing: -0.015em;
+  font-weight: 500;
 }
 
-.text-secondary {
-  color: #666666;
+.font-headline-md {
+  font-family: var(--font-body);
+  font-size: 20px;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+.text-headline-md {
+  font-size: 20px;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+}
+
+.font-title-sm {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: -0.005em;
+  font-weight: 600;
+}
+
+.text-title-sm {
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: -0.005em;
+}
+
+.font-metric-num {
+  font-family: var(--font-metric);
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.text-metric-num {
+  font-size: 26px;
+  line-height: 32px;
+}
+
+.font-body-lg {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 24px;
+}
+
+.font-body-md {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.font-label-md {
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.font-label-sm {
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
 }

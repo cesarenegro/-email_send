@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { parseCsvString } from '@/lib/csv/parse';
 import { UploadCloud, CheckCircle, AlertCircle, ArrowRight, Loader2, X } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface CsvImporterProps {
   campaignId: string;
@@ -11,6 +12,7 @@ interface CsvImporterProps {
 }
 
 export default function CsvImporter({ campaignId, onImportCompleted, onClose }: CsvImporterProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -26,7 +28,7 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
     if (!selected) return;
 
     if (!selected.name.toLowerCase().endsWith('.csv')) {
-      setError('Seleziona un file con estensione .csv');
+      setError(t.campaigns.csvImporter.selectCsvError);
       return;
     }
 
@@ -39,7 +41,7 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
       const parsed = parseCsvString(text);
 
       if (parsed.headers.length === 0) {
-        setError('Nessuna colonna rilevata nel file CSV');
+        setError(t.campaigns.csvImporter.noColsError);
         return;
       }
 
@@ -61,7 +63,7 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
 
   const handleStartImport = async () => {
     if (!emailColumn) {
-      setError('Seleziona la colonna corrispondente all’email');
+      setError(t.campaigns.csvImporter.selectRequiredCols);
       return;
     }
 
@@ -82,7 +84,7 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Errore durante l’importazione');
+        throw new Error(data.error || 'Import error');
       }
 
       setResult(data);
@@ -99,8 +101,8 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
     <div className="bg-[#FFFFFF] border border-[#D8D2C8] rounded-lg p-6 shadow-sm">
       <div className="flex items-center justify-between pb-4 border-b border-[#D8D2C8] mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-[#1A1A1E]">Importazione Contatti da CSV</h3>
-          <p className="text-sm text-[#666666]">Carica i lead associando il nome azienda all&apos;indirizzo email</p>
+          <h3 className="text-lg font-semibold text-[#1A1A1E]">{t.campaigns.csvImporter.title}</h3>
+          <p className="text-sm text-[#666666]">{t.campaigns.csvImporter.separatorHelp}</p>
         </div>
         {onClose && (
           <button onClick={onClose} className="text-[#666666] hover:text-[#1A1A1E]">
@@ -120,10 +122,10 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
       {step === 1 && (
         <div className="border-2 border-dashed border-[#D8D2C8] rounded-lg p-8 text-center bg-[#F7F5F0]">
           <UploadCloud className="w-12 h-12 text-[#666666] mx-auto mb-3" />
-          <p className="text-sm font-medium text-[#1A1A1E] mb-1">Seleziona o trascina un file CSV</p>
-          <p className="text-xs text-[#666666] mb-4">Supporta delimitatori virgola, punto e virgola, UTF-8</p>
+          <p className="text-sm font-medium text-[#1A1A1E] mb-1">{t.campaigns.csvImporter.dragDrop}</p>
+          <p className="text-xs text-[#666666] mb-4">{t.campaigns.csvImporter.separatorHelp}</p>
           <label className="inline-flex items-center px-4 py-2 bg-[#1A1A1E] text-white text-sm font-medium rounded cursor-pointer hover:bg-[#333333] transition-colors">
-            <span>Scegli file CSV</span>
+            <span>{t.campaigns.csvImporter.browse}</span>
             <input type="file" accept=".csv" onChange={handleFileChange} className="hidden" />
           </label>
         </div>
@@ -135,14 +137,14 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-[#1A1A1E] mb-1">
-                Colonna Nome Azienda <span className="text-xs text-[#666666]">(opzionale)</span>
+                {t.campaigns.csvImporter.companyCol}
               </label>
               <select
                 value={companyColumn}
                 onChange={(e) => setCompanyColumn(e.target.value)}
                 className="w-full px-3 py-2 border border-[#D8D2C8] rounded bg-white text-sm text-[#1A1A1E] focus:outline-none focus:ring-1 focus:ring-[#1A1A1E]"
               >
-                <option value="">-- Seleziona o ignora --</option>
+                <option value="">{t.campaigns.csvImporter.selectCompanyCol}</option>
                 {headers.map((h) => (
                   <option key={h} value={h}>
                     {h}
@@ -153,14 +155,14 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
 
             <div>
               <label className="block text-sm font-medium text-[#1A1A1E] mb-1">
-                Colonna Email <span className="text-rose-600">*</span>
+                {t.campaigns.csvImporter.emailCol} <span className="text-rose-600">*</span>
               </label>
               <select
                 value={emailColumn}
                 onChange={(e) => setEmailColumn(e.target.value)}
                 className="w-full px-3 py-2 border border-[#D8D2C8] rounded bg-white text-sm text-[#1A1A1E] focus:outline-none focus:ring-1 focus:ring-[#1A1A1E]"
               >
-                <option value="">-- Seleziona colonna email --</option>
+                <option value="">{t.campaigns.csvImporter.selectEmailCol}</option>
                 {headers.map((h) => (
                   <option key={h} value={h}>
                     {h}
@@ -172,15 +174,15 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
 
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-[#666666] mb-2">
-              Anteprima prime 10 righe ({rawRows.length} totali lette)
+              {t.campaigns.csvImporter.fileLoaded} {rawRows.length} {t.campaigns.csvImporter.rowsDetected}
             </h4>
             <div className="border border-[#D8D2C8] rounded overflow-x-auto max-h-56">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#F7F5F0] border-b border-[#D8D2C8]">
                   <tr>
                     <th className="px-3 py-2 font-medium text-[#1A1A1E]">#</th>
-                    <th className="px-3 py-2 font-medium text-[#1A1A1E]">Azienda ({companyColumn || 'Nessuna'})</th>
-                    <th className="px-3 py-2 font-medium text-[#1A1A1E]">Email ({emailColumn || 'Nessuna'})</th>
+                    <th className="px-3 py-2 font-medium text-[#1A1A1E]">{companyColumn || '-'}</th>
+                    <th className="px-3 py-2 font-medium text-[#1A1A1E]">{emailColumn || '-'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#D8D2C8]">
@@ -202,7 +204,7 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
               onClick={() => setStep(1)}
               className="text-sm text-[#666666] hover:text-[#1A1A1E]"
             >
-              Cambia file
+              {t.campaigns.csvImporter.back}
             </button>
             <button
               type="button"
@@ -213,11 +215,11 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Importazione...</span>
+                  <span>{t.campaigns.leadsTable.syncingBounces}</span>
                 </>
               ) : (
                 <>
-                  <span>Importa {rawRows.length} Contatti</span>
+                  <span>{t.campaigns.csvImporter.importLeads} ({rawRows.length})</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -232,22 +234,20 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
           <div className="p-4 bg-emerald-50 border border-emerald-200 rounded flex items-start space-x-3">
             <CheckCircle className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
             <div>
-              <h4 className="text-sm font-semibold text-emerald-800">Importazione Completata</h4>
+              <h4 className="text-sm font-semibold text-emerald-800">{t.campaigns.csvImporter.importSuccess}</h4>
               <p className="text-xs text-emerald-700 mt-1">
-                Righe lette: <strong>{result.totalRead}</strong> | Importati con successo:{' '}
-                <strong>{result.imported}</strong> | Duplicati ignorati: <strong>{result.duplicates}</strong> | Email
-                non valide: <strong>{result.invalid.length}</strong>
+                <strong>{result.imported}</strong> {t.campaigns.csvImporter.leadsImported} | <strong>{result.duplicates}</strong> {t.campaigns.csvImporter.duplicatesSkipped} | <strong>{result.invalid?.length || 0}</strong> {t.campaigns.csvImporter.invalidSkipped}
               </p>
             </div>
           </div>
 
-          {result.invalid.length > 0 && (
+          {result.invalid && result.invalid.length > 0 && (
             <div className="border border-[#D8D2C8] rounded p-3">
-              <h5 className="text-xs font-semibold text-[#1A1A1E] mb-2">Righe scartate ({result.invalid.length}):</h5>
+              <h5 className="text-xs font-semibold text-[#1A1A1E] mb-2">{t.campaigns.csvImporter.invalidSkipped} ({result.invalid.length}):</h5>
               <div className="max-h-36 overflow-y-auto text-xs space-y-1 text-[#666666]">
                 {result.invalid.map((inv: any, i: number) => (
                   <div key={i} className="flex justify-between border-b border-[#D8D2C8] py-1">
-                    <span>Riga {inv.row}: &ldquo;{inv.email}&rdquo;</span>
+                    <span>{inv.row ? `Row ${inv.row}: ` : ''}&ldquo;{inv.email}&rdquo;</span>
                     <span className="text-rose-600">{inv.reason}</span>
                   </div>
                 ))}
@@ -266,7 +266,7 @@ export default function CsvImporter({ campaignId, onImportCompleted, onClose }: 
               }}
               className="px-4 py-2 bg-[#1A1A1E] text-white text-sm font-medium rounded hover:bg-[#333333]"
             >
-              Chiudi
+              {t.campaigns.csvImporter.close}
             </button>
           </div>
         </div>

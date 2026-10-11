@@ -5,7 +5,7 @@ import { CampaignInput } from '@/lib/validations/campaign';
 import { Loader2, Save, CheckCircle2, Send, Globe } from 'lucide-react';
 import { SUPPORTED_TIMEZONES, getTimezoneConfig } from '@/lib/constants/timezones';
 import { DateTime } from 'luxon';
-
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface CampaignFormProps {
   initialData?: Partial<CampaignInput>;
@@ -22,6 +22,7 @@ export default function CampaignForm({
   onSubmit,
   onChangeValues,
 }: CampaignFormProps) {
+  const { t, locale } = useTranslation();
   const [formData, setFormData] = useState<CampaignInput>({
     name: initialData?.name || '',
     subject_template: initialData?.subject_template || '',
@@ -137,20 +138,22 @@ export default function CampaignForm({
 
       {disabled && (
         <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded">
-          I campi sono bloccati perché la campagna è ATTIVA. Metti in PAUSA la campagna per modificarli.
+          {locale === 'en'
+            ? 'Fields are locked because the campaign is ACTIVE. PAUSE the campaign to edit them.'
+            : 'I campi sono bloccati perché la campagna è ATTIVA. Metti in PAUSA la campagna per modificarli.'}
         </div>
       )}
 
       {/* Campaign Name */}
       <div>
         <label className="block text-sm font-medium text-[#1A1A1E] mb-1">
-          Nome Campagna <span className="text-rose-600">*</span>
+          {locale === 'en' ? 'Campaign Name' : 'Nome Campagna'} <span className="text-rose-600">*</span>
         </label>
         <input
           type="text"
           required
           disabled={disabled}
-          placeholder="es. Mobili Italia"
+          placeholder={locale === 'en' ? 'e.g. Modern Italian Furniture' : 'es. Mobili Italia'}
           value={formData.name}
           onChange={(e) => updateFormData((prev) => ({ ...prev, name: e.target.value }))}
           className="w-full px-3 py-2 border border-[#D8D2C8] rounded text-sm text-[#1A1A1E] bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] disabled:bg-[#F7F5F0]"
@@ -160,19 +163,21 @@ export default function CampaignForm({
       {/* Subject */}
       <div>
         <label className="block text-sm font-medium text-[#1A1A1E] mb-1">
-          Oggetto Email <span className="text-rose-600">*</span>
+          {locale === 'en' ? 'Email Subject' : 'Oggetto Email'} <span className="text-rose-600">*</span>
         </label>
         <input
           type="text"
           required
           disabled={disabled}
-          placeholder="es. Render per {{azienda}}"
+          placeholder={locale === 'en' ? 'e.g. 3D Renders for {{companyName}}' : 'es. Render per {{azienda}}'}
           value={formData.subject_template}
           onChange={(e) => updateFormData((prev) => ({ ...prev, subject_template: e.target.value }))}
           className="w-full px-3 py-2 border border-[#D8D2C8] rounded text-sm text-[#1A1A1E] bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] disabled:bg-[#F7F5F0]"
         />
         <p className="text-xs text-[#666666] mt-1">
-          Supporta i segnaposto: <code>&#123;&#123;NOME_AZIENDA&#125;&#125;</code>, <code>&#123;&#123;azienda&#125;&#125;</code>, <code>&#123;&#123;companyName&#125;&#125;</code>, <code>&#123;&#123;email&#125;&#125;</code> (anche con spazi o maiuscole/minuscole)
+          {locale === 'en'
+            ? 'Supports placeholders: {{companyName}}, {{azienda}}, {{email}} (case-insensitive)'
+            : 'Supporta i segnaposto: {{NOME_AZIENDA}}, {{azienda}}, {{companyName}}, {{email}} (anche con spazi o maiuscole/minuscole)'}
         </p>
       </div>
 
@@ -181,10 +186,12 @@ export default function CampaignForm({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#E6E2DC]">
           <div>
             <label className="block text-sm font-semibold text-[#1A1A1E]">
-              Email HTML (Codice Sorgente) <span className="text-rose-600">*</span>
+              {locale === 'en' ? 'Email HTML (Source Code)' : 'Email HTML (Codice Sorgente)'} <span className="text-rose-600">*</span>
             </label>
             <p className="text-xs text-[#666666]">
-              Incolla o modifica qui il codice HTML. Clicca &quot;Salva Codice HTML&quot; per salvare subito.
+              {locale === 'en'
+                ? 'Paste or edit your HTML email code here. Click "Save HTML Code" to save instantly.'
+                : 'Incolla o modifica qui il codice HTML. Clicca "Salva Codice HTML" per salvare subito.'}
             </p>
           </div>
 
@@ -192,7 +199,7 @@ export default function CampaignForm({
             {htmlSavedMsg && (
               <span className="text-xs text-emerald-700 font-medium flex items-center space-x-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Salvato!</span>
+                <span>{locale === 'en' ? 'Saved!' : 'Salvato!'}</span>
               </span>
             )}
             <button
@@ -200,17 +207,17 @@ export default function CampaignForm({
               disabled={disabled || htmlSaving || loading}
               onClick={handleQuickSaveHtml}
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-[#1A1A1E] text-white text-xs font-semibold rounded hover:bg-[#333333] transition-colors disabled:opacity-50 shadow-sm"
-              title="Salva immediatamente le modifiche al codice HTML"
+              title={locale === 'en' ? 'Instantly save changes to HTML code' : 'Salva immediatamente le modifiche al codice HTML'}
             >
               {htmlSaving ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Salvataggio...</span>
+                  <span>{locale === 'en' ? 'Saving...' : 'Salvataggio...'}</span>
                 </>
               ) : (
                 <>
                   <Save className="w-3.5 h-3.5" />
-                  <span>Salva Codice HTML</span>
+                  <span>{locale === 'en' ? 'Save HTML Code' : 'Salva Codice HTML'}</span>
                 </>
               )}
             </button>
@@ -221,7 +228,7 @@ export default function CampaignForm({
           rows={12}
           required
           disabled={disabled}
-          placeholder="<!DOCTYPE html><html><body><p>Buongiorno {{azienda}}, ...</p></body></html>"
+          placeholder="<!DOCTYPE html><html><body><p>Hello {{companyName}}, ...</p></body></html>"
           value={formData.html_template}
           onChange={(e) => updateFormData((prev) => ({ ...prev, html_template: e.target.value }))}
           className="w-full px-3 py-2.5 font-mono text-xs border border-[#D8D2C8] rounded text-[#1A1A1E] bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] disabled:bg-[#F7F5F0] leading-relaxed"
@@ -230,22 +237,27 @@ export default function CampaignForm({
 
         <div className="flex justify-between items-center text-xs text-[#666666] pt-1">
           <span>
-            Dimensione stimata: <strong>{Math.round(new Blob([formData.html_template || '']).size / 1024)} KB</strong>
+            {locale === 'en' ? 'Estimated size:' : 'Dimensione stimata:'}{' '}
+            <strong>{Math.round(new Blob([formData.html_template || '']).size / 1024)} KB</strong>
           </span>
           {formData.html_template !== initialData?.html_template && (
-            <span className="text-amber-700 font-medium">● Modifiche HTML non ancora salvate</span>
+            <span className="text-amber-700 font-medium">
+              {locale === 'en' ? '● Unsaved HTML changes' : '● Modifiche HTML non ancora salvate'}
+            </span>
           )}
         </div>
       </div>
 
       {/* Scheduling Card */}
       <div className="bg-[#F7F5F0] border border-[#D8D2C8] rounded-lg p-4 space-y-4">
-        <h4 className="text-sm font-semibold text-[#1A1A1E]">Pianificazione e Invio Scaglionato</h4>
+        <h4 className="text-sm font-semibold text-[#1A1A1E]">
+          {locale === 'en' ? 'Scheduling & Pacing Window' : 'Pianificazione e Invio Scaglionato'}
+        </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-[#1A1A1E] mb-1">
-              Fuso Orario di Invio
+              {locale === 'en' ? 'Dispatch Timezone' : 'Fuso Orario di Invio'}
             </label>
             <select
               disabled={disabled}
@@ -260,7 +272,7 @@ export default function CampaignForm({
               ))}
               {!SUPPORTED_TIMEZONES.some((tz) => tz.value === formData.timezone) && (
                 <option value={formData.timezone}>
-                  {formData.timezone} (Personalizzato)
+                  {formData.timezone} ({locale === 'en' ? 'Custom' : 'Personalizzato'})
                 </option>
               )}
             </select>
@@ -269,7 +281,7 @@ export default function CampaignForm({
               <span className="font-mono text-[#1A1A1E] font-medium shrink-0">
                 {(() => {
                   try {
-                    return `Ora: ${DateTime.now().setZone(formData.timezone || 'Europe/Rome').toFormat('HH:mm')}`;
+                    return `${locale === 'en' ? 'Time:' : 'Ora:'} ${DateTime.now().setZone(formData.timezone || 'Europe/Rome').toFormat('HH:mm')}`;
                   } catch {
                     return '';
                   }
@@ -279,7 +291,9 @@ export default function CampaignForm({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#1A1A1E] mb-1">Finestra Inizio (HH:mm)</label>
+            <label className="block text-xs font-medium text-[#1A1A1E] mb-1">
+              {locale === 'en' ? 'Window Start (HH:mm)' : 'Finestra Inizio (HH:mm)'}
+            </label>
             <input
               type="time"
               disabled={disabled}
@@ -290,7 +304,9 @@ export default function CampaignForm({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#1A1A1E] mb-1">Finestra Fine (HH:mm)</label>
+            <label className="block text-xs font-medium text-[#1A1A1E] mb-1">
+              {locale === 'en' ? 'Window End (HH:mm)' : 'Finestra Fine (HH:mm)'}
+            </label>
             <input
               type="time"
               disabled={disabled}
@@ -302,7 +318,8 @@ export default function CampaignForm({
 
           <div>
             <label className="block text-xs font-medium text-[#1A1A1E] mb-1">
-              Ritardo tra email (secondi) <span className="text-[#666666]">(min 60s)</span>
+              {locale === 'en' ? 'Delay between emails (seconds)' : 'Ritardo tra email (secondi)'}{' '}
+              <span className="text-[#666666]">(min 60s)</span>
             </label>
             <input
               type="number"
@@ -314,12 +331,15 @@ export default function CampaignForm({
               className="w-full px-3 py-1.5 border border-[#D8D2C8] rounded text-xs bg-white text-[#1A1A1E] disabled:bg-[#F7F5F0]"
             />
             <span className="text-[11px] text-[#666666]">
-              {Math.round((formData.send_interval_seconds / 60) * 10) / 10} minuti tra ogni invio
+              {Math.round((formData.send_interval_seconds / 60) * 10) / 10}{' '}
+              {locale === 'en' ? 'minutes between each send' : 'minuti tra ogni invio'}
             </span>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#1A1A1E] mb-1">Limite Giornaliero Invii</label>
+            <label className="block text-xs font-medium text-[#1A1A1E] mb-1">
+              {locale === 'en' ? 'Daily Send Limit' : 'Limite Giornaliero Invii'}
+            </label>
             <input
               type="number"
               min={1}
@@ -331,9 +351,11 @@ export default function CampaignForm({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#1A1A1E] mb-1">Giorni consentiti</label>
+            <label className="block text-xs font-medium text-[#1A1A1E] mb-1">
+              {locale === 'en' ? 'Allowed Days' : 'Giorni consentiti'}
+            </label>
             <div className="px-3 py-1.5 text-xs text-[#666666] bg-[#FFFFFF] border border-[#D8D2C8] rounded">
-              Lunedì — Venerdì
+              {locale === 'en' ? 'Monday — Friday' : 'Lunedì — Venerdì'}
             </div>
           </div>
         </div>
@@ -341,10 +363,16 @@ export default function CampaignForm({
         <div className="bg-white p-3 border border-[#D8D2C8] rounded text-xs space-y-1">
           <div className="flex items-center space-x-1.5 font-semibold text-[#1A1A1E]">
             <Send className="w-3.5 h-3.5" />
-            <span>Opzione di Invio Immediato (&quot;INVIA ORA&quot;)</span>
+            <span>
+              {locale === 'en'
+                ? 'Immediate Send Option ("SEND NOW")'
+                : 'Opzione di Invio Immediato ("INVIA ORA")'}
+            </span>
           </div>
           <p className="text-[#666666] leading-relaxed">
-            Dalla schermata di gestione della campagna è disponibile il pulsante <strong>INVIA ORA</strong> per avviare ed inviare subito la prima email in tempo reale, senza attendere il cron o la finestra oraria. Gli invii successivi proseguiranno automaticamente secondo l&apos;intervallo specificato sopra.
+            {locale === 'en'
+              ? 'From the campaign overview screen, the SEND NOW button allows immediate transmission of the first pending email without waiting for the scheduled cron beat. Subsequent emails proceed automatically according to the cadence above.'
+              : 'Dalla schermata di gestione della campagna è disponibile il pulsante INVIA ORA per avviare ed inviare subito la prima email in tempo reale, senza attendere il cron o la finestra oraria. Gli invii successivi proseguiranno automaticamente secondo l\'intervallo specificato sopra.'}
           </p>
         </div>
       </div>
@@ -358,12 +386,16 @@ export default function CampaignForm({
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Salvataggio...</span>
+              <span>{locale === 'en' ? 'Saving...' : 'Salvataggio...'}</span>
             </>
           ) : (
             <>
               <Save className="w-4 h-4" />
-              <span>{isEditing ? 'Aggiorna Campagna' : 'Crea Campagna'}</span>
+              <span>
+                {isEditing
+                  ? (locale === 'en' ? 'Update Campaign' : 'Aggiorna Campagna')
+                  : (locale === 'en' ? 'Create Campaign' : 'Crea Campagna')}
+              </span>
             </>
           )}
         </button>

@@ -1,4 +1,28 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "emailbulk.vercel.app"
+        }
+      ],
+      "destination": "https://mailk.arkai.dev/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "mail-k.vercel.app"
+        }
+      ],
+      "destination": "https://mailk.arkai.dev/:path*",
+      "permanent": true
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/send",

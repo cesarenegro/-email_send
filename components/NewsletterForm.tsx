@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Newspaper, Send, Calendar, Clock, Eye, Code, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import EmailPreview from '@/components/EmailPreview';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 const TIMEZONES = [
   { value: 'Europe/Rome', label: 'Europa / Roma (CET/CEST)' },
@@ -15,6 +16,7 @@ const TIMEZONES = [
 
 export default function NewsletterForm() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
@@ -44,13 +46,13 @@ export default function NewsletterForm() {
     setError(null);
 
     if (!title.trim()) {
-      setError('Inserisci il titolo interno della newsletter');
+      setError(t.newsletters.form.errorTitle);
       setLoading(false);
       return;
     }
 
     if (!subject.trim()) {
-      setError("Inserisci l'oggetto dell'email");
+      setError(t.newsletters.form.errorSubject);
       setLoading(false);
       return;
     }
@@ -73,14 +75,14 @@ export default function NewsletterForm() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Errore durante la creazione della newsletter');
+        throw new Error(data.error || t.newsletters.form.errorGeneric);
       }
 
       const created = await res.json();
       router.push(`/newsletters/${created.id}`);
       router.refresh();
     } catch (err: any) {
-      setError(err.message || 'Errore imprevisto');
+      setError(err.message || t.newsletters.form.errorGeneric);
       setLoading(false);
     }
   };
@@ -98,9 +100,9 @@ export default function NewsletterForm() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1E]">Nuova Newsletter</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1E]">{t.newsletters.form.headerTitle}</h1>
             <p className="text-xs text-[#666666]">
-              Configura i dettagli della newsletter, imposta la programmazione e componi il messaggio.
+              {t.newsletters.form.headerSubtitle}
             </p>
           </div>
         </div>
@@ -110,7 +112,7 @@ export default function NewsletterForm() {
           className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-[#1A1A1E] text-white text-sm font-semibold hover:bg-stone-800 disabled:opacity-50 transition-colors shadow-sm"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          <span>Salva e Continua</span>
+          <span>{t.newsletters.form.saveAndContinue}</span>
         </button>
       </div>
 
@@ -128,44 +130,44 @@ export default function NewsletterForm() {
           <div className="bg-white border border-[#D8D2C8] rounded-xl p-5 shadow-sm space-y-4">
             <h2 className="text-sm font-bold text-[#1A1A1E] uppercase tracking-wider flex items-center gap-2">
               <Newspaper className="w-4 h-4" />
-              <span>Dettagli Base</span>
+              <span>{t.newsletters.form.basicDetails}</span>
             </h2>
 
             <div>
               <label className="block text-xs font-semibold text-[#1A1A1E]">
-                Titolo Interno <span className="text-rose-500">*</span>
+                {t.newsletters.form.internalTitle} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                placeholder="Es. Newsletter Ottobre 2026 - Novità"
+                placeholder={t.newsletters.form.internalTitlePlaceholder}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="mt-1 w-full px-3 py-2 border border-[#D8D2C8] rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E]"
               />
-              <p className="text-[11px] text-[#666666] mt-1">Visibile solo a te per identificare la newsletter.</p>
+              <p className="text-[11px] text-[#666666] mt-1">{t.newsletters.form.internalTitleHelp}</p>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-[#1A1A1E]">
-                Oggetto Email <span className="text-rose-500">*</span>
+                {t.newsletters.form.emailSubject} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                placeholder="Es. Novità e aggiornamenti importanti per te"
+                placeholder={t.newsletters.form.emailSubjectPlaceholder}
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 className="mt-1 w-full px-3 py-2 border border-[#D8D2C8] rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E]"
               />
-              <p className="text-[11px] text-[#666666] mt-1">L&apos;oggetto effettivo che leggeranno i destinatari.</p>
+              <p className="text-[11px] text-[#666666] mt-1">{t.newsletters.form.emailSubjectHelp}</p>
             </div>
           </div>
 
           <div className="bg-white border border-[#D8D2C8] rounded-xl p-5 shadow-sm space-y-4">
             <h2 className="text-sm font-bold text-[#1A1A1E] uppercase tracking-wider flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              <span>Programmazione</span>
+              <span>{t.newsletters.form.scheduling}</span>
             </h2>
 
             <div className="flex items-center space-x-2">
@@ -177,13 +179,13 @@ export default function NewsletterForm() {
                 className="rounded border-[#D8D2C8] text-[#1A1A1E] focus:ring-0"
               />
               <label htmlFor="isScheduled" className="text-xs font-semibold text-[#1A1A1E] cursor-pointer">
-                Pianifica invio automatico a una data specifica
+                {t.newsletters.form.scheduleCheckbox}
               </label>
             </div>
 
             {isScheduled && (
               <div>
-                <label className="block text-xs font-semibold text-[#1A1A1E]">Data e Ora di Inizio Invio</label>
+                <label className="block text-xs font-semibold text-[#1A1A1E]">{t.newsletters.form.startDateTime}</label>
                 <input
                   type="datetime-local"
                   required={isScheduled}
@@ -195,7 +197,7 @@ export default function NewsletterForm() {
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-[#1A1A1E]">Fuso Orario</label>
+              <label className="block text-xs font-semibold text-[#1A1A1E]">{t.newsletters.form.timezone}</label>
               <select
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
@@ -211,7 +213,7 @@ export default function NewsletterForm() {
 
             <div>
               <label className="block text-xs font-semibold text-[#1A1A1E]">
-                Intervallo tra invii (secondi)
+                {t.newsletters.form.sendInterval}
               </label>
               <input
                 type="number"
@@ -222,7 +224,7 @@ export default function NewsletterForm() {
                 className="mt-1 w-full px-3 py-2 border border-[#D8D2C8] rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E]"
               />
               <p className="text-[11px] text-[#666666] mt-1">
-                Cadenza tra un destinatario e il successivo (minimo 30 sec).
+                {t.newsletters.form.sendIntervalHelp}
               </p>
             </div>
           </div>
@@ -243,7 +245,7 @@ export default function NewsletterForm() {
                   }`}
                 >
                   <Code className="w-3.5 h-3.5" />
-                  <span>Editor HTML</span>
+                  <span>{t.newsletters.form.editorHtmlTab}</span>
                 </button>
                 <button
                   type="button"
@@ -255,13 +257,13 @@ export default function NewsletterForm() {
                   }`}
                 >
                   <Eye className="w-3.5 h-3.5" />
-                  <span>Anteprima Live</span>
+                  <span>{t.newsletters.form.previewLiveTab}</span>
                 </button>
               </div>
 
               {/* Personalization pills */}
               <div className="flex items-center space-x-1.5 text-xs">
-                <span className="text-[#666666] text-[11px] hidden sm:inline">Tag:</span>
+                <span className="text-[#666666] text-[11px] hidden sm:inline">{t.newsletters.form.tagsLabel}</span>
                 <button
                   type="button"
                   onClick={() => handleInsertPlaceholder('{{email}}')}
@@ -284,13 +286,13 @@ export default function NewsletterForm() {
                 <div className="flex-1 flex flex-col">
                   <textarea
                     rows={18}
-                    placeholder="Incolla o componi qui il codice HTML della tua newsletter..."
+                    placeholder={t.newsletters.form.editorPlaceholder}
                     value={htmlContent}
                     onChange={(e) => setHtmlContent(e.target.value)}
                     className="w-full flex-1 p-3 border border-[#D8D2C8] rounded-lg font-mono text-xs bg-stone-50/50 text-[#1A1A1E] focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] resize-y"
                   />
                   <p className="text-[11px] text-[#666666] mt-2">
-                    Suggerimento: puoi incollare template HTML responsive completi. I placeholder come &#123;&#123;email&#125;&#125; e &#123;&#123;nome&#125;&#125; verranno sostituiti per ciascun iscritto.
+                    {t.newsletters.form.editorHelp}
                   </p>
                 </div>
               ) : (

@@ -29,6 +29,8 @@ yarn-error.log*
 .env.staging
 PASSWORD.TXT
 password.txt
+SECRETS.TXT
+secrets.txt
 *.pem
 *.key
 

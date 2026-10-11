@@ -1,19 +1,22 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import CampaignTable from '@/components/CampaignTable';
 import { CampaignWithStats } from '@/types/database';
-import { Plus, RotateCw } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface CampaignsLiveViewProps {
   initialCampaigns: CampaignWithStats[];
 }
 
 export default function CampaignsLiveView({ initialCampaigns }: CampaignsLiveViewProps) {
+  const { t, locale } = useTranslation();
   const [campaigns, setCampaigns] = useState<CampaignWithStats[]>(initialCampaigns);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const refreshData = useCallback(async () => {
     try {
@@ -42,49 +45,211 @@ export default function CampaignsLiveView({ initialCampaigns }: CampaignsLiveVie
     return () => clearInterval(interval);
   }, [refreshData]);
 
+  // Derived metrics
+  const totalCampaigns = campaigns.length;
+  const activeCampaigns = campaigns.filter((c) => c.status === 'active').length;
+  const totalPendingLeads = campaigns.reduce((acc, c) => acc + (c.pending_count || 0), 0);
+  const totalSent = campaigns.reduce((acc, c) => acc + (c.sent_count || 0), 0);
+
+  // Filtered campaigns
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter((c) => {
+      const matchesSearch =
+        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.subject_template && c.subject_template.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesStatus =
+        statusFilter === 'all' ||
+        c.status.toLowerCase() === statusFilter.toLowerCase();
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [campaigns, searchQuery, statusFilter]);
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-3">
-            <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1E]">Tutte le Campagne</h1>
-            <span className="inline-flex items-center space-x-1.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-medium rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Live Sync</span>
+    <div className="relative w-full overflow-hidden px-gutter pb-space-xl pt-space-md flex flex-col gap-space-lg">
+      {/* Decorative ambient glow */}
+      <div className="absolute top-0 right-1/4 -z-10 w-96 h-96 rounded-full bg-[#5cb855]/10 blur-3xl pointer-events-none"></div>
+
+      {/* Header Banner */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
+        <div className="flex flex-col max-w-2xl">
+          <div className="flex items-center gap-space-xs mb-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#5cb855]"></span>
+            <span className="font-label-sm text-label-sm uppercase tracking-widest text-[#5c5e63] font-semibold">
+              {t.campaigns.atelierConsole}
             </span>
+            <span className="text-[#a2a59e] text-xs">•</span>
+            <span className="font-label-sm text-label-sm text-[#5c5f59] font-medium">{t.common.appName}</span>
           </div>
-          <p className="text-sm text-[#666666] mt-0.5">Gestisci le tue campagne outbound</p>
+          <h1 className="font-headline-xl text-headline-xl text-[#1b1c1a] tracking-tight">{t.campaigns.title}</h1>
+          <p className="font-body-lg text-body-lg text-[#3f4a3c] mt-1">
+            {t.campaigns.subtitle}
+          </p>
         </div>
 
-        <div className="flex items-center space-x-2 self-start sm:self-auto">
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-space-sm">
+          <Link
+            href="/campaigns/new"
+            className="h-10 px-space-md rounded-lg bg-[#30312f] text-[#f2f0ed] hover:bg-[#5c5e63] transition-colors flex items-center gap-2 font-label-md text-label-md shadow-xs"
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            <span>{t.campaigns.newButton}</span>
+          </Link>
           <button
             onClick={() => refreshData()}
             disabled={isRefreshing}
-            className="inline-flex items-center space-x-1 px-3 py-2 border border-[#D8D2C8] bg-white text-[#1A1A1E] text-xs font-medium rounded hover:bg-[#F7F5F0] transition-colors shadow-sm disabled:opacity-50"
-            title="Aggiorna dati adesso"
+            className="h-10 px-space-md rounded-lg bg-[#f5f3f0] hover:bg-[#eae8e5] text-[#1b1c1a] transition-colors flex items-center gap-1.5 font-label-md text-label-md border border-[#e5e5e0] disabled:opacity-50"
+            title={t.campaigns.refresh}
+            type="button"
           >
-            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span>Aggiorna</span>
+            <span className={`material-symbols-outlined text-[16px] ${isRefreshing ? 'animate-spin' : ''}`}>
+              refresh
+            </span>
+            <span>{t.campaigns.refresh}</span>
           </button>
-
-          <Link
-            href="/campaigns/new"
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-[#1A1A1E] text-white text-sm font-medium rounded hover:bg-[#333333] transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nuova Campagna</span>
-          </Link>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex justify-end">
-          <span className="text-xs text-[#888888]">
-            Ultimo agg: {lastUpdated.toLocaleTimeString('it-IT')}
-          </span>
+      {/* 4 Metric Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+        {/* Metric 1: Campagne Totali */}
+        <div className="p-space-lg rounded-xl bg-[#ffffff] border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] flex flex-col justify-between gap-space-md relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="font-label-sm text-label-sm uppercase tracking-wider text-[#5c5e63] font-semibold">
+              {t.campaigns.totalCampaignsCard}
+            </span>
+            <span className="w-8 h-8 rounded-lg bg-[#f5f3f0] flex items-center justify-center text-[#1b1c1a]">
+              <span className="material-symbols-outlined text-[18px]">layers</span>
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-baseline gap-2">
+              <span className="font-metric-num text-metric-num text-[#1b1c1a]">{totalCampaigns}</span>
+              <span className="font-label-sm text-label-sm text-[#036e13] font-semibold">{t.campaigns.thisMonthIncrement}</span>
+            </div>
+            <div className="flex items-center gap-1 text-[#5c5e63] font-label-sm text-label-sm pt-1">
+              <span>{activeCampaigns} {t.campaigns.activeInDispatch}</span>
+            </div>
+          </div>
         </div>
-        <CampaignTable campaigns={campaigns} />
+
+        {/* Metric 2: In Esecuzione */}
+        <div className="p-space-lg rounded-xl bg-[#ffffff] border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] flex flex-col justify-between gap-space-md relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="font-label-sm text-label-sm uppercase tracking-wider text-[#5c5e63] font-semibold">
+              {t.campaigns.runningCard}
+            </span>
+            <span className="w-8 h-8 rounded-lg bg-[#f5f3f0] flex items-center justify-center text-[#036e13]">
+              <span className="material-symbols-outlined text-[18px]">sync</span>
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-baseline gap-2">
+              <span className="font-metric-num text-metric-num text-[#1b1c1a]">{activeCampaigns}</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ecf8eb] text-[#036e13] font-label-sm text-[10px] font-bold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#5cb855] animate-pulse"></span>
+                {t.campaigns.liveCadence}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 text-[#5c5e63] font-label-sm text-label-sm pt-1">
+              <span>{t.campaigns.intervalCadence}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Metric 3: Email Inviate */}
+        <div className="p-space-lg rounded-xl bg-[#ffffff] border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] flex flex-col justify-between gap-space-md relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="font-label-sm text-label-sm uppercase tracking-wider text-[#5c5e63] font-semibold">
+              {t.campaigns.sentTotalCard}
+            </span>
+            <span className="w-8 h-8 rounded-lg bg-[#f5f3f0] flex items-center justify-center text-[#036e13]">
+              <span className="material-symbols-outlined text-[18px]">mark_email_read</span>
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-baseline gap-2">
+              <span className="font-metric-num text-metric-num text-[#1b1c1a]">{totalSent}</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#ecf8eb] text-[#036e13] font-label-sm text-label-sm font-semibold">
+                {t.campaigns.deliveryRate}
+              </span>
+            </div>
+            <div className="w-full bg-[#f5f3f0] h-1.5 rounded-full overflow-hidden mt-1">
+              <div className="bg-[#5cb855] h-full rounded-full" style={{ width: '85%' }}></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Metric 4: In Coda / Attesa */}
+        <div className="p-space-lg rounded-xl bg-[#ffffff] border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] flex flex-col justify-between gap-space-md relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="font-label-sm text-label-sm uppercase tracking-wider text-[#5c5e63] font-semibold">
+              {t.campaigns.queuedCard}
+            </span>
+            <span className="w-8 h-8 rounded-lg bg-[#f5f3f0] flex items-center justify-center text-[#5c5e63]">
+              <span className="material-symbols-outlined text-[18px]">hourglass_top</span>
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-baseline gap-2">
+              <span className="font-metric-num text-metric-num text-[#1b1c1a]">{totalPendingLeads}</span>
+              <span className="font-label-sm text-label-sm text-[#5c5e63]">{t.campaigns.recipientUnit}</span>
+            </div>
+            <div className="flex items-center gap-1 text-[#5c5e63] font-label-sm text-label-sm pt-1">
+              <span className="material-symbols-outlined text-[14px] text-[#5c5f59]">shield_lock</span>
+              <span>{t.campaigns.hostingerSafeLimit}</span>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Filter, Search and Real-Time Bar */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-md p-space-sm rounded-xl bg-[#ffffff] border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.02)]">
+        <div className="flex flex-1 items-center gap-space-sm px-space-sm">
+          <span className="material-symbols-outlined text-[#5c5e63] text-[20px]">search</span>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-transparent text-[#1b1c1a] font-body-md text-body-md placeholder:text-[#a2a59e] focus:outline-none"
+            placeholder={t.campaigns.searchPlaceholder}
+            type="text"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-space-sm px-space-xs">
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-9 pl-3 pr-8 rounded-lg bg-[#f5f3f0] hover:bg-[#eae8e5] text-[#1b1c1a] font-label-md text-label-md border border-[#e5e5e0] appearance-none cursor-pointer focus:outline-none"
+            >
+              <option value="all">{t.campaigns.filterAll} ({campaigns.length})</option>
+              <option value="active">{t.campaigns.filterActive} ({campaigns.filter((c) => c.status === 'active').length})</option>
+              <option value="completed">{t.campaigns.filterCompleted} ({campaigns.filter((c) => c.status === 'completed').length})</option>
+              <option value="paused">{t.campaigns.filterPaused} ({campaigns.filter((c) => c.status === 'paused').length})</option>
+              <option value="draft">{t.campaigns.filterDraft} ({campaigns.filter((c) => c.status === 'draft').length})</option>
+            </select>
+            <span className="material-symbols-outlined text-[16px] text-[#5c5e63] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              expand_more
+            </span>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f5f3f0] text-[#5c5e63] font-label-sm text-label-sm border border-[#e5e5e0]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#5cb855]"></span>
+            <span>
+              {t.campaigns.lastUpdate}{' '}
+              <span className="font-semibold text-[#1b1c1a]">
+                {lastUpdated.toLocaleTimeString(locale === 'en' ? 'en-US' : 'it-IT')}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Campaign Data Table */}
+      <CampaignTable campaigns={filteredCampaigns} />
     </div>
   );
 }

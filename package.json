@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
+    "exceljs": "^4.4.0",
     "imapflow": "^2.2.11",
     "lucide-react": "^1.52.0",
     "luxon": "^3.7.2",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
+    "@types/exceljs": "^0.5.3",
     "@types/luxon": "^3.7.6",
     "@types/mailparser": "^3.9.0",
     "@types/node": "^20",

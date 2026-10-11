@@ -1,42 +1,80 @@
+'use client';
+
 import React from 'react';
 import { CampaignStatus, LeadStatus } from '@/types/database';
+import { useTranslation } from '@/lib/i18n/useTranslation';
 
 interface StatusBadgeProps {
   status: CampaignStatus | LeadStatus | string;
 }
 
 export default function StatusBadge({ status }: StatusBadgeProps) {
+  const { t } = useTranslation();
   const normalized = status.toLowerCase();
 
-  const getStyle = () => {
-    switch (normalized) {
-      case 'scheduled':
-        return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'active':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'sent':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'paused':
-      case 'retry':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'completed':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'sending':
-        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      case 'failed':
-        return 'bg-rose-50 text-rose-700 border-rose-200';
-      case 'draft':
-      case 'pending':
-      default:
-        return 'bg-neutral-100 text-neutral-700 border-[#D8D2C8]';
-    }
-  };
+  switch (normalized) {
+    case 'active':
+    case 'sending':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#ecf8eb] text-[#036e13] font-label-sm text-[10px] font-bold tracking-wider uppercase border border-[#5cb855]/30 shadow-2xs">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#5cb855] animate-pulse"></span>
+          <span>{normalized === 'sending' ? t.common.sending : t.common.active}</span>
+        </span>
+      );
 
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border uppercase tracking-wider ${getStyle()}`}
-    >
-      {status}
-    </span>
-  );
+    case 'completed':
+    case 'sent':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#dedfe5]/70 text-[#1b1c1a] font-label-sm text-[10px] font-semibold tracking-wider uppercase border border-[#bfcab8]">
+          <span className="material-symbols-outlined text-[13px] text-[#036e13]">check</span>
+          <span>{normalized === 'sent' ? t.common.sent : t.common.completed}</span>
+        </span>
+      );
+
+    case 'paused':
+    case 'retry':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#fff7ed] text-[#c2410c] font-label-sm text-[10px] font-semibold tracking-wider uppercase border border-[#ffedd5]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#c2410c]"></span>
+          <span>{normalized === 'retry' ? t.common.retry : t.common.paused}</span>
+        </span>
+      );
+
+    case 'failed':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#ffdad6] text-[#ba1a1a] font-label-sm text-[10px] font-bold tracking-wider uppercase border border-[#ffb4ab]">
+          <span className="material-symbols-outlined text-[13px] text-[#ba1a1a]">error</span>
+          <span>{t.common.failed}</span>
+        </span>
+      );
+
+    case 'scheduled':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#dedfe5] text-[#1b1c1a] font-label-sm text-[10px] font-semibold tracking-wider uppercase border border-[#bfcab8]">
+          <span className="material-symbols-outlined text-[13px] text-[#5c5e63]">schedule</span>
+          <span>{t.common.scheduled}</span>
+        </span>
+      );
+
+    case 'draft':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#f5f3f0] text-[#5c5e63] font-label-sm text-[10px] font-semibold tracking-wider uppercase border border-[#e5e5e0]">
+          <span>{t.common.draft}</span>
+        </span>
+      );
+
+    case 'pending':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#f5f3f0] text-[#5c5e63] font-label-sm text-[10px] font-semibold tracking-wider uppercase border border-[#e5e5e0]">
+          <span>{t.common.pending}</span>
+        </span>
+      );
+
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#f5f3f0] text-[#5c5e63] font-label-sm text-[10px] font-semibold tracking-wider uppercase border border-[#e5e5e0]">
+          <span>{status}</span>
+        </span>
+      );
+  }
 }

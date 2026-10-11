@@ -1,18 +1,22 @@
 ================================================================================
-ARKITECNA MAILER - OPERATIONAL INVENTORY & PROJECT SETTINGS
+MAIL-K (PRECISION OUTBOUND) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-09 16:12 +08:00
-Project / Application: ARKITECNA MAILER (V1)
+Last updated: 2026-10-11 12:13 +08:00
+Project / Application: MAIL-K (Precision Outbound)
 Repository: cesarenegro/-email_send
-Target URL / Deployment: https://emailbulk.vercel.app (Vercel Production)
+Target URL / Deployment: https://mailk.arkai.dev (Vercel Project: mail-k)
 
 1. SYSTEM ARCHITECTURE & RUNTIME
 --------------------------------------------------------------------------------
 Programming Language: TypeScript (^5.0.0) / JavaScript
 Framework: Next.js 16.4.0 (App Router, Turbopack)
 Runtime: Node.js v24.14.0 (Vercel Serverless)
-Styling: Tailwind CSS (^4.0.0) (Neutral palette: #F7F5F0 bg, #FFFFFF cards, #1A1A1E text, #D8D2C8 borders)
+Styling & Design System: Stitch 'Architectural Precision & Editorial Luxury' (Google Fonts Playfair Display & Plus Jakarta Sans, Material Symbols Outlined, Tailwind CSS v4, #FBF9F6 parchment canvas, #FFFFFF cards, #1B1C1A obsidian charcoal, #5CB855 botanical emerald, #036E13 primary)
 Package Manager: npm (11.9.0)
+Brand Assets & Favicon: Official MAIL-K icon (public/icon.png, public/logo.png, public/favicon.png, public/favicon.ico, app/icon.png, app/favicon.ico)
+Internationalization (i18n): 100% Full Bilingual System (Italian it-IT & English en-US) with typed dictionaries (lib/i18n/types.ts, lib/i18n/locales/it.ts, lib/i18n/locales/en.ts), LanguageProvider, LanguageSwitcher, and reactive cookie/localStorage persistence.
+Public Routes: /landing (Editorial Outbound Landing Page), /login (Desktop Split-Screen Welcome & Supabase Auth Console)
+Interactive Modals: LoginModal (Stitch Login Pop-up with backdrop blur, Google / Facebook SSO, and Supabase authentication)
 
 2. DATABASE & BACKEND SERVICES
 --------------------------------------------------------------------------------
@@ -76,13 +80,25 @@ Allowed Days: Monday through Friday (sending window evaluated in campaign local 
 
 6. LIBRARIES & UTILITIES
 --------------------------------------------------------------------------------
+Excel Spreadsheet: ExcelJS (^4.4.0) (server-side XLSX generator, custom column widths, formula injection protection)
 CSV Parsing: PapaParse (^5.5.0) (header mapping, BOM/semicolon support, deduplication)
 IMAP Client: ImapFlow (^2.2.11) (TLS stream, mailbox locking, peek fetching)
 Mail Parser: Mailparser (^3.9.37) (RFC MIME multipart and DSN attachment extraction)
 Validation: Zod (^3.24.0) (runtime validation for schemas & payloads)
 Icons: Lucide React (^0.479.0) (lightweight clean icons)
 
-7. REQUIRED ENVIRONMENT VARIABLE NAMES (NO SECRETS STORED HERE)
+7. B2B LEAD RESEARCH ENGINE (NEW MODULE)
+--------------------------------------------------------------------------------
+Services / SKU:
+  - Ricerca M: $19 USD (Automated, Combined API Limit: $5.00 USD / 5,000,000 µUSD)
+  - Ricerca XL: $49 USD (Automated, Combined API Limit: $15.00 USD / 15,000,000 µUSD)
+  - Ricerca AD-HOC: $89 USD (Human staff research, 24h SLA from accepted_at, 100% human verification gate)
+Search Provider: Tavily API (Search & Extract endpoints, server-only)
+Extractor Model: OpenAI API (Structured data extraction with source URLs, server-only)
+Atomic Budget Engine: reserve_lead_research_budget and reconcile_lead_research_budget RPCs in micro-USD
+Worker Endpoint: POST /api/cron/lead-research (isolated step worker, Bearer authenticated)
+
+8. REQUIRED ENVIRONMENT VARIABLE NAMES (NO SECRETS STORED HERE)
 --------------------------------------------------------------------------------
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -103,12 +119,19 @@ IMAP_PASS
 CRON_SECRET
 NEXT_PUBLIC_APP_NAME
 NEXT_PUBLIC_APP_URL
+OPENAI_API_KEY
+TAVILY_API_KEY
+LEAD_RESEARCH_ENABLED
+LEAD_RESEARCH_OPENAI_MODEL
+LEAD_RESEARCH_PRICING_VERSION
 
-================================================================================
+===============================================================================
 CRITICAL OPERATIONAL RULES & SCOPE LOCK:
-- NO CRM, NO lead scoring, NO AI, NO tracking pixels, NO redirect tracking
+- NO CRM, NO lead scoring, NO tracking pixels, NO redirect tracking
+- NO AI in campaigns, newsletters, SMTP, or IMAP bounce monitoring (AI is strictly isolated to /lead-research)
 - NO mass-send / batch send endpoint
 - Atomic lead claiming via PostgreSQL to prevent duplicate sends
 - Read-only IMAP bounce detection: protezione \Seen basata su EXAMINE e BODY.PEEK[], con guardia difensiva se read-only non confermato
-- Plain text / HTML template personalization: {{companyName}}, {{azienda}}, {{NOME_AZIENDA}}, {{email}} (case-insensitive & whitespace-tolerant)
-================================================================================
+- Plain text / HTML template personalization: {{companyName}}, {{azienda}}, {{NOME_AZIENDA}}, {{email}}
+- Zero invented data in Lead Research: null returned if field is not supported by source evidence
+===============================================================================
