@@ -324,7 +324,8 @@ export interface Translations {
     intervalCadence: string;
     deliveryRate: string;
     recipientUnit: string;
-    hostingerSafeLimit: string;
+    gestorMailSafeLimit: string;
+    hostingerSafeLimit?: string;
     lastUpdate: string;
     colName: string;
     colStatus: string;

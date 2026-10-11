@@ -40,14 +40,14 @@ Stored Procedures / RPCs:
 
 3. EMAIL DELIVERY (SMTP)
 --------------------------------------------------------------------------------
-SMTP Provider: Hostinger
+SMTP Provider: Gestor Mail
 Host: smtp.hostinger.com
 Port: 465
 Security: SSL/TLS (SMTP_SECURE=true)
 Library: Nodemailer (^6.10.0)
 Default Sender Identity: Configurable via /settings (saved in public.app_settings with fallback to env)
 Configured Sender Name: Stefano Martini | ARKITECNA
-Configured Sender Email: info@arkitecna.com (Hostinger alias supported over master SMTP authentication)
+Configured Sender Email: info@arkitecna.com (Gestor Mail alias supported over master SMTP authentication)
 Configured Reply-To: info@arkitecna.com
 Concurrency: Strictly 1 outbound email globally per cron execution
 Minimum Interval: 60 seconds (default 240 seconds / 4 minutes)
@@ -56,7 +56,7 @@ Immediate Dispatch: POST /api/campaigns/[id]/send-now (manual immediate send byp
 
 4. BOUNCE MONITORING & DELIVERY STATUS NOTIFICATIONS (IMAP)
 --------------------------------------------------------------------------------
-IMAP Provider: Hostinger
+IMAP Provider: Gestor Mail
 Host: imap.hostinger.com (IMAP_HOST)
 Port: 993 (SSL/TLS, IMAP_PORT)
 Mode: Strictly Read-Only (apertura casella con comando IMAP EXAMINE e download contenuti con BODY.PEEK[], con guardia a runtime su mailbox.readOnly; non imposta il flag \Seen)

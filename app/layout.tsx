@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     'outbound b2b',
     'precision dispatch',
     'email deliverability',
-    'hostinger smtp relay',
+    'gestor mail smtp relay',
     'staggered sending',
     'newsletter editoriale',
     'b2b lead intelligence',

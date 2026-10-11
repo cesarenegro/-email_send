@@ -34,7 +34,7 @@ export default function UserGuidePage() {
               <span>✓</span> Zero Tracking Pixels & Zero Link Redirects
             </div>
             <p className="text-[#5c5e63]">
-              I filtri anti-spam moderni (Google Workspace, Microsoft 365) penalizzano le email che contengono pixel invisibili di apertura o link riscritti. MAIL-K spedisce email 100% genuine dal tuo server SMTP Hostinger, identiche a quelle scritte a mano da un client di posta.
+              I filtri anti-spam moderni (Google Workspace, Microsoft 365) penalizzano le email che contengono pixel invisibili di apertura o link riscritti. MAIL-K spedisce email 100% genuine dal tuo server SMTP Gestor Mail, identiche a quelle scritte a mano da un client di posta.
             </p>
           </div>
           <ul className="list-disc pl-5 text-sm text-[#5c5e63] space-y-1.5">
@@ -54,7 +54,7 @@ export default function UserGuidePage() {
               <span>✓</span> Zero Tracking Pixels & Zero Link Redirects
             </div>
             <p className="text-[#5c5e63]">
-              Modern spam filters (Google Workspace, Microsoft 365) penalize emails containing tracking pixels or rewritten URLs. MAIL-K dispatches 100% genuine emails directly through your Hostinger SMTP, indistinguishable from hand-typed messages.
+              Modern spam filters (Google Workspace, Microsoft 365) penalize emails containing tracking pixels or rewritten URLs. MAIL-K dispatches 100% genuine emails directly through your Gestor Mail SMTP, indistinguishable from hand-typed messages.
             </p>
           </div>
           <ul className="list-disc pl-5 text-sm text-[#5c5e63] space-y-1.5">
@@ -299,13 +299,13 @@ export default function UserGuidePage() {
     },
     {
       id: 'cap-6',
-      titleIt: '6. Monitoraggio Bounce & IMAP Hostinger',
-      titleEn: '6. Bounce Tracking & Hostinger IMAP',
+      titleIt: '6. Monitoraggio Bounce & IMAP Gestor Mail',
+      titleEn: '6. Bounce Tracking & Gestor Mail IMAP',
       badge: 'Diagnostica',
       contentIt: (
         <div className="space-y-4">
           <p>
-            MAIL-K dialoga con la casella Hostinger (<code>imap.hostinger.com:993</code>) per individuare automaticamente le email non recapitate.
+            MAIL-K dialoga con la casella Gestor Mail (<code>imap.gestormail.com:993</code>) per individuare automaticamente le email non recapitate.
           </p>
           <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-950 space-y-1.5">
             <div className="font-bold uppercase tracking-wider">Garanzia di Sicurezza Read-Only:</div>
@@ -321,7 +321,7 @@ export default function UserGuidePage() {
       contentEn: (
         <div className="space-y-4">
           <p>
-            MAIL-K connects to your Hostinger mailbox (<code>imap.hostinger.com:993</code>) to monitor undelivered bounce notifications automatically.
+            MAIL-K connects to your Gestor Mail mailbox (<code>imap.gestormail.com:993</code>) to monitor undelivered bounce notifications automatically.
           </p>
           <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-950 space-y-1.5">
             <div className="font-bold uppercase tracking-wider">Strict Read-Only Guarantee:</div>
@@ -347,7 +347,7 @@ export default function UserGuidePage() {
           </p>
           <ul className="list-disc pl-5 text-sm text-[#5c5e63] space-y-2">
             <li><strong>Le email non partono:</strong> Verifica che la campagna sia in stato "Attiva" e non "In Pausa". Controlla l'orario locale (se sono le 20:00 o è weekend, il sistema è in pausa programmata per deliverability).</li>
-            <li><strong>Errore SMTP/IMAP:</strong> Dalla pagina <code>/settings</code> esegui "Verifica Connessione SMTP" e "Verifica Connessione IMAP" per confermare le credenziali di Hostinger.</li>
+            <li><strong>Errore SMTP/IMAP:</strong> Dalla pagina <code>/settings</code> esegui "Verifica Connessione SMTP" e "Verifica Connessione IMAP" per confermare le credenziali di Gestor Mail.</li>
             <li><strong>Caricamento CSV:</strong> Assicurati che il file sia salvato in formato UTF-8 e che la colonna delle email sia priva di caratteri speciali anomali.</li>
           </ul>
           <div className="pt-2">

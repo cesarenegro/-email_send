@@ -199,7 +199,7 @@ export default function CampaignsLiveView({ initialCampaigns }: CampaignsLiveVie
             </div>
             <div className="flex items-center gap-1 text-[#5c5e63] font-label-sm text-label-sm pt-1">
               <span className="material-symbols-outlined text-[14px] text-[#5c5f59]">shield_lock</span>
-              <span>{t.campaigns.hostingerSafeLimit}</span>
+              <span>{t.campaigns.gestorMailSafeLimit || t.campaigns.hostingerSafeLimit}</span>
             </div>
           </div>
         </div>

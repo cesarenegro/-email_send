@@ -17,7 +17,7 @@ CAPITOLO 03: IL CRUSCOTTO OPERATIVO HUB (LIVE VIEW)
 CAPITOLO 04: MODULO 1 — CAMPAGNE OUTBOUND A SPEDIZIONE SCAGLIONATA
 CAPITOLO 05: MODULO 2 — NEWSLETTER EDITORIALI PROGRAMMATE
 CAPITOLO 06: MODULO 3 — B2B LEAD INTELLIGENCE & RICERCA MERCATO (M, XL, AD-HOC)
-CAPITOLO 07: MONITORAGGIO BOUNCE & DIAGNOSTICA IMAP HOSTINGER
+CAPITOLO 07: MONITORAGGIO BOUNCE & DIAGNOSTICA IMAP GESTOR MAIL
 CAPITOLO 08: CONFIGURAZIONE MITTENTE, SMTP RELAY E IMPOSTAZIONI SERVER
 CAPITOLO 09: MOTORE DI SCHEDULAZIONE, FUSI ORARI E DELIVERABILITY B2B
 CAPITOLO 10: RISOLUZIONE DEI PROBLEMI (TROUBLESHOOTING) & CODICI DI ERRORE
@@ -184,11 +184,11 @@ I risultati possono essere scaricati in un clic:
   la Formula Injection (sanitizzazione di caratteri =, +, -, @ iniziali).
 
 ================================================================================
-CAPITOLO 07: MONITORAGGIO BOUNCE & DIAGNOSTICA IMAP HOSTINGER
+CAPITOLO 07: MONITORAGGIO BOUNCE & DIAGNOSTICA IMAP GESTOR MAIL
 ================================================================================
 
 7.1 SICUREZZA ASSOLUTA: ACCESSO RIGOROSAMENTE READ-ONLY
-Il modulo IMAP di MAIL-K accede alla casella Hostinger (imap.hostinger.com:993 SSL)
+Il modulo IMAP di MAIL-K accede alla casella Gestor Mail (imap.gestormail.com:993 SSL)
 utilizzando il comando di basso livello EXAMINE (anziché SELECT) e scarica i
 messaggi tramite BODY.PEEK[].
 Questo garantisce che:
@@ -211,7 +211,7 @@ CAPITOLO 08: CONFIGURAZIONE MITTENTE, SMTP RELAY E IMPOSTAZIONI
 Dalla sezione Impostazioni (/settings), l'operatore può:
 1. Personalizzare l'Identità del Mittente:
    - Nome visualizzato (es. "Stefano Martini | ARKITECNA")
-   - Email di invio (deve corrispondere all'account o alias SMTP Hostinger)
+   - Email di invio (deve corrispondere all'account o alias SMTP Gestor Mail)
    - Indirizzo Reply-To per la ricezione delle risposte dei prospect.
 2. Eseguire il Test Connessione SMTP:
    - Verifica in tempo reale dell'handshake TLS e dell'autenticazione sulla porta 465.
@@ -248,8 +248,8 @@ CAPITOLO 10: RISOLUZIONE DEI PROBLEMI & CODICI DI ERRORE
   sia presente nelle impostazioni autorizzate del provider.
 
 10.2 ERRORE "AUTHENTICATION FAILED" SU SMTP O IMAP
-- Causa: Password errata o scaduta sulla casella Hostinger.
-  Soluzione: Accedere a hPanel di Hostinger, generare una nuova password per la
+- Causa: Password errata o scaduta sulla casella Gestor Mail.
+  Soluzione: Accedere a hPanel di Gestor Mail, generare una nuova password per la
   casella e aggiornarla nei segreti di ambiente o in Impostazioni.
 
 10.3 LE EMAIL NON PARTONO
