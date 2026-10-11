@@ -442,8 +442,8 @@ export default function LandingPage() {
                       {t.landing.pillars.pillar1Description}
                     </p>
                   </div>
-                  <div className="mt-6 pt-3 bg-[#f5f3f0] p-3 rounded-lg text-xs font-mono text-[#6f7a6b]">
-                    jitter_span: random(120, 380) ± 15%
+                  <div className="mt-6 pt-3 bg-[#f5f3f0] p-3 rounded-lg text-xs font-medium text-[#1b1c1a]">
+                    {t.landing.pillars.pillar1Footer}
                   </div>
                 </div>
 
@@ -463,8 +463,8 @@ export default function LandingPage() {
                       {t.landing.pillars.pillar2Description}
                     </p>
                   </div>
-                  <div className="mt-6 pt-3 bg-[#f5f3f0] p-3 rounded-lg text-xs font-mono text-[#6f7a6b]">
-                    fallback_strategy: auto_abort_on_null
+                  <div className="mt-6 pt-3 bg-[#f5f3f0] p-3 rounded-lg text-xs font-medium text-[#1b1c1a]">
+                    {t.landing.pillars.pillar2Footer}
                   </div>
                 </div>
 
@@ -484,8 +484,8 @@ export default function LandingPage() {
                       {t.landing.pillars.pillar3Description}
                     </p>
                   </div>
-                  <div className="mt-6 pt-3 bg-[#f5f3f0] p-3 rounded-lg text-xs font-mono text-[#6f7a6b]">
-                    topology: multi_mta_shared_reputation
+                  <div className="mt-6 pt-3 bg-[#f5f3f0] p-3 rounded-lg text-xs font-medium text-[#1b1c1a]">
+                    {t.landing.pillars.pillar3Footer}
                   </div>
                 </div>
               </div>
@@ -566,70 +566,192 @@ export default function LandingPage() {
             </div>
           </section>
 
-          {/* SOCIAL PROOF / CASE STUDY */}
+          {/* SOCIAL PROOF / CASE STUDIES */}
           <section className="w-full py-16 lg:py-24">
-            <div className="max-w-[1280px] mx-auto bg-[#efeeeb] rounded-2xl p-8 sm:p-12 border border-[#eae8e5] shadow-xs relative overflow-hidden">
-              <span className="material-symbols-outlined text-[140px] text-[#dbdad7]/40 absolute -top-10 -right-6 select-none pointer-events-none">
-                format_quote
-              </span>
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                {/* Director Portrait Image */}
-                <div className="lg:col-span-4">
-                  <div className="w-full h-80 rounded-xl overflow-hidden shadow-md border border-white">
-                    <img
-                      alt="Stefano Martini portrait"
-                      className="w-full h-full object-cover"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqslr7DKGddg4ioMyPShSEmXHUBn_QAcUipr1W9O1iAQKCPRwvh5R0ijiTsah3qimKyclBTWOXu6CX8kehrR-j1uPGQMtEDFMBbSvpnT92o52Eu8ZRC6J7mXI48vvCvICeACrlc8eHdBX32qBFzx07Lb-6bxbsEWdqeITRVzagZyby-cIP2HCAYeQufY8l8rEZapLp47bNtk2eed8QoaJ7v_vgm8iBTLAzhSnv_PY8cLIvzSXVHmAS"
-                    />
+            <div className="max-w-[1280px] mx-auto">
+              <div className="text-center max-w-2xl mx-auto mb-12">
+                <span className="font-label-sm text-xs text-[#036e13] uppercase font-bold tracking-widest block mb-2">
+                  {t.landing.caseStudies.sectionBadge}
+                </span>
+                <h2 className="font-headline-xl text-3xl sm:text-4xl text-[#1b1c1a] font-bold">
+                  {t.landing.caseStudies.title}
+                </h2>
+                <p className="font-body-md text-base text-[#5c5e63] mt-3">
+                  {t.landing.caseStudies.subtitle}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Case 1: Stefano Martini */}
+                <div className="flex flex-col justify-between bg-[#efeeeb] rounded-2xl p-7 sm:p-8 border border-[#eae8e5] shadow-xs hover:shadow-md transition-all duration-300">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-0.5 text-[#036e13]">
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                      </div>
+                      <span className="font-label-sm text-[10px] text-[#036e13] bg-[#5cb855]/20 border border-[#5cb855]/30 uppercase px-2 py-0.5 rounded-full font-bold">
+                        {t.landing.caseStudies.item1.badge}
+                      </span>
+                    </div>
+
+                    <blockquote className="font-body-lg text-sm sm:text-base text-[#1b1c1a] italic leading-relaxed mb-6">
+                      &ldquo;{t.landing.caseStudies.item1.quote}&rdquo;
+                    </blockquote>
+
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-11 h-11 rounded-full overflow-hidden border border-white shadow-xs shrink-0">
+                        <img
+                          alt={t.landing.caseStudies.item1.author}
+                          className="w-full h-full object-cover"
+                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqslr7DKGddg4ioMyPShSEmXHUBn_QAcUipr1W9O1iAQKCPRwvh5R0ijiTsah3qimKyclBTWOXu6CX8kehrR-j1uPGQMtEDFMBbSvpnT92o52Eu8ZRC6J7mXI48vvCvICeACrlc8eHdBX32qBFzx07Lb-6bxbsEWdqeITRVzagZyby-cIP2HCAYeQufY8l8rEZapLp47bNtk2eed8QoaJ7v_vgm8iBTLAzhSnv_PY8cLIvzSXVHmAS"
+                        />
+                      </div>
+                      <div>
+                        <span className="font-title-sm text-sm text-[#1b1c1a] block font-bold">
+                          {t.landing.caseStudies.item1.author}
+                        </span>
+                        <span className="font-body-md text-xs text-[#5c5e63]">
+                          {t.landing.caseStudies.item1.role}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-[#eae8e5] text-center bg-white/70 p-3 rounded-xl">
+                    <div>
+                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item1.metric1Value}</span>
+                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
+                        {t.landing.caseStudies.item1.metric1Label}
+                      </span>
+                    </div>
+                    <div className="border-x border-[#eae8e5]">
+                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item1.metric2Value}</span>
+                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
+                        {t.landing.caseStudies.item1.metric2Label}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-metric-num text-lg font-bold text-[#036e13] block">{t.landing.caseStudies.item1.metric3Value}</span>
+                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
+                        {t.landing.caseStudies.item1.metric3Label}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Quote Content */}
-                <div className="lg:col-span-8 flex flex-col justify-center">
-                  <div className="flex items-center gap-1 text-[#036e13] mb-3">
-                    <span className="material-symbols-outlined text-[18px]">star</span>
-                    <span className="material-symbols-outlined text-[18px]">star</span>
-                    <span className="material-symbols-outlined text-[18px]">star</span>
-                    <span className="material-symbols-outlined text-[18px]">star</span>
-                    <span className="material-symbols-outlined text-[18px]">star</span>
-                    <span className="font-label-sm text-xs text-[#6f7a6b] ml-2 uppercase tracking-widest font-semibold">
-                      {t.landing.caseStudy.badge}
-                    </span>
-                  </div>
-
-                  <blockquote className="font-headline-lg text-2xl sm:text-3xl text-[#1b1c1a] italic leading-snug mb-6">
-                    &ldquo;{t.landing.caseStudy.quote}&rdquo;
-                  </blockquote>
-
+                {/* Case 2: Corporate & Legal (NDA) */}
+                <div className="flex flex-col justify-between bg-[#efeeeb] rounded-2xl p-7 sm:p-8 border border-[#eae8e5] shadow-xs hover:shadow-md transition-all duration-300">
                   <div>
-                    <span className="font-title-sm text-base text-[#1b1c1a] block font-bold">
-                      {t.landing.caseStudy.author}
-                    </span>
-                    <span className="font-body-md text-xs text-[#5c5e63]">
-                      {t.landing.caseStudy.role}
-                    </span>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-0.5 text-[#036e13]">
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                      </div>
+                      <span className="font-label-sm text-[10px] text-[#6f7a6b] bg-[#dfdeda] border border-[#cfceca] uppercase px-2 py-0.5 rounded-full font-bold">
+                        {t.landing.caseStudies.item2.badge}
+                      </span>
+                    </div>
+
+                    <blockquote className="font-body-lg text-sm sm:text-base text-[#1b1c1a] italic leading-relaxed mb-6">
+                      &ldquo;{t.landing.caseStudies.item2.quote}&rdquo;
+                    </blockquote>
+
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-11 h-11 rounded-full bg-[#1c1e1c] text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+                        <span className="material-symbols-outlined text-[20px] text-[#5cb855]">gavel</span>
+                      </div>
+                      <div>
+                        <span className="font-title-sm text-sm text-[#1b1c1a] block font-bold">
+                          {t.landing.caseStudies.item2.author}
+                        </span>
+                        <span className="font-body-md text-xs text-[#5c5e63]">
+                          {t.landing.caseStudies.item2.role}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Highlight Metric Badges */}
-                  <div className="flex flex-wrap gap-6 mt-6 pt-6 bg-white/80 p-4 rounded-xl border border-white">
+                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-[#eae8e5] text-center bg-white/70 p-3 rounded-xl">
                     <div>
-                      <span className="font-metric-num text-2xl font-bold text-[#1b1c1a] block">+412%</span>
-                      <span className="font-label-sm text-xs text-[#6f7a6b] uppercase tracking-wider">
-                        {t.landing.caseStudy.metric1Label}
+                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item2.metric1Value}</span>
+                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
+                        {t.landing.caseStudies.item2.metric1Label}
                       </span>
                     </div>
-                    <div className="w-px h-10 bg-[#eae8e5] my-auto" />
-                    <div>
-                      <span className="font-metric-num text-2xl font-bold text-[#1b1c1a] block">0</span>
-                      <span className="font-label-sm text-xs text-[#6f7a6b] uppercase tracking-wider">
-                        {t.landing.caseStudy.metric2Label}
+                    <div className="border-x border-[#eae8e5]">
+                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item2.metric2Value}</span>
+                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
+                        {t.landing.caseStudies.item2.metric2Label}
                       </span>
                     </div>
-                    <div className="w-px h-10 bg-[#eae8e5] my-auto" />
                     <div>
-                      <span className="font-metric-num text-2xl font-bold text-[#036e13] block">€ 1.8M</span>
-                      <span className="font-label-sm text-xs text-[#6f7a6b] uppercase tracking-wider">
-                        {t.landing.caseStudy.metric3Label}
+                      <span className="font-metric-num text-lg font-bold text-[#036e13] block">{t.landing.caseStudies.item2.metric3Value}</span>
+                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
+                        {t.landing.caseStudies.item2.metric3Label}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Case 3: Elena Morandi */}
+                <div className="flex flex-col justify-between bg-[#efeeeb] rounded-2xl p-7 sm:p-8 border border-[#eae8e5] shadow-xs hover:shadow-md transition-all duration-300">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-0.5 text-[#036e13]">
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                        <span className="material-symbols-outlined text-[16px]">star</span>
+                      </div>
+                      <span className="font-label-sm text-[10px] text-[#036e13] bg-[#5cb855]/20 border border-[#5cb855]/30 uppercase px-2 py-0.5 rounded-full font-bold">
+                        {t.landing.caseStudies.item3.badge}
+                      </span>
+                    </div>
+
+                    <blockquote className="font-body-lg text-sm sm:text-base text-[#1b1c1a] italic leading-relaxed mb-6">
+                      &ldquo;{t.landing.caseStudies.item3.quote}&rdquo;
+                    </blockquote>
+
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-11 h-11 rounded-full bg-[#efeeeb] text-[#036e13] border border-[#bfcab8] flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+                        <span className="material-symbols-outlined text-[20px]">architecture</span>
+                      </div>
+                      <div>
+                        <span className="font-title-sm text-sm text-[#1b1c1a] block font-bold">
+                          {t.landing.caseStudies.item3.author}
+                        </span>
+                        <span className="font-body-md text-xs text-[#5c5e63]">
+                          {t.landing.caseStudies.item3.role}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-[#eae8e5] text-center bg-white/70 p-3 rounded-xl">
+                    <div>
+                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item3.metric1Value}</span>
+                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
+                        {t.landing.caseStudies.item3.metric1Label}
+                      </span>
+                    </div>
+                    <div className="border-x border-[#eae8e5]">
+                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item3.metric2Value}</span>
+                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
+                        {t.landing.caseStudies.item3.metric2Label}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-metric-num text-lg font-bold text-[#036e13] block">{t.landing.caseStudies.item3.metric3Value}</span>
+                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
+                        {t.landing.caseStudies.item3.metric3Label}
                       </span>
                     </div>
                   </div>

@@ -120,12 +120,15 @@ export interface Translations {
       pillar1Badge: string;
       pillar1Title: string;
       pillar1Description: string;
+      pillar1Footer: string;
       pillar2Badge: string;
       pillar2Title: string;
       pillar2Description: string;
+      pillar2Footer: string;
       pillar3Badge: string;
       pillar3Title: string;
       pillar3Description: string;
+      pillar3Footer: string;
     };
     deliverability: {
       relayBadge: string;
@@ -149,14 +152,46 @@ export interface Translations {
       lossyCompression: string;
       losslessPhotorealistic: string;
     };
-    caseStudy: {
-      badge: string;
-      quote: string;
-      author: string;
-      role: string;
-      metric1Label: string;
-      metric2Label: string;
-      metric3Label: string;
+    caseStudies: {
+      sectionBadge: string;
+      title: string;
+      subtitle: string;
+      item1: {
+        badge: string;
+        quote: string;
+        author: string;
+        role: string;
+        metric1Value: string;
+        metric1Label: string;
+        metric2Value: string;
+        metric2Label: string;
+        metric3Value: string;
+        metric3Label: string;
+      };
+      item2: {
+        badge: string;
+        quote: string;
+        author: string;
+        role: string;
+        metric1Value: string;
+        metric1Label: string;
+        metric2Value: string;
+        metric2Label: string;
+        metric3Value: string;
+        metric3Label: string;
+      };
+      item3: {
+        badge: string;
+        quote: string;
+        author: string;
+        role: string;
+        metric1Value: string;
+        metric1Label: string;
+        metric2Value: string;
+        metric2Label: string;
+        metric3Value: string;
+        metric3Label: string;
+      };
     };
     cta: {
       badge: string;
