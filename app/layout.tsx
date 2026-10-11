@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: '%s | MAIL-K',
   },
   description:
-    'Protocollo di orchestrazione newsletter e dispatch outbound B2B ad alta precisione per aziende, studi professionali e brand d’eccellenza. Zero spam, recapito garantito in casella principale.',
+    'Orchestrazione outbound B2B e newsletter ad alta precisione per brand e studi d’eccellenza. Zero spam, recapito garantito in casella principale.',
   keywords: [
     'outbound b2b',
     'precision dispatch',
