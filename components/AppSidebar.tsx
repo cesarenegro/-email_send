@@ -58,8 +58,7 @@ export default function AppSidebar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
+    window.location.href = '/landing';
   };
 
   if (pathname === '/login') {
