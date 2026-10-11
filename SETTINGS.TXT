@@ -141,7 +141,9 @@ Google Search Console Verification:
 Bing Webmaster Tools Verification:
   - 1-Click Import directly from Google Search Console (Recommended, syncs sitemaps and verification instantly)
   - Meta Tag support: msvalidate.01 via NEXT_PUBLIC_BING_SITE_VERIFICATION in app/layout.tsx
-  - Static XML verification: public/BingSiteAuth.xml (if manual verification is chosen)
+  - Static XML verification: public/BingSiteAuth.xml (token: FFA8F28CC8F933190405508FC822C30C)
+  - IndexNow Protocol: Instant real-time URL push to Bing & Yandex
+  - IndexNow Key Files: public/91c39ba1a4cd4472be1973df35f46759.txt & public/01be68e154644f7fa501e9d99ec924a0.txt
 
 ===============================================================================
 CRITICAL OPERATIONAL RULES & SCOPE LOCK:

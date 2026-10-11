@@ -18,6 +18,8 @@ export default function robots(): MetadataRoute.Robots {
           '/favicon.ico',
           '/google553873ac7a4cf4f1.html',
           '/BingSiteAuth.xml',
+          '/01be68e154644f7fa501e9d99ec924a0.txt',
+          '/91c39ba1a4cd4472be1973df35f46759.txt',
         ],
         disallow: [
           '/api/',
