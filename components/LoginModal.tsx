@@ -462,6 +462,25 @@ export default function LoginModal({ isOpen, onClose, initialMode = 'signin', in
             <span className="material-symbols-outlined text-[14px]">lock</span>
             <span>{t.auth.securityFooter}</span>
           </div>
+          <div className="flex items-center justify-center gap-3 text-[#6f7a6b] font-label-sm text-[10px] mt-0.5">
+            <a
+              href="https://arkai.dev/app/PPmailk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[#1b1c1a] hover:underline"
+            >
+              Privacy Policy
+            </a>
+            <span>•</span>
+            <a
+              href="https://arkai.dev/app/TSmailk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[#1b1c1a] hover:underline"
+            >
+              Termini di Servizio
+            </a>
+          </div>
         </div>
       </div>
     </div>

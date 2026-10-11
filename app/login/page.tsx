@@ -677,7 +677,7 @@ function LoginFormContent() {
             )}
 
             {/* Compliance & Security Trust Banner */}
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
               <div className="flex items-start space-x-3 text-[#5c5e63] bg-[#f5f3f0] border border-[#bfcab8]/30 p-4 rounded-xl">
                 <span className="material-symbols-outlined text-xl text-[#036e13] shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
                   shield
@@ -685,6 +685,25 @@ function LoginFormContent() {
                 <p className="font-label-sm text-xs text-[#5c5e63] leading-relaxed">
                   {t.auth.securityFooter}
                 </p>
+              </div>
+              <div className="flex items-center justify-center gap-3 text-[#6f7a6b] font-label-sm text-[11px] pt-1">
+                <a
+                  href="https://arkai.dev/app/PPmailk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#1b1c1a] hover:underline"
+                >
+                  Privacy Policy
+                </a>
+                <span>•</span>
+                <a
+                  href="https://arkai.dev/app/TSmailk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#1b1c1a] hover:underline"
+                >
+                  Termini di Servizio
+                </a>
               </div>
             </div>
           </div>

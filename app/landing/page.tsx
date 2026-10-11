@@ -763,13 +763,23 @@ export default function LandingPage() {
               {t.landing.footer.rights}
             </span>
             <div className="flex items-center gap-6">
-              <a href="#privacy" className="font-label-sm text-[11px] text-[#6f7a6b] hover:text-[#1b1c1a] uppercase tracking-wider transition-colors">
+              <a
+                href="https://arkai.dev/app/PPmailk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-label-sm text-[11px] text-[#6f7a6b] hover:text-[#1b1c1a] uppercase tracking-wider transition-colors"
+              >
                 {t.landing.footer.privacyPolicy}
               </a>
-              <a href="#termini" className="font-label-sm text-[11px] text-[#6f7a6b] hover:text-[#1b1c1a] uppercase tracking-wider transition-colors">
+              <a
+                href="https://arkai.dev/app/TSmailk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-label-sm text-[11px] text-[#6f7a6b] hover:text-[#1b1c1a] uppercase tracking-wider transition-colors"
+              >
                 {t.landing.footer.termsOfService}
               </a>
-              <a href="#rete" className="font-label-sm text-[11px] text-[#6f7a6b] hover:text-[#1b1c1a] uppercase tracking-wider transition-colors">
+              <a href="#caratteristiche" className="font-label-sm text-[11px] text-[#6f7a6b] hover:text-[#1b1c1a] uppercase tracking-wider transition-colors">
                 {t.landing.footer.networkArchitecture}
               </a>
             </div>
