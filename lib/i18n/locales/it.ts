@@ -169,7 +169,7 @@ export const it: Translations = {
         metric1Label: 'Tasso di Risposta Qualificata',
         metric2Value: '0',
         metric2Label: 'Segnalazioni Spam / Blacklist',
-        metric3Value: '€ 1.8M',
+        metric3Value: '€ 342K',
         metric3Label: 'Nuove Commesse Generate',
       },
       item2: {
@@ -193,7 +193,7 @@ export const it: Translations = {
         metric1Label: 'Tasso di Apertura Reale',
         metric2Value: '48s',
         metric2Label: 'Tempo Medio di Lettura',
-        metric3Value: '€ 740K',
+        metric3Value: '€ 82K',
         metric3Label: 'Nuovi Contratti Chiusi',
       },
     },

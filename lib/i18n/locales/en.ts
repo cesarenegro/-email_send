@@ -169,7 +169,7 @@ export const en: Translations = {
         metric1Label: 'Qualified Response Rate',
         metric2Value: '0',
         metric2Label: 'Spam / Blacklist Reports',
-        metric3Value: '€ 1.8M',
+        metric3Value: '€ 342K',
         metric3Label: 'New Revenue Generated',
       },
       item2: {
@@ -193,7 +193,7 @@ export const en: Translations = {
         metric1Label: 'Real Open Rate',
         metric2Value: '48s',
         metric2Label: 'Average Reading Time',
-        metric3Value: '€ 740K',
+        metric3Value: '€ 82K',
         metric3Label: 'New Signed Contracts',
       },
     },

@@ -593,11 +593,11 @@ export default function LandingPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="flex flex-col gap-6 max-w-[1100px] mx-auto">
                 {/* Case 1: Stefano Martini */}
-                <div className="flex flex-col justify-between bg-[#efeeeb] rounded-2xl p-7 sm:p-8 border border-[#eae8e5] shadow-xs hover:shadow-md transition-all duration-300">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
+                <div className="bg-[#efeeeb] rounded-2xl p-6 sm:p-8 border border-[#eae8e5] shadow-xs hover:shadow-md transition-all duration-300 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-3">
                       <div className="flex items-center gap-0.5 text-[#036e13]">
                         <span className="material-symbols-outlined text-[16px]">star</span>
                         <span className="material-symbols-outlined text-[16px]">star</span>
@@ -605,16 +605,16 @@ export default function LandingPage() {
                         <span className="material-symbols-outlined text-[16px]">star</span>
                         <span className="material-symbols-outlined text-[16px]">star</span>
                       </div>
-                      <span className="font-label-sm text-[10px] text-[#036e13] bg-[#5cb855]/20 border border-[#5cb855]/30 uppercase px-2 py-0.5 rounded-full font-bold">
+                      <span className="font-label-sm text-[10px] text-[#036e13] bg-[#5cb855]/20 border border-[#5cb855]/30 uppercase px-2.5 py-0.5 rounded-full font-bold">
                         {t.landing.caseStudies.item1.badge}
                       </span>
                     </div>
 
-                    <blockquote className="font-body-lg text-sm sm:text-base text-[#1b1c1a] italic leading-relaxed mb-6">
+                    <blockquote className="font-body-lg text-sm sm:text-base text-[#1b1c1a] italic leading-relaxed mb-4">
                       &ldquo;{t.landing.caseStudies.item1.quote}&rdquo;
                     </blockquote>
 
-                    <div className="flex items-center gap-3 mb-6">
+                    <div className="flex items-center gap-3">
                       <div className="w-11 h-11 rounded-full overflow-hidden border border-white shadow-xs shrink-0">
                         <img
                           alt={t.landing.caseStudies.item1.author}
@@ -633,32 +633,40 @@ export default function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-[#eae8e5] text-center bg-white/70 p-3 rounded-xl">
-                    <div>
-                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item1.metric1Value}</span>
-                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
-                        {t.landing.caseStudies.item1.metric1Label}
-                      </span>
-                    </div>
-                    <div className="border-x border-[#eae8e5]">
-                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item1.metric2Value}</span>
-                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
-                        {t.landing.caseStudies.item1.metric2Label}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-metric-num text-lg font-bold text-[#036e13] block">{t.landing.caseStudies.item1.metric3Value}</span>
-                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
-                        {t.landing.caseStudies.item1.metric3Label}
-                      </span>
+                  <div className="lg:w-[380px] shrink-0 bg-white/80 backdrop-blur-xs rounded-xl border border-[#eae8e5] p-4 sm:p-5 shadow-xs">
+                    <div className="grid grid-cols-3 gap-2 text-center items-center">
+                      <div>
+                        <span className="font-metric-num text-xl font-bold text-[#1b1c1a] block">
+                          {t.landing.caseStudies.item1.metric1Value}
+                        </span>
+                        <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block mt-0.5">
+                          {t.landing.caseStudies.item1.metric1Label}
+                        </span>
+                      </div>
+                      <div className="border-x border-[#eae8e5] px-1">
+                        <span className="font-metric-num text-xl font-bold text-[#1b1c1a] block">
+                          {t.landing.caseStudies.item1.metric2Value}
+                        </span>
+                        <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block mt-0.5">
+                          {t.landing.caseStudies.item1.metric2Label}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-metric-num text-xl font-bold text-[#036e13] block">
+                          {t.landing.caseStudies.item1.metric3Value}
+                        </span>
+                        <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block mt-0.5">
+                          {t.landing.caseStudies.item1.metric3Label}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Case 2: Corporate & Legal (NDA) */}
-                <div className="flex flex-col justify-between bg-[#efeeeb] rounded-2xl p-7 sm:p-8 border border-[#eae8e5] shadow-xs hover:shadow-md transition-all duration-300">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
+                <div className="bg-[#efeeeb] rounded-2xl p-6 sm:p-8 border border-[#eae8e5] shadow-xs hover:shadow-md transition-all duration-300 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-3">
                       <div className="flex items-center gap-0.5 text-[#036e13]">
                         <span className="material-symbols-outlined text-[16px]">star</span>
                         <span className="material-symbols-outlined text-[16px]">star</span>
@@ -666,16 +674,16 @@ export default function LandingPage() {
                         <span className="material-symbols-outlined text-[16px]">star</span>
                         <span className="material-symbols-outlined text-[16px]">star</span>
                       </div>
-                      <span className="font-label-sm text-[10px] text-[#6f7a6b] bg-[#dfdeda] border border-[#cfceca] uppercase px-2 py-0.5 rounded-full font-bold">
+                      <span className="font-label-sm text-[10px] text-[#6f7a6b] bg-[#dfdeda] border border-[#cfceca] uppercase px-2.5 py-0.5 rounded-full font-bold">
                         {t.landing.caseStudies.item2.badge}
                       </span>
                     </div>
 
-                    <blockquote className="font-body-lg text-sm sm:text-base text-[#1b1c1a] italic leading-relaxed mb-6">
+                    <blockquote className="font-body-lg text-sm sm:text-base text-[#1b1c1a] italic leading-relaxed mb-4">
                       &ldquo;{t.landing.caseStudies.item2.quote}&rdquo;
                     </blockquote>
 
-                    <div className="flex items-center gap-3 mb-6">
+                    <div className="flex items-center gap-3">
                       <div className="w-11 h-11 rounded-full bg-[#1c1e1c] text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
                         <span className="material-symbols-outlined text-[20px] text-[#5cb855]">gavel</span>
                       </div>
@@ -690,32 +698,40 @@ export default function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-[#eae8e5] text-center bg-white/70 p-3 rounded-xl">
-                    <div>
-                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item2.metric1Value}</span>
-                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
-                        {t.landing.caseStudies.item2.metric1Label}
-                      </span>
-                    </div>
-                    <div className="border-x border-[#eae8e5]">
-                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item2.metric2Value}</span>
-                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
-                        {t.landing.caseStudies.item2.metric2Label}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-metric-num text-lg font-bold text-[#036e13] block">{t.landing.caseStudies.item2.metric3Value}</span>
-                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
-                        {t.landing.caseStudies.item2.metric3Label}
-                      </span>
+                  <div className="lg:w-[380px] shrink-0 bg-white/80 backdrop-blur-xs rounded-xl border border-[#eae8e5] p-4 sm:p-5 shadow-xs">
+                    <div className="grid grid-cols-3 gap-2 text-center items-center">
+                      <div>
+                        <span className="font-metric-num text-xl font-bold text-[#1b1c1a] block">
+                          {t.landing.caseStudies.item2.metric1Value}
+                        </span>
+                        <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block mt-0.5">
+                          {t.landing.caseStudies.item2.metric1Label}
+                        </span>
+                      </div>
+                      <div className="border-x border-[#eae8e5] px-1">
+                        <span className="font-metric-num text-xl font-bold text-[#1b1c1a] block">
+                          {t.landing.caseStudies.item2.metric2Value}
+                        </span>
+                        <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block mt-0.5">
+                          {t.landing.caseStudies.item2.metric2Label}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-metric-num text-xl font-bold text-[#036e13] block">
+                          {t.landing.caseStudies.item2.metric3Value}
+                        </span>
+                        <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block mt-0.5">
+                          {t.landing.caseStudies.item2.metric3Label}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Case 3: Elena Morandi */}
-                <div className="flex flex-col justify-between bg-[#efeeeb] rounded-2xl p-7 sm:p-8 border border-[#eae8e5] shadow-xs hover:shadow-md transition-all duration-300">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
+                <div className="bg-[#efeeeb] rounded-2xl p-6 sm:p-8 border border-[#eae8e5] shadow-xs hover:shadow-md transition-all duration-300 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-3">
                       <div className="flex items-center gap-0.5 text-[#036e13]">
                         <span className="material-symbols-outlined text-[16px]">star</span>
                         <span className="material-symbols-outlined text-[16px]">star</span>
@@ -723,16 +739,16 @@ export default function LandingPage() {
                         <span className="material-symbols-outlined text-[16px]">star</span>
                         <span className="material-symbols-outlined text-[16px]">star</span>
                       </div>
-                      <span className="font-label-sm text-[10px] text-[#036e13] bg-[#5cb855]/20 border border-[#5cb855]/30 uppercase px-2 py-0.5 rounded-full font-bold">
+                      <span className="font-label-sm text-[10px] text-[#036e13] bg-[#5cb855]/20 border border-[#5cb855]/30 uppercase px-2.5 py-0.5 rounded-full font-bold">
                         {t.landing.caseStudies.item3.badge}
                       </span>
                     </div>
 
-                    <blockquote className="font-body-lg text-sm sm:text-base text-[#1b1c1a] italic leading-relaxed mb-6">
+                    <blockquote className="font-body-lg text-sm sm:text-base text-[#1b1c1a] italic leading-relaxed mb-4">
                       &ldquo;{t.landing.caseStudies.item3.quote}&rdquo;
                     </blockquote>
 
-                    <div className="flex items-center gap-3 mb-6">
+                    <div className="flex items-center gap-3">
                       <div className="w-11 h-11 rounded-full bg-[#efeeeb] text-[#036e13] border border-[#bfcab8] flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
                         <span className="material-symbols-outlined text-[20px]">architecture</span>
                       </div>
@@ -747,24 +763,32 @@ export default function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-[#eae8e5] text-center bg-white/70 p-3 rounded-xl">
-                    <div>
-                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item3.metric1Value}</span>
-                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
-                        {t.landing.caseStudies.item3.metric1Label}
-                      </span>
-                    </div>
-                    <div className="border-x border-[#eae8e5]">
-                      <span className="font-metric-num text-lg font-bold text-[#1b1c1a] block">{t.landing.caseStudies.item3.metric2Value}</span>
-                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
-                        {t.landing.caseStudies.item3.metric2Label}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-metric-num text-lg font-bold text-[#036e13] block">{t.landing.caseStudies.item3.metric3Value}</span>
-                      <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block">
-                        {t.landing.caseStudies.item3.metric3Label}
-                      </span>
+                  <div className="lg:w-[380px] shrink-0 bg-white/80 backdrop-blur-xs rounded-xl border border-[#eae8e5] p-4 sm:p-5 shadow-xs">
+                    <div className="grid grid-cols-3 gap-2 text-center items-center">
+                      <div>
+                        <span className="font-metric-num text-xl font-bold text-[#1b1c1a] block">
+                          {t.landing.caseStudies.item3.metric1Value}
+                        </span>
+                        <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block mt-0.5">
+                          {t.landing.caseStudies.item3.metric1Label}
+                        </span>
+                      </div>
+                      <div className="border-x border-[#eae8e5] px-1">
+                        <span className="font-metric-num text-xl font-bold text-[#1b1c1a] block">
+                          {t.landing.caseStudies.item3.metric2Value}
+                        </span>
+                        <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block mt-0.5">
+                          {t.landing.caseStudies.item3.metric2Label}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-metric-num text-xl font-bold text-[#036e13] block">
+                          {t.landing.caseStudies.item3.metric3Value}
+                        </span>
+                        <span className="font-label-sm text-[10px] text-[#6f7a6b] leading-tight block mt-0.5">
+                          {t.landing.caseStudies.item3.metric3Label}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
