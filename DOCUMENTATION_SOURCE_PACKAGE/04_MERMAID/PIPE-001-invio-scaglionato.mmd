@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    participant CRON as Vercel Cron (* * * * *)
+    participant API as /api/cron/send
+    participant DB as Supabase PostgreSQL
+    participant LUX as Luxon Timezone Engine
+    participant SMTP as Hostinger SMTP (465 SSL)
+
+    CRON->>API: GET con Bearer CRON_SECRET
+    API->>API: Valida Secret di sicurezza
+    API->>DB: Query Campagna attiva con next_send_at <= now()
+    DB-->>API: Restituisce Campagna
+    API->>LUX: Verifica finestra oraria (09:00 - 18:00, Lun - Ven)
+    alt Fuori Finestra di Spedizione
+        API->>DB: Riprogramma next_send_at al prossimo slot utile
+        API-->>CRON: Salta invio (Fuori orario consentito)
+    else Dentro Finestra di Spedizione
+        API->>DB: Verifica Daily Cap (< 80 email inviate oggi)
+        API->>DB: RPC claim_next_campaign_lead (FOR UPDATE SKIP LOCKED)
+        DB-->>API: Lead bloccato in stato 'sending'
+        API->>API: Rendering Template (Sostituzione {{companyName}}, {{azienda}}, {{email}})
+        API->>SMTP: Spedizione Nodemailer (1 singola email)
+        alt Invio Riuscito
+            SMTP-->>API: 250 Message Accepted
+            API->>DB: Aggiorna stato Lead = 'sent', logga in email_logs
+        else Errore SMTP
+            SMTP-->>API: 4xx o 5xx Errore
+            API->>DB: Aggiorna stato Lead = 'retry' o 'failed', logga errore
+        end
+        API->>DB: Calcola e salva next_send_at = now() + intervallo (es. 240s)
+        API-->>CRON: 200 OK (1 email elaborata)
+    end

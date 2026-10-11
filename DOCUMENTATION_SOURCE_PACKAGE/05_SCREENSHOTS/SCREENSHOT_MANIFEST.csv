@@ -1,0 +1,3 @@
+screenshot_id,screen_id,title,file_path,viewport,format,evidence_id,notes
+SHOT-013,SCR-013,"Domande Frequenti (FAQ)","05_SCREENSHOTS/desktop/SCR-013-faq-page.png",1280x800,PNG,EVD-0001,"Verificata ricerca live 'bounce' e apertura accordion"
+SHOT-014,SCR-014,"Guida Utente Operativa","05_SCREENSHOTS/desktop/SCR-014-guida-page.png",1280x800,PNG,EVD-0001,"Verificata struttura a 2 colonne, TOC sticky e download .txt"

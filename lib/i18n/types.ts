@@ -57,6 +57,8 @@ export interface Translations {
     configuration: string;
     smtpSettings: string;
     quotaUsed: string;
+    faq: string;
+    userGuide: string;
   };
   landing: {
     nav: {
@@ -64,6 +66,8 @@ export interface Translations {
       deliverability: string;
       workflow: string;
       pricing: string;
+      faq: string;
+      userGuide: string;
       signIn: string;
       requestAccess: string;
     };
@@ -663,5 +667,33 @@ export interface Translations {
     imapReadOnlyNotice: string;
     testImapButton: string;
     signOutButton: string;
+  };
+  faqPage: {
+    badge: string;
+    title: string;
+    subtitle: string;
+    searchPlaceholder: string;
+    categories: {
+      all: string;
+      campaigns: string;
+      newsletters: string;
+      leadResearch: string;
+      smtpImap: string;
+      deliverability: string;
+      auth: string;
+    };
+    contactTitle: string;
+    contactSub: string;
+    contactAction: string;
+    backToApp: string;
+  };
+  userGuidePage: {
+    badge: string;
+    title: string;
+    subtitle: string;
+    downloadManualButton: string;
+    tableOfContents: string;
+    backToApp: string;
+    lastUpdated: string;
   };
 }

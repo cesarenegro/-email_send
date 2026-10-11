@@ -1,0 +1,268 @@
+================================================================================
+                    MAIL-K (PRECISION OUTBOUND) — MANUALE UTENTE UFFICIALE
+================================================================================
+Versione Documento: 1.4.0
+Data Rilascio: 11 Ottobre 2026
+Applicazione: MAIL-K (Precision Outbound & B2B Lead Intelligence)
+Proprietà: ARKITECNA / Cesare Negro
+Ambiente Target: Produzione (https://mailk.arkai.dev)
+Licenza & Riservatezza: Documentazione Operativa Interna Riservata
+
+--------------------------------------------------------------------------------
+INDICE GENERALE DEI CONTENUTI
+--------------------------------------------------------------------------------
+CAPITOLO 01: INTRODUZIONE E PRINCIPI OPERATIVI DI MAIL-K
+CAPITOLO 02: ACCESSO, SICUREZZA E SOCIAL LOGIN (GOOGLE, FACEBOOK, LINKEDIN)
+CAPITOLO 03: IL CRUSCOTTO OPERATIVO HUB (LIVE VIEW)
+CAPITOLO 04: MODULO 1 — CAMPAGNE OUTBOUND A SPEDIZIONE SCAGLIONATA
+CAPITOLO 05: MODULO 2 — NEWSLETTER EDITORIALI PROGRAMMATE
+CAPITOLO 06: MODULO 3 — B2B LEAD INTELLIGENCE & RICERCA MERCATO (M, XL, AD-HOC)
+CAPITOLO 07: MONITORAGGIO BOUNCE & DIAGNOSTICA IMAP HOSTINGER
+CAPITOLO 08: CONFIGURAZIONE MITTENTE, SMTP RELAY E IMPOSTAZIONI SERVER
+CAPITOLO 09: MOTORE DI SCHEDULAZIONE, FUSI ORARI E DELIVERABILITY B2B
+CAPITOLO 10: RISOLUZIONE DEI PROBLEMI (TROUBLESHOOTING) & CODICI DI ERRORE
+
+================================================================================
+CAPITOLO 01: INTRODUZIONE E PRINCIPI OPERATIVI DI MAIL-K
+================================================================================
+
+1.1 SCOPO DEL PRODOTTO
+MAIL-K è un'applicazione web interna ad alta precisione creata da ARKITECNA per
+gestire campagne di contatto outbound B2B e newsletter editoriali, affiancata da
+un motore di intelligence e ricerca prospect aziendali.
+
+1.2 FILOSOFIA "PRECISION OUTBOUND" VS SPAM DI MASSA
+A differenza delle piattaforme commerciali che effettuano invii a raffica (burst
+sending) e iniettano pixel traccianti invisibili (spesso causa di blocco immediato
+da parte dei filtri SPF/DKIM/DMARC di Google Workspace e Microsoft 365), MAIL-K
+adotta una filosofia radicalmente diversa:
+- Nessun tracking pixel e nessun dominio di reindirizzamento: le email risultano
+  100% genuine e identiche a quelle inviate manualmente da un operatore.
+- Spedizione rigorosamente scaglionata (Staggered Dispatch): il sistema invia
+  tassativamente 1 singola email per ciclo di cron (intervallo consigliato: 240 sec).
+- Tetto giornaliero di sicurezza (Daily Cap): limite predefinito a 80 email/giorno
+  per campagna, per preservare la reputazione dell'indirizzo IP e del dominio mittente.
+- Finestra oraria intelligente (Business Hours): spedizioni circoscritte agli orari
+  lavorativi (09:00 - 18:00) dal lunedì al venerdì nel fuso orario di destinazione.
+
+================================================================================
+CAPITOLO 02: ACCESSO, SICUREZZA E SOCIAL LOGIN
+================================================================================
+
+2.1 MODALITÀ DI ACCESSO ALLA CONSOLE
+L'accesso alla console operativa avviene tramite l'indirizzo protetto:
+https://mailk.arkai.dev/login oppure cliccando su "ACCEDI" nella landing page.
+
+2.2 AUTENTICAZIONE CON CREDENZIALI
+- Inserire l'indirizzo email aziendale autorizzato nel campo "Email Aziendale".
+- Inserire la password associata.
+- In caso di smarrimento credenziali, cliccare sul link "Password dimenticata?"
+  per ricevere l'email automatica di ripristino sicuro deep-link.
+
+2.3 ACCESSO RAPIDO 1-CLICK (SOCIAL SSO)
+Sono disponibili tre pulsanti di accesso rapido con verifica crittografica:
+1. "Accedi con Google" (Pulsante verde salvia #92C775): reindirizza alla schermata
+   ufficiale di consenso di Google Cloud Identity.
+2. "Accedi con Facebook" (Pulsante blu Meta #1877F2): autenticazione con profilo Meta.
+3. "Accedi con LinkedIn" (Pulsante blu scuro LinkedIn #0A66C2): autenticazione OIDC
+   OpenID Connect professionale, ideale per profili aziendali e manageriali.
+
+2.4 ISOLAMENTO DEI DATI (ROW LEVEL SECURITY)
+Ogni utente autenticato opera in un contesto isolato a livello di database tramite
+politiche PostgreSQL Row Level Security (RLS). Nessun utente può visualizzare,
+modificare o esportare campagne, lead o ricerche appartenenti a un altro operatore.
+
+================================================================================
+CAPITOLO 03: IL CRUSCOTTO OPERATIVO HUB (LIVE VIEW)
+================================================================================
+
+All'accesso, l'operatore viene accolto dall'Hub Live View (rotte: / e /campaigns).
+L'interfaccia si articola in 3 card monumentali ad accesso immediato:
+1. EMAIL MASSIVE (CAMPAGNE OUTBOUND):
+   Gestione spedizioni sequenziali da liste CSV con intervallo protetto.
+2. NEWSLETTER EDITORIALI:
+   Comunicazioni periodiche e gestione liste iscritti per annunci e report.
+3. RICERCA LEADS & INTELLIGENCE B2B:
+   Generazione prospect mirati con intelligenza artificiale o team umano dedicato.
+
+La barra di navigazione laterale (Sidebar) consente il passaggio istantaneo tra le
+sezioni operative, la console di configurazione (/settings), le FAQ (/faq) e il
+presente Manuale Utente (/guida).
+
+================================================================================
+CAPITOLO 04: MODULO 1 — CAMPAGNE OUTBOUND A SPEDIZIONE SCAGLIONATA
+================================================================================
+
+4.1 PROCEDURA DI CREAZIONE (WIZARD IN 4 PASSI)
+Per creare una nuova campagna:
+Passo 1 — INFORMAZIONI GENERALI:
+  Inserire il nome della campagna (es. "Outbound Architetti Milano Q4").
+  Selezionare il fuso orario di riferimento dei destinatari (default: Europe/Rome).
+  Definire l'intervallo tra gli invii in secondi (minimo 60, consigliato 240).
+  Definire il cap massimo giornaliero (default 80).
+Passo 2 — TEMPLATE HTML & VARIABILI:
+  Incollare il codice sorgente HTML dell'email preparata.
+  Definire l'oggetto dell'email (Subject line).
+  È possibile inserire segnaposto dinamici che verranno rimpiazzati automaticamente:
+  - {{companyName}} oppure {{azienda}}: Ragione Sociale del destinatario
+  - {{email}}: Indirizzo email del lead
+  Il sistema fornisce un'anteprima visuale sandboxed in tempo reale.
+Passo 3 — IMPORTAZIONE E MAPPATURA CSV:
+  Caricare il file CSV contenente i contatti.
+  Mappare la colonna Email e la colonna Ragione Sociale.
+  Il sistema effettua automaticamente la deduplicazione: lead duplicati nella
+  stessa campagna vengono scartati e segnalati all'operatore.
+Passo 4 — RIEPILOGO E ATTIVAZIONE:
+  Verificare i parametri di spedizione e confermare la creazione.
+
+4.2 STATI OPERATIVI DELLA CAMPAGNA
+- Bozza (draft): Campagna creata ma non ancora avviata.
+- Attiva (active): Campagna in lavorazione da parte del cron Vercel.
+- In Pausa (paused): Invio sospeso manualmente dall'operatore. Nessuna email parte.
+- Completata (completed): Tutti i lead sono stati elaborati.
+
+4.3 STATI INDIVIDUALI DEI LEAD
+- In attesa (pending): Il lead attende il proprio turno di invio.
+- In spedizione (sending): Lead prenotato atomicamente dal worker in esecuzione.
+- Inviata (sent): Email consegnata al server SMTP con codice 250 OK.
+- Riprova (retry): Errore temporaneo SMTP (es. greylisting), nuovo tentativo previsto.
+- Fallita (failed): Indirizzo inesistente o bounce permanente rilevato via IMAP.
+
+4.4 INVIO IMMEDIATO TEST (SEND NOW)
+Dalla schermata di dettaglio (/campaigns/[id]), l'operatore può cliccare su
+"Invia Adesso" per forzare l'invio immediato del prossimo lead in coda, senza
+attendere il minuto del cron.
+
+================================================================================
+CAPITOLO 05: MODULO 2 — NEWSLETTER EDITORIALI PROGRAMMATE
+================================================================================
+
+5.1 GESTIONE COMUNICAZIONI PERIODICHE
+Il modulo Newsletter (/newsletters) è pensato per aggiornamenti istituzionali,
+report periodici o annunci commerciali rivolti a liste di contatti consolidate.
+
+5.2 ARCHITETTURA DI SPEDIZIONE
+Le newsletter utilizzano tabelle dedicate (public.newsletters e
+public.newsletter_subscribers) e un worker isolato con lock FOR UPDATE SKIP LOCKED.
+Questo assicura che una spedizione di newsletter non interferisca né rallenti il
+motore delle campagne outbound commerciali.
+
+================================================================================
+CAPITOLO 06: MODULO 3 — B2B LEAD INTELLIGENCE & RICERCA MERCATO
+================================================================================
+
+6.1 DESCRIZIONE DEL SERVIZIO
+Il modulo (/lead-research) consente all'operatore di reperire elenchi di aziende,
+studi professionali e figure chiave fornendo un semplice brief in italiano.
+
+6.2 I TRE LIVELLI DI SERVIZIO DISPONIBILI
+1. RICERCA M ($19 USD):
+   - Modalità: Automatica (Tavily Search/Extract + OpenAI gpt-4o-mini).
+   - Budget Server: Tetto massimo di $5.00 USD di consumo API (5.000.000 µUSD).
+   - Ideale per: Esplorazioni preliminari e campionature rapide su settori definiti.
+2. RICERCA XL ($49 USD):
+   - Modalità: Automatica multi-step approfondita.
+   - Budget Server: Tetto massimo di $15.00 USD di consumo API (15.000.000 µUSD).
+   - Ideale per: Coperture territoriali ampie o nicchie ad alta specificità.
+3. RICERCA AD-HOC ($89 USD):
+   - Modalità: Team umano specializzato ARKITECNA.
+   - SLA di Consegna: Rigorosamente entro 24 ore lavorative dall'accettazione.
+   - Garanzia di Qualità: 100% dei dati verificati manualmente da un operatore,
+     con fonti web verificate e marcatura 'human_verified = true'.
+
+6.3 MOTORE DI SPESA ATOMICA IN MICRO-USD
+Per evitare qualsiasi addebito imprevisto sulle API, il server esegue una
+prenotazione preventiva (Reserve) prima di ogni chiamata web o LLM. Se il budget
+residuo non copre la chiamata, il job si arresta in sicurezza con stato
+'completed_budget_exhausted', rendendo disponibili tutti i risultati raccolti.
+
+6.4 ESPORTAZIONE SPREADSHEET (XLSX & CSV)
+I risultati possono essere scaricati in un clic:
+- File Excel (.xlsx): generato nativamente con foglio "Contatti e Aziende" e
+  foglio "Fonti e Tracciabilità", con colonne formattate e filtri attivi.
+- File CSV: con codifica UTF-8 con BOM per Excel e protezione integrata contro
+  la Formula Injection (sanitizzazione di caratteri =, +, -, @ iniziali).
+
+================================================================================
+CAPITOLO 07: MONITORAGGIO BOUNCE & DIAGNOSTICA IMAP HOSTINGER
+================================================================================
+
+7.1 SICUREZZA ASSOLUTA: ACCESSO RIGOROSAMENTE READ-ONLY
+Il modulo IMAP di MAIL-K accede alla casella Hostinger (imap.hostinger.com:993 SSL)
+utilizzando il comando di basso livello EXAMINE (anziché SELECT) e scarica i
+messaggi tramite BODY.PEEK[].
+Questo garantisce che:
+- Nessun messaggio nella casella viene marcato come letto (\Seen).
+- Nessuna email viene spostata o cancellata.
+- La posta personale dell'operatore rimane completamente intatta.
+
+7.2 RICONOSCIMENTO DEI RAPPORTI DSN (RFC 3464)
+Il sistema scansiona unicamente i messaggi provenienti da MAILER-DAEMON o
+postmaster. Quando individua un rapporto di mancata consegna:
+- Estrae l'indirizzo email rimbalzato.
+- Rileva il codice di stato diagnostico (es. 5.1.1 "User unknown").
+- Aggiorna istantaneamente lo stato del lead corrispondente su "failed".
+- Registra l'evento completo nel log di audit (public.email_logs).
+
+================================================================================
+CAPITOLO 08: CONFIGURAZIONE MITTENTE, SMTP RELAY E IMPOSTAZIONI
+================================================================================
+
+Dalla sezione Impostazioni (/settings), l'operatore può:
+1. Personalizzare l'Identità del Mittente:
+   - Nome visualizzato (es. "Stefano Martini | ARKITECNA")
+   - Email di invio (deve corrispondere all'account o alias SMTP Hostinger)
+   - Indirizzo Reply-To per la ricezione delle risposte dei prospect.
+2. Eseguire il Test Connessione SMTP:
+   - Verifica in tempo reale dell'handshake TLS e dell'autenticazione sulla porta 465.
+3. Inviare un'Email di Prova:
+   - Invio istantaneo di un messaggio diagnostico a un'email a scelta.
+4. Eseguire il Test Connessione IMAP:
+   - Controllo dell'accesso alla casella di monitoraggio bounce.
+
+================================================================================
+CAPITOLO 09: MOTORE DI SCHEDULAZIONE, FUSI ORARI E DELIVERABILITY
+================================================================================
+
+9.1 IL DISPATCHER CRON (VERCEL CRON)
+Ogni 60 secondi, Vercel Cron invoca l'endpoint protetto /api/cron/send fornendo
+un token segreto Bearer (CRON_SECRET).
+Il ciclo operativo rispetta il seguente algoritmo:
+1. Verifica token di sicurezza.
+2. Identificazione della campagna attiva più anziana pronta per l'invio.
+3. Controllo del calendario: lunedì - venerdì, 09:00 - 18:00 nel fuso orario scelto.
+4. Verifica del cap giornaliero (inviate oggi < daily_limit).
+5. Blocco atomico PostgreSQL di 1 singolo lead via claim_next_campaign_lead().
+6. Sostituzione segnaposto nel template HTML e invio via Nodemailer.
+7. Riprogrammazione del prossimo invio: next_send_at = now() + send_interval_seconds.
+
+================================================================================
+CAPITOLO 10: RISOLUZIONE DEI PROBLEMI & CODICI DI ERRORE
+================================================================================
+
+10.1 ERRORI DI AUTENTICAZIONE SOCIAL
+- Sintomo: Cliccando su Google, Facebook o LinkedIn la pagina mostra un errore.
+  Causa: Il dominio di redirect non è censito nella console sviluppatori del provider.
+  Soluzione: Verificare in Supabase Auth che i provider siano attivi ("Enabled")
+  e che il redirect URI https://cayceyagmorwlbmmvyoc.supabase.co/auth/v1/callback
+  sia presente nelle impostazioni autorizzate del provider.
+
+10.2 ERRORE "AUTHENTICATION FAILED" SU SMTP O IMAP
+- Causa: Password errata o scaduta sulla casella Hostinger.
+  Soluzione: Accedere a hPanel di Hostinger, generare una nuova password per la
+  casella e aggiornarla nei segreti di ambiente o in Impostazioni.
+
+10.3 LE EMAIL NON PARTONO
+- Verificare che lo stato della campagna sia "Attiva" (non "In Pausa" o "Bozza").
+- Verificare l'orario attuale: se sono le 19:30 o è sabato/domenica, il sistema
+  è volutamente in pausa per rispettare la finestra oraria lavorativa.
+- Verificare che il cap giornaliero (es. 80 email) non sia stato raggiunto per oggi.
+
+10.4 CARICAMENTO CSV: ERRORI DI FORMATO
+- Assicurarsi che il file CSV sia codificato in UTF-8 e separato da virgola (,) o
+  punto e virgola (;).
+- Verificare che la colonna Email contenga indirizzi sintatticamente validi.
+
+--------------------------------------------------------------------------------
+FINE DEL MANUALE UTENTE — MAIL-K PRECISION OUTBOUND
+================================================================================

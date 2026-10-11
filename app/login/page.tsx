@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2 } from 'lucide-react';
@@ -701,7 +702,15 @@ function LoginFormContent() {
                   {t.auth.securityFooter}
                 </p>
               </div>
-              <div className="flex items-center justify-center gap-3 text-[#6f7a6b] font-label-sm text-[11px] pt-1">
+              <div className="flex items-center justify-center flex-wrap gap-2.5 text-[#6f7a6b] font-label-sm text-[11px] pt-1">
+                <Link href="/faq" className="hover:text-[#1b1c1a] hover:underline">
+                  FAQ
+                </Link>
+                <span>•</span>
+                <Link href="/guida" className="hover:text-[#1b1c1a] hover:underline">
+                  {t.navigation.userGuide}
+                </Link>
+                <span>•</span>
                 <a
                   href="https://arkai.dev/app/PPmailk"
                   target="_blank"

@@ -65,7 +65,12 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isPublicRoute = pathname === '/login' || pathname === '/landing';
+  const isPublicRoute =
+    pathname === '/login' ||
+    pathname === '/landing' ||
+    pathname === '/faq' ||
+    pathname === '/guida' ||
+    pathname.startsWith('/downloads');
 
   if (!user) {
     if (pathname === '/') {

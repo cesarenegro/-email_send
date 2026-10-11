@@ -1,0 +1,47 @@
+graph TD
+    subgraph Pubblico
+        L["/landing (Landing Page)"]
+        LOG["/login (Login & SSO)"]
+        FAQ["/faq (Domande Frequenti)"]
+        GUI["/guida (Guida Utente & Download TXT)"]
+    end
+
+    subgraph Autenticazione
+        AUTH["Supabase Auth"]
+        OAUTH_G["Google OAuth"]
+        OAUTH_F["Facebook Login"]
+        OAUTH_L["LinkedIn OIDC"]
+        CALL["/auth/callback (Deep Link)"]
+    end
+
+    subgraph Console Autenticata
+        HUB["/ (Hub Live View)"]
+        CAMP["/campaigns (Campagne Massive)"]
+        NEW_CAMP["/campaigns/new (Wizard 4 Step)"]
+        DET_CAMP["/campaigns/[id] (Dettaglio & Lead)"]
+        NEWS["/newsletters (Newsletter Editoriali)"]
+        NEW_NEWS["/newsletters/new (Componi)"]
+        DET_NEWS["/newsletters/[id] (Dettaglio)"]
+        LEAD["/lead-research (B2B Lead Intelligence)"]
+        DET_LEAD["/lead-research/[id] (Risultati & Export)"]
+        SETT["/settings (SMTP/IMAP & Identità)"]
+    end
+
+    L -->|Accedi| LOG
+    L -->|FAQ| FAQ
+    L -->|Guida| GUI
+    LOG -->|Google SSO| OAUTH_G --> CALL --> HUB
+    LOG -->|Facebook SSO| OAUTH_F --> CALL --> HUB
+    LOG -->|LinkedIn SSO| OAUTH_L --> CALL --> HUB
+    LOG -->|Email/Password| AUTH --> HUB
+
+    HUB -->|Modulo Campagne| CAMP
+    HUB -->|Modulo Newsletter| NEWS
+    HUB -->|Modulo Ricerca Leads| LEAD
+    HUB -->|Configurazione| SETT
+
+    CAMP -->|Crea Nuova| NEW_CAMP
+    CAMP -->|Gestisci| DET_CAMP
+    NEWS -->|Nuova| NEW_NEWS
+    NEWS -->|Dettaglio| DET_NEWS
+    LEAD -->|Dettaglio / Scarica Excel| DET_LEAD

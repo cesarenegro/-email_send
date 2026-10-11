@@ -1,0 +1,24 @@
+sequenceDiagram
+    autonumber
+    participant USR as Utente / LeadTable UI
+    participant API as /api/bounces/sync o /api/campaigns/[id]/sync-bounces
+    participant IMAP as Hostinger IMAP (993 SSL)
+    participant PARS as Mailparser RFC 3464
+    participant DB as Supabase PostgreSQL
+
+    USR->>API: Click su "Sincronizza Bounce"
+    API->>IMAP: Connessione TLS (imap.hostinger.com:993)
+    API->>IMAP: Comando EXAMINE INBOX (Modalità READ-ONLY garantita)
+    IMAP-->>API: Casella aperta in sola lettura
+    API->>IMAP: Ricerca MAILER-DAEMON / postmaster / Delivery Status
+    IMAP-->>API: Restituisce UID messaggi DSN
+    loop Per ogni DSN
+        API->>IMAP: Scarica con BODY.PEEK[] (Nessuna alterazione del flag \Seen)
+        IMAP-->>API: MIME grezzo
+        API->>PARS: Parsing multipart e codice diagnostico (5.1.1, 5.2.1, ecc.)
+        PARS-->>API: Email destinatario rimbalzata e tipo bounce (hard/soft)
+        API->>DB: Aggiorna stato Lead in public.campaign_leads = 'failed'
+        API->>DB: Inserisce log dettagliato evento in public.email_logs
+    end
+    API->>IMAP: Chiusura sessione IMAP sicura
+    API-->>USR: 200 OK con conteggio bounce rilevati e riconciliati

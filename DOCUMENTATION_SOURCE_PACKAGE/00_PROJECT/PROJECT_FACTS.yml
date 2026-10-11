@@ -1,0 +1,37 @@
+app_id: "MAIL_K_PRECISION_OUTBOUND"
+app_name: "MAIL-K (Precision Outbound)"
+owner: "ARKITECNA / Cesare Negro"
+repo: "https://github.com/cesarenegro/-email_send"
+branch: "main"
+commit_sha: "5c31f71a0735749f7eefee81c3c983fb1be213db"
+release_version: "v1.4.0-lead-research-oauth"
+release_date: "2026-10-11 13:10 +08:00"
+environments:
+  - "PRODUCTION (Vercel Serverless)"
+  - "DEVELOPMENT (Localhost Next.js 16)"
+public_url: "https://mailk.arkai.dev"
+authenticated_url: "https://mailk.arkai.dev/campaigns"
+target_audiences:
+  - "Direzione Generale & Amministrazione ARKITECNA"
+  - "Commerciali & Marketing B2B"
+  - "Operatori Campagne Outbound"
+locales:
+  - "it-IT (Predefinito)"
+  - "en-US (Completo)"
+platforms:
+  - "Web Desktop (Risoluzione primaria target: >= 1280px)"
+  - "Web Responsive / Tablet / Mobile (Accesso e consultazione)"
+roles:
+  - "authenticated_user (Proprietario campagne e risorse con RLS isolata)"
+  - "staff (Supervisore revisione ricerche AD-HOC con SLA 24h)"
+plans:
+  - "INTERNAL_PRO (Accesso illimitato alle funzionalità applicative)"
+feature_flags:
+  - "LEAD_RESEARCH_ENABLED: true"
+visual_audit_authorized: true
+non_destructive_testing_authorized: true
+demo_account_source: "FIXTURE_ISOLATED (cesare@arkitecna.com)"
+design_system_source: "DESIGN-SYSTEM.md (Stitch Luxury Editorial #FBF9F6 / #1B1C1A / #5CB855)"
+output_language: "it-IT"
+output_directory: "DOCUMENTATION_SOURCE_PACKAGE"
+requested_scope: "ALL_USER_VISIBLE_FUNCTIONALITY"

@@ -1,7 +1,7 @@
 ================================================================================
 MAIL-K (PRECISION OUTBOUND) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-11 13:05 +08:00
+Last updated: 2026-10-11 13:18 +08:00
 Project / Application: MAIL-K (Precision Outbound)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://mailk.arkai.dev (Vercel Project: mail-k)
@@ -15,7 +15,8 @@ Styling & Design System: Stitch 'Architectural Precision & Editorial Luxury' (Go
 Package Manager: npm (11.9.0)
 Brand Assets & Favicon: Official MAIL-K icon (public/icon.png, public/logo.png, public/favicon.png, public/favicon.ico, app/icon.png, app/favicon.ico)
 Internationalization (i18n): 100% Full Bilingual System (Italian it-IT & English en-US) with typed dictionaries (lib/i18n/types.ts, lib/i18n/locales/it.ts, lib/i18n/locales/en.ts), LanguageProvider, LanguageSwitcher, and reactive cookie/localStorage persistence.
-Public Routes: /landing (Editorial Outbound Landing Page), /login (Desktop Split-Screen Welcome & Supabase Auth Console)
+Public Routes: /landing (Editorial Outbound Landing Page), /login (Desktop Split-Screen Welcome & Supabase Auth Console), /faq (Domande Frequenti Reattive), /guida (Guida Utente Interattiva con TOC e Download TXT)
+Documentation Package: DOCUMENTATION_SOURCE_PACKAGE/ (MANUALE_UTENTE.txt, MANUALE_UTENTE.md, inventari CSV, sorgenti Mermaid .mmd, screenshot live)
 Interactive Modals: LoginModal (Stitch Login Pop-up with backdrop blur, Google / Facebook / LinkedIn SSO, and Supabase authentication)
 
 2. DATABASE & BACKEND SERVICES

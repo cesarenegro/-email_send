@@ -79,6 +79,18 @@ export default function LandingPage() {
             >
               {t.landing.nav.pricing}
             </a>
+            <Link
+              href="/faq"
+              className="text-sm text-[#5c5e63] hover:text-[#1b1c1a] transition-colors"
+            >
+              FAQ
+            </Link>
+            <Link
+              href="/guida"
+              className="text-sm text-[#5c5e63] hover:text-[#1b1c1a] transition-colors"
+            >
+              {t.navigation.userGuide}
+            </Link>
           </nav>
 
           {/* Header Action Buttons */}
@@ -950,6 +962,12 @@ export default function LandingPage() {
               >
                 {t.landing.footer.termsOfService}
               </a>
+              <Link href="/faq" className="font-label-sm text-[11px] text-[#6f7a6b] hover:text-[#1b1c1a] uppercase tracking-wider transition-colors">
+                FAQ
+              </Link>
+              <Link href="/guida" className="font-label-sm text-[11px] text-[#6f7a6b] hover:text-[#1b1c1a] uppercase tracking-wider transition-colors">
+                {t.navigation.userGuide}
+              </Link>
               <a href="#caratteristiche" className="font-label-sm text-[11px] text-[#6f7a6b] hover:text-[#1b1c1a] uppercase tracking-wider transition-colors">
                 {t.landing.footer.networkArchitecture}
               </a>

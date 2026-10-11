@@ -94,6 +94,16 @@ export default function AppSidebar() {
       label: t.navigation.settings,
       icon: 'tune',
     },
+    {
+      href: '/faq',
+      label: t.navigation.faq,
+      icon: 'help_outline',
+    },
+    {
+      href: '/guida',
+      label: t.navigation.userGuide,
+      icon: 'menu_book',
+    },
   ];
 
   const quotaPercent = Math.min(100, Math.round((todaySends / dailyLimit) * 100));
