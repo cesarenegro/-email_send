@@ -11,13 +11,14 @@ interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialMode?: 'signin' | 'signup' | 'forgot_password';
+  initialEmail?: string;
 }
 
-export default function LoginModal({ isOpen, onClose, initialMode = 'signin' }: LoginModalProps) {
+export default function LoginModal({ isOpen, onClose, initialMode = 'signin', initialEmail = '' }: LoginModalProps) {
   const router = useRouter();
   const { t } = useTranslation();
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot_password'>(initialMode);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);

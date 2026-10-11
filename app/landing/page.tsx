@@ -22,6 +22,8 @@ export default function LandingPage() {
     e.preventDefault();
     if (!inviteEmail.trim()) return;
     setInviteSubmitted(true);
+    setModalMode('signin');
+    setIsLoginModalOpen(true);
   };
 
   return (
@@ -85,14 +87,7 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => handleOpenLogin('signin')}
-              className="text-sm font-semibold text-[#1b1c1a] hover:text-[#036e13] px-3 py-1.5 transition-colors cursor-pointer"
-            >
-              {t.landing.nav.signIn}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleOpenLogin('signup')}
-              className="inline-flex items-center justify-center bg-[#5cb855] hover:bg-[#036e13] text-white font-label-md text-xs uppercase px-4 py-2.5 rounded-lg shadow-[0_2px_8px_rgba(3,110,19,0.15)] transition-all cursor-pointer font-semibold"
+              className="inline-flex items-center justify-center bg-[#5cb855] hover:bg-[#036e13] text-white font-label-md text-xs uppercase px-5 py-2.5 rounded-lg shadow-[0_2px_8px_rgba(3,110,19,0.15)] transition-all cursor-pointer font-semibold tracking-wider"
             >
               {t.landing.nav.requestAccess}
             </button>
@@ -786,6 +781,7 @@ export default function LandingPage() {
       <LoginModal
         isOpen={isLoginModalOpen}
         initialMode={modalMode}
+        initialEmail={inviteEmail}
         onClose={() => setIsLoginModalOpen(false)}
       />
     </div>
