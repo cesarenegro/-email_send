@@ -71,9 +71,9 @@ export const metadata: Metadata = {
       process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ||
       'UfDvYGqTqwxgoCTr6og8gFZhvJ9kwW9XUD4h0gtNBeI',
     other: {
-      ...(process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
-        ? { 'msvalidate.01': process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION }
-        : {}),
+      'msvalidate.01':
+        process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION ||
+        'FFA8F28CC8F933190405508FC822C30C',
     },
   },
   icons: {

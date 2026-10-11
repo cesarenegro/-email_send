@@ -17,6 +17,7 @@ export default function robots(): MetadataRoute.Robots {
           '/icon.png',
           '/favicon.ico',
           '/google553873ac7a4cf4f1.html',
+          '/BingSiteAuth.xml',
         ],
         disallow: [
           '/api/',
