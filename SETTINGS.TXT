@@ -1,9 +1,9 @@
 ================================================================================
 MAIL-K (PRECISION OUTBOUND) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-13 18:58 +08:00
-Deployment: Production live at https://mailk.arkai.dev (Vercel dpl_DtvurSQA8HDRCekc9iQS6VrnaTPz)
-Commit: eb8a9d6 (origin/main)
+Last updated: 2026-10-13 21:05 +08:00
+Deployment: Production live at https://mailk.arkai.dev (Vercel dpl_3WP1roWW5tVHr8og8iHLspkY8BaE, READY)
+Application commit: bcab84f (origin/main at release)
 Database: cayceyagmorwlbmmvyoc.supabase.co (Migrations 001-010 active and verified)
 Live Verification: Full suite against production endpoint https://mailk.arkai.dev
 - GET /api/smtp/connections returns 200
@@ -193,5 +193,5 @@ Resource preflight: 10MB upload, 4MB decoded stream, 12MB total, maximum 50 page
 Direct HTML parser dependency: htmlparser2 10.1.0. Browser sanitization remains DOMParser-based.
 Packaging: pdfjs-dist external server dependency; worker/fonts/CMaps included in parse-pdf route trace.
 Local app/downloads/phase3-browser-audit excluded from Vercel upload; it is not an end-to-end test.
-Live verification/publication pending; see top of IMPLEMENTATION_PLAN.md for current release evidence.
+Live release verified: actual eight-step wizard, PDF upload, confirmation, CSV deduplication, campaign persistence and activation, scheduled UTC conversion, HTML sanitizer. Future 2099 campaign and temporary SMTP removed; no email dispatched by this release test. Sandbox URL returns 404. Evidence: output/audit-local-20261013/wizard-release-production.json. Earlier SMTP delivery/isolation evidence above belongs to the previous verification phase.
 

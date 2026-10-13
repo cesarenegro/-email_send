@@ -7,7 +7,7 @@
 - [x] R03: limiti 4MB/stream e 12MB cumulativi mantenuti e verificati; file protetti e scansioni distinti.
 - [x] Dipendenza diretta htmlparser2 10.1.0; pagina sandbox AG esclusa dal deploy tramite .vercelignore.
 - [x] Verifica wizard reale: tutti gli otto passaggi, PDF reale, conferma, deduplicazione CSV, creazione e attivazione su DB remoto. Programmazione 2099-11-10 10:00 Europe/Rome salvata alle 09:00 UTC; fixture rimosse, nessuna email inviata. Build e suite sicurezza PASS.
-- [ ] Pubblicazione e prove autenticate sul dominio pubblico.
+- [x] Pubblicazione e prove autenticate sul dominio pubblico: https://mailk.arkai.dev, commit bcab84f, deployment dpl_3WP1roWW5tVHr8og8iHLspkY8BaE READY. Wizard reale e import HTML PASS, fixture rimosse, pagina sandbox 404. Primo tentativo rilevava package.json PDF.js assente dal pacchetto server: corretto nel tracing e ritestato su produzione. Evidenza finale: output/audit-local-20261013/wizard-release-production.json.
 Evidenze: output/audit-local-20261013/phase3-release-results.json. Il precedente banner sandbox non dimostra creazione o avvio reali.
 
 ## Aggiornamento Codex — 2026-10-13 (Asia/Makassar, UTC+08:00)
