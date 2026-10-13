@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { simpleParser } from 'mailparser';
+import { createClient } from '@/lib/supabase/server';
+import { sanitizeEmailHtml, escapeHtml } from '@/lib/security/sanitize-html';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
@@ -27,16 +35,18 @@ export async function POST(request: NextRequest) {
         html = parsed.text
           .split('\n\n')
           .filter((p) => p.trim().length > 0)
-          .map((p) => `<p>${p.replace(/\n/g, '<br/>')}</p>`)
+          .map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br/>')}</p>`)
           .join('');
       }
+
+      const cleanHtml = sanitizeEmailHtml(html);
 
       return NextResponse.json({
         success: true,
         type: 'eml',
         fileName: file.name,
         subject,
-        html,
+        html: cleanHtml,
         text: parsed.text || '',
       });
     }
@@ -48,13 +58,14 @@ export async function POST(request: NextRequest) {
       // Extract title if present as suggested subject
       const titleMatch = rawText.match(/<title[^>]*>([^<]+)<\/title>/i);
       const suggestedSubject = titleMatch ? titleMatch[1].trim() : '';
+      const cleanHtml = sanitizeEmailHtml(rawText);
 
       return NextResponse.json({
         success: true,
         type: 'html',
         fileName: file.name,
         subject: suggestedSubject,
-        html: rawText,
+        html: cleanHtml,
         text: '',
       });
     }
@@ -67,7 +78,7 @@ export async function POST(request: NextRequest) {
       const paragraphs = rawText
         .split(/\n\s*\n/)
         .filter((p) => p.trim().length > 0)
-        .map((p) => `<p>${p.replace(/\n/g, '<br/>')}</p>`)
+        .map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br/>')}</p>`)
         .join('');
 
       return NextResponse.json({
@@ -92,3 +103,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

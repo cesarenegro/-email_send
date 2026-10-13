@@ -22,6 +22,7 @@ import Step7Scheduling, { SchedulingState } from './steps/Step7Scheduling';
 import Step8SummaryLaunch from './steps/Step8SummaryLaunch';
 
 import { createClient } from '@/lib/supabase/client';
+import { sanitizeEmailHtml } from '@/lib/security/sanitize-html';
 
 interface SetupDummiesModalProps {
   isOpen: boolean;
@@ -387,7 +388,7 @@ export default function SetupDummiesModal({
       const payload = {
         name: campaignName.trim(),
         subject_template: subject.trim(),
-        html_template: html.trim(),
+        html_template: sanitizeEmailHtml(html.trim()),
         timezone: scheduling.timezone || 'Europe/Rome',
         send_window_start: '09:00',
         send_window_end: '18:00',

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Smartphone, Monitor, CheckCircle, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { renderTemplate } from '@/lib/email/render-template';
+import { sanitizeEmailHtml, escapeHtml } from '@/lib/security/sanitize-html';
 
 interface Step5PreviewConfirmProps {
   fromEmail: string;
@@ -29,8 +30,9 @@ export default function Step5PreviewConfirm({
     email: 'info@studiobellini.it',
   };
 
-  const resolvedSubject = renderTemplate(subject || '', sampleLead);
-  const resolvedHtml = renderTemplate(html || '', sampleLead);
+  const resolvedSubject = escapeHtml(renderTemplate(subject || '', sampleLead));
+  const rawResolvedHtml = renderTemplate(html || '', sampleLead);
+  const resolvedHtml = sanitizeEmailHtml(rawResolvedHtml);
 
   return (
     <div className="space-y-6">

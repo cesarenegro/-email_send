@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
+import { sanitizeEmailHtml, escapeHtml, sanitizeUrl } from '@/lib/security/sanitize-html';
 import {
   Bold,
   Italic,
@@ -30,11 +31,12 @@ export default function VisualEmailEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const isInternalChangeRef = useRef<boolean>(false);
 
-  // Sync incoming value to DOM only if it changed externally
+  // Sync incoming value to DOM only if it changed externally, applying sanitization
   useEffect(() => {
     if (editorRef.current) {
-      if (!isInternalChangeRef.current && editorRef.current.innerHTML !== value) {
-        editorRef.current.innerHTML = value || '';
+      const sanitized = sanitizeEmailHtml(value || '');
+      if (!isInternalChangeRef.current && editorRef.current.innerHTML !== sanitized) {
+        editorRef.current.innerHTML = sanitized;
       }
       isInternalChangeRef.current = false;
     }
@@ -43,7 +45,7 @@ export default function VisualEmailEditor({
   const handleInput = () => {
     if (editorRef.current) {
       isInternalChangeRef.current = true;
-      const html = editorRef.current.innerHTML;
+      const html = sanitizeEmailHtml(editorRef.current.innerHTML);
       onChange(html);
     }
   };
@@ -61,7 +63,10 @@ export default function VisualEmailEditor({
     if (disabled) return;
     const url = window.prompt('Inserisci il link (URL):', 'https://');
     if (url && url !== 'https://') {
-      executeCommand('createLink', url);
+      const safe = sanitizeUrl(url);
+      if (safe && safe !== '#') {
+        executeCommand('createLink', safe);
+      }
     }
   };
 
@@ -71,20 +76,20 @@ export default function VisualEmailEditor({
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
-    // Basic sanitization on paste to strip dangerous scripts while keeping paragraphs
+    // Robust sanitization on paste: escapes HTML characters to prevent XSS injection
     e.preventDefault();
     const text = e.clipboardData.getData('text/plain');
     if (!text) return;
 
-    // Convert double linebreaks into paragraphs
+    // Convert double linebreaks into paragraphs with escaped HTML content
     const paragraphs = text
       .split(/\r?\n\s*\r?\n/)
       .map((p) => p.trim())
       .filter(Boolean)
-      .map((p) => `<p style="margin: 0 0 14px 0; line-height: 1.6;">${p.replace(/\r?\n/g, '<br/>')}</p>`)
+      .map((p) => `<p style="margin: 0 0 14px 0; line-height: 1.6;">${escapeHtml(p).replace(/\r?\n/g, '<br/>')}</p>`)
       .join('');
 
-    executeCommand('insertHTML', paragraphs || text);
+    executeCommand('insertHTML', paragraphs || escapeHtml(text));
   };
 
   return (

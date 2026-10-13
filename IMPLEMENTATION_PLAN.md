@@ -160,3 +160,33 @@ Rimediare alle vulnerabilità critiche di isolamento del database e accessi pubb
   - [x] **Blocchi Residui e Trasparenza:**
     - Gmail (`cesare.negro@gmail.com`): bloccato per credenziale rifiutata dal server SMTP Google (`EAUTH` / 535-5.7.8). Nessun tentativo ripetuto con la stessa password e nessuna protezione aggirata, come espressamente richiesto. La spedizione con Gmail resta bloccata in attesa di credenziali valide (App Password).
 
+---
+
+# FASE 3: SANITIZZAZIONE XSS, PARSER PDF FLATEDECODE E WIZARD SETUP-DUMMIES
+
+## 1. Obiettivi e Punti di Audit (F07 e Punto 4)
+- **F07 (XSS):** Sanitizzazione HTML con allowlist rigorosa su import (`/api/email-import/parse`), editor (`VisualEmailEditor.tsx`) e anteprima (`Step5PreviewConfirm.tsx`). Blocco protocolli `javascript:`, rimozione tag eseguibili e attributi evento inline (`on*`).
+- **Punto 4 (Parser PDF):** Decompressione flussi zlib/FlateDecode per PDF digitali in `/api/email-import/parse-pdf`, con corretta distinzione da PDF bitmap scansionati.
+- **Wizard SETUP-DUMMIES (Step 2 - 8):** Consolidamento e verifica del percorso assistito collegato a `smtp_connection_id` verificato.
+
+## 2. Interactive Task List (Fase 3)
+- [x] **Sub-fase 3.1: Modulo di Sanitizzazione HTML ed Escaping**
+  - [x] Creare `lib/security/sanitize-html.ts` con allowlist per email, rimozione script/eventi e validazione protocolli
+  - [x] Aggiungere funzioni di escaping testo e gestione placeholder dinamici
+  - [x] Bonificare `/api/email-import/parse/route.ts` con sanitizzazione obbligatoria per HTML, EML e TXT e controllo di sessione
+- [x] **Sub-fase 3.2: Hardening Componenti Browser (Editor & Anteprima)**
+  - [x] Aggiornare `components/dummies/VisualEmailEditor.tsx`: sanitizzare testo incollato su `handlePaste`, validare link e sanitizzare sync HTML
+  - [x] Aggiornare `components/dummies/steps/Step5PreviewConfirm.tsx`: applicare sanitizzazione garantita prima di `dangerouslySetInnerHTML`
+  - [x] Aggiornare `components/dummies/SetupDummiesModal.tsx`: sanificare `html_template` nel payload di creazione campagna
+- [x] **Sub-fase 3.3: Parser PDF con Supporto FlateDecode**
+  - [x] Implementare estrazione e decompressione stream `FlateDecode` in `lib/email-import/pdf-parser.ts`
+  - [x] Aggiornare `app/api/email-import/parse-pdf/route.ts` per gestire PDF digitali compressi e distinguere vere scansioni
+  - [x] Aggiungere limiti di risorsa e gestione errori
+- [x] **Sub-fase 3.4: Suite di Test e Collaudo Automatizzato**
+  - [x] Creare ed eseguire `scripts/test-import-security.mjs` (10/10 PASS)
+  - [x] Eseguire `npx tsc --noEmit` (0 errori)
+  - [x] Eseguire `npm run build` (0 errori, build ottimizzata completata)
+  - [x] Verificare integrità flusso Step 1-8 nel wizard SETUP-DUMMIES
+
+
+
