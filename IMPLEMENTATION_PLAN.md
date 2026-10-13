@@ -7,8 +7,10 @@
   - `components/AppSidebar.tsx`: allineata medesima query telemetrica laterale (`t.hub.sendsTodayCard` / "Invii Oggi").
 - [x] Validazione TypeScript: `npx tsc --noEmit` completato con 0 errori.
 - [x] Validazione ESLint e Build di produzione: Next.js Turbopack completato con codice 0 e 22/22 pagine statiche generate.
-- [ ] Commit e push su `main`.
-- [ ] Verifica deployment Vercel e collaudo live su `https://mailk.arkai.dev`.
+- [x] Commit e push su `main`: commit `4c23b92` pushato su `origin/main`.
+- [x] Verifica deployment Vercel: deployment `dpl_C95tGyuEJgctfCSv57unvDHa82f7` READY su `https://mailk.arkai.dev`.
+- [x] Collaudo live con utente autenticato: effettuato login con `cesare@arkitecna.com`, verificato nel browser che la card quota e telemetria mostrano il conteggio reale (`205 / 80 Today`) invece del precedente 0/80 dovuto all'errore 400.
+- [x] Zero modifiche a dati esistenti e nessuna email di prova inviata.
 
 ## Rilascio urgente Codex — 2026-10-13 20:55 +08:00
 - [x] Autorizzazione utente: pubblicare versione corretta entro 30 minuti (inizio 20:44 +08:00).
