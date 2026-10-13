@@ -52,6 +52,20 @@ export default function CampaignsLiveView({ initialCampaigns }: CampaignsLiveVie
   const activeCampaigns = campaigns.filter((c) => c.status === 'active').length;
   const totalPendingLeads = campaigns.reduce((acc, c) => acc + (c.pending_count || 0), 0);
   const totalSent = campaigns.reduce((acc, c) => acc + (c.sent_count || 0), 0);
+  const totalLeads = campaigns.reduce((acc, c) => {
+    const sum = (c.sent_count || 0) + (c.pending_count || 0) + (c.failed_count || 0);
+    return acc + (c.total_leads && c.total_leads > sum ? c.total_leads : sum);
+  }, 0);
+  const deliveryRatePercent = totalLeads > 0 ? Math.round((totalSent / totalLeads) * 100) : (totalSent > 0 ? 100 : 0);
+
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const thisMonthCampaigns = campaigns.filter((c) => {
+    if (!c.created_at) return false;
+    const d = new Date(c.created_at);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  }).length;
 
   // Filtered campaigns
   const filteredCampaigns = useMemo(() => {
@@ -140,7 +154,9 @@ export default function CampaignsLiveView({ initialCampaigns }: CampaignsLiveVie
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-2">
               <span className="font-metric-num text-metric-num text-[#1b1c1a]">{totalCampaigns}</span>
-              <span className="font-label-sm text-label-sm text-[#036e13] font-semibold">{t.campaigns.thisMonthIncrement}</span>
+              <span className="font-label-sm text-label-sm text-[#036e13] font-semibold">
+                {locale === 'en' ? `+${thisMonthCampaigns} this month` : `+${thisMonthCampaigns} questo mese`}
+              </span>
             </div>
             <div className="flex items-center gap-1 text-[#5c5e63] font-label-sm text-label-sm pt-1">
               <span>{activeCampaigns} {t.campaigns.activeInDispatch}</span>
@@ -186,11 +202,14 @@ export default function CampaignsLiveView({ initialCampaigns }: CampaignsLiveVie
             <div className="flex items-baseline gap-2">
               <span className="font-metric-num text-metric-num text-[#1b1c1a]">{totalSent}</span>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#ecf8eb] text-[#036e13] font-label-sm text-label-sm font-semibold">
-                {t.campaigns.deliveryRate}
+                {deliveryRatePercent}% {locale === 'en' ? 'delivered' : 'recapito'}
               </span>
             </div>
             <div className="w-full bg-[#f5f3f0] h-1.5 rounded-full overflow-hidden mt-1">
-              <div className="bg-[#5cb855] h-full rounded-full" style={{ width: '85%' }}></div>
+              <div 
+                className="bg-[#5cb855] h-full rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, Math.max(0, deliveryRatePercent))}%` }}
+              ></div>
             </div>
           </div>
         </div>
@@ -212,7 +231,7 @@ export default function CampaignsLiveView({ initialCampaigns }: CampaignsLiveVie
             </div>
             <div className="flex items-center gap-1 text-[#5c5e63] font-label-sm text-label-sm pt-1">
               <span className="material-symbols-outlined text-[14px] text-[#5c5f59]">shield_lock</span>
-              <span>{t.campaigns.gestorMailSafeLimit || t.campaigns.hostingerSafeLimit}</span>
+              <span>{locale === 'en' ? 'Daily safe dispatch limit: 80/day' : 'Dilazione protetta: 80/gg'}</span>
             </div>
           </div>
         </div>

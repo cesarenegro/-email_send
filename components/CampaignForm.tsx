@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import { CampaignInput } from '@/lib/validations/campaign';
-import { Loader2, Save, CheckCircle2, Send, Globe } from 'lucide-react';
+import { Loader2, Save, CheckCircle2, Send, Globe, Code, Edit3 } from 'lucide-react';
 import { SUPPORTED_TIMEZONES, getTimezoneConfig } from '@/lib/constants/timezones';
 import { DateTime } from 'luxon';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import VisualEmailEditor from '@/components/dummies/VisualEmailEditor';
 
 interface CampaignFormProps {
   initialData?: Partial<CampaignInput>;
@@ -85,6 +86,7 @@ export default function CampaignForm({
   const [htmlSaving, setHtmlSaving] = useState(false);
   const [htmlSavedMsg, setHtmlSavedMsg] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editorMode, setEditorMode] = useState<'visual' | 'code'>('code');
 
   const buildPayload = () => ({
     ...formData,
@@ -183,19 +185,56 @@ export default function CampaignForm({
 
       {/* HTML Template */}
       <div className="space-y-2 bg-[#FAF9F6] p-4 border border-[#D8D2C8] rounded-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#E6E2DC]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#E6E2DC]">
           <div>
             <label className="block text-sm font-semibold text-[#1A1A1E]">
-              {locale === 'en' ? 'Email HTML (Source Code)' : 'Email HTML (Codice Sorgente)'} <span className="text-rose-600">*</span>
+              {editorMode === 'visual'
+                ? (locale === 'en' ? 'Email Body (Visual Simple Editor)' : 'Corpo Email (Editor Semplice)')
+                : (locale === 'en' ? 'Email HTML (Source Code)' : 'Email HTML (Codice Sorgente)')}{' '}
+              <span className="text-rose-600">*</span>
             </label>
             <p className="text-xs text-[#666666]">
-              {locale === 'en'
-                ? 'Paste or edit your HTML email code here. Click "Save HTML Code" to save instantly.'
-                : 'Incolla o modifica qui il codice HTML. Clicca "Salva Codice HTML" per salvare subito.'}
+              {editorMode === 'visual'
+                ? (locale === 'en'
+                    ? 'Format your email message visually with headings, lists, links and dynamic placeholders.'
+                    : 'Formatta facilmente la tua email con titoli, elenchi, grassetto, link e segnaposto dinamici.')
+                : (locale === 'en'
+                    ? 'Paste or edit your HTML email code here. Click "Save HTML Code" to save instantly.'
+                    : 'Incolla o modifica qui il codice HTML. Clicca "Salva Codice HTML" per salvare subito.')}
             </p>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Editor Mode Switcher (Visual vs Code) */}
+            <div className="flex items-center bg-[#EAE8E5] p-0.5 rounded-lg border border-[#D8D2C8] text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setEditorMode('visual')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md transition-all ${
+                  editorMode === 'visual'
+                    ? 'bg-white text-[#1B1C1A] font-semibold shadow-xs'
+                    : 'text-[#666666] hover:text-[#1B1C1A]'
+                }`}
+                title={locale === 'en' ? 'Switch to Simple Visual Editor' : 'Passa all’Editor Visuale Semplice'}
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>{locale === 'en' ? 'Visual Editor' : 'Editor Semplice'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditorMode('code')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md transition-all ${
+                  editorMode === 'code'
+                    ? 'bg-white text-[#1B1C1A] font-semibold shadow-xs'
+                    : 'text-[#666666] hover:text-[#1B1C1A]'
+                }`}
+                title={locale === 'en' ? 'Switch to Raw HTML Code' : 'Passa al Codice HTML'}
+              >
+                <Code className="w-3.5 h-3.5" />
+                <span>{locale === 'en' ? 'HTML Code' : 'Codice HTML'}</span>
+              </button>
+            </div>
+
             {htmlSavedMsg && (
               <span className="text-xs text-emerald-700 font-medium flex items-center space-x-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -217,23 +256,34 @@ export default function CampaignForm({
               ) : (
                 <>
                   <Save className="w-3.5 h-3.5" />
-                  <span>{locale === 'en' ? 'Save HTML Code' : 'Salva Codice HTML'}</span>
+                  <span>{locale === 'en' ? 'Save Email' : 'Salva Codice HTML'}</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        <textarea
-          rows={12}
-          required
-          disabled={disabled}
-          placeholder="<!DOCTYPE html><html><body><p>Hello {{companyName}}, ...</p></body></html>"
-          value={formData.html_template}
-          onChange={(e) => updateFormData((prev) => ({ ...prev, html_template: e.target.value }))}
-          className="w-full px-3 py-2.5 font-mono text-xs border border-[#D8D2C8] rounded text-[#1A1A1E] bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] disabled:bg-[#F7F5F0] leading-relaxed"
-          spellCheck={false}
-        />
+        {editorMode === 'visual' ? (
+          <div className="space-y-1">
+            <VisualEmailEditor
+              value={formData.html_template}
+              onChange={(newHtml) => updateFormData((prev) => ({ ...prev, html_template: newHtml }))}
+              disabled={disabled}
+              placeholder={locale === 'en' ? 'Type or format your email message here...' : 'Scrivi o formatta qui la tua email...'}
+            />
+          </div>
+        ) : (
+          <textarea
+            rows={12}
+            required
+            disabled={disabled}
+            placeholder="<!DOCTYPE html><html><body><p>Hello {{companyName}}, ...</p></body></html>"
+            value={formData.html_template}
+            onChange={(e) => updateFormData((prev) => ({ ...prev, html_template: e.target.value }))}
+            className="w-full px-3 py-2.5 font-mono text-xs border border-[#D8D2C8] rounded text-[#1A1A1E] bg-white focus:outline-none focus:ring-1 focus:ring-[#1A1A1E] disabled:bg-[#F7F5F0] leading-relaxed"
+            spellCheck={false}
+          />
+        )}
 
         <div className="flex justify-between items-center text-xs text-[#666666] pt-1">
           <span>

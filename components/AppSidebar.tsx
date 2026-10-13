@@ -2,21 +2,45 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
+function detectProviderName(host?: string, name?: string): string {
+  const h = (host || '').toLowerCase();
+  if (h.includes('hostinger')) return 'Hostinger SMTP';
+  if (h.includes('gmail') || h.includes('google')) return 'Google / Gmail';
+  if (h.includes('outlook') || h.includes('office365') || h.includes('microsoft')) return 'Microsoft 365';
+  if (h.includes('aruba')) return 'Aruba SMTP';
+  if (h.includes('sendgrid')) return 'SendGrid';
+  if (h.includes('brevo') || h.includes('sendinblue')) return 'Brevo SMTP';
+  if (h.includes('mailgun')) return 'Mailgun';
+  if (name && name !== 'Casella Principale') return name;
+  if (host) return host;
+  return 'SMTP Relay';
+}
+
 export default function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const supabase = createClient();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const [userEmail, setUserEmail] = useState<string>('cesare@arkitecna.com');
   const [userName, setUserName] = useState<string>('Stefano Martini');
   const [activeCampaignsCount, setActiveCampaignsCount] = useState<number>(0);
   const [todaySends, setTodaySends] = useState<number>(0);
+  const [smtpTelemetry, setSmtpTelemetry] = useState<{
+    providerName: string;
+    statusLabel: string;
+    isOperational: boolean;
+    isConfigured: boolean;
+  }>({
+    providerName: 'SMTP Relay',
+    statusLabel: t.hub.regular,
+    isOperational: true,
+    isConfigured: true,
+  });
   const dailyLimit = 80;
 
   useEffect(() => {
@@ -49,12 +73,54 @@ export default function AppSidebar() {
         if (logCount !== null && logCount !== undefined) {
           setTodaySends(logCount);
         }
+
+        // Detect user SMTP connection dynamically
+        try {
+          const res = await fetch('/api/smtp/connections');
+          if (res.ok) {
+            const connections = await res.json();
+            if (Array.isArray(connections) && connections.length > 0) {
+              const verified = connections.find((c: { is_verified?: boolean }) => c.is_verified);
+              const active = verified || connections[0];
+              const provName = detectProviderName(active.host, active.name);
+              const isOp = !!active.is_verified;
+              setSmtpTelemetry({
+                providerName: provName,
+                statusLabel: isOp
+                  ? t.hub.regular
+                  : (locale === 'en' ? 'Unverified' : 'Da verificare'),
+                isOperational: isOp,
+                isConfigured: true,
+              });
+            } else {
+              // No user-specific SMTP connections
+              const isPrimaryAdmin = user?.email === 'cesare@arkitecna.com';
+              if (isPrimaryAdmin) {
+                setSmtpTelemetry({
+                  providerName: 'Hostinger SMTP',
+                  statusLabel: t.hub.regular,
+                  isOperational: true,
+                  isConfigured: true,
+                });
+              } else {
+                setSmtpTelemetry({
+                  providerName: locale === 'en' ? 'No SMTP' : 'Nessun SMTP',
+                  statusLabel: locale === 'en' ? 'Not Configured' : 'Non configurato',
+                  isOperational: false,
+                  isConfigured: false,
+                });
+              }
+            }
+          }
+        } catch {
+          // Keep neutral fallback on network/fetch error
+        }
       } catch (err) {
         console.error('Error fetching sidebar telemetry:', err);
       }
     }
     loadData();
-  }, [supabase]);
+  }, [supabase, t.hub.regular, locale]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -176,13 +242,34 @@ export default function AppSidebar() {
 
       {/* Bottom Area: Telemetry & User Account */}
       <div className="flex flex-col gap-space-sm">
-        {/* Hostinger SMTP Live Gauge Card */}
+        {/* Dynamic SMTP Live Gauge Card */}
         <div className="p-space-sm rounded-xl bg-[#ffffff] border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col gap-space-xs">
           <div className="flex items-center justify-between">
-            <span className="font-label-sm text-label-sm text-[#5c5e63] uppercase tracking-wider">Hostinger SMTP</span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#f5f3f0] font-label-sm text-label-sm text-[#036e13] font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#5cb855] animate-pulse"></span>
-              {t.hub.regular}
+            <span
+              className="font-label-sm text-label-sm text-[#5c5e63] uppercase tracking-wider truncate max-w-[130px]"
+              title={smtpTelemetry.providerName}
+            >
+              {smtpTelemetry.providerName}
+            </span>
+            <span
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-label-sm text-label-sm font-medium ${
+                smtpTelemetry.isOperational
+                  ? 'bg-[#f5f3f0] text-[#036e13]'
+                  : smtpTelemetry.isConfigured
+                  ? 'bg-[#fef3c7] text-[#b45309]'
+                  : 'bg-[#f5f3f0] text-[#5c5e63]'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  smtpTelemetry.isOperational
+                    ? 'bg-[#5cb855] animate-pulse'
+                    : smtpTelemetry.isConfigured
+                    ? 'bg-[#f59e0b]'
+                    : 'bg-[#a2a59e]'
+                }`}
+              ></span>
+              {smtpTelemetry.statusLabel}
             </span>
           </div>
           <div className="flex items-center justify-between font-label-md text-label-md text-[#1b1c1a] pt-1">
@@ -193,13 +280,17 @@ export default function AppSidebar() {
           </div>
           <div className="w-full bg-[#f5f3f0] h-1.5 rounded-full overflow-hidden">
             <div
-              className="bg-[#5cb855] h-full rounded-full transition-all duration-500 ease-out"
+              className={`h-full rounded-full transition-all duration-500 ease-out ${
+                smtpTelemetry.isOperational ? 'bg-[#5cb855]' : 'bg-[#a2a59e]'
+              }`}
               style={{ width: `${Math.max(5, quotaPercent)}%` }}
             ></div>
           </div>
           <div className="flex items-center justify-between pt-0.5 text-[#5c5e63] font-label-sm text-label-sm">
             <span>Throttling</span>
-            <span className="uppercase font-semibold text-[#1b1c1a]">Safe Mode</span>
+            <span className="uppercase font-semibold text-[#1b1c1a]">
+              {smtpTelemetry.isConfigured ? 'Safe Mode' : (locale === 'en' ? 'Inactive' : 'Inattivo')}
+            </span>
           </div>
         </div>
 

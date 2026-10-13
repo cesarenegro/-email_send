@@ -42,10 +42,12 @@ export default async function HomePage() {
         totalNlRes,
         schedNlRes,
         sendNlRes,
-        todaySendsRes,
+        todayLogsRes,
         pendingLeadsRes,
         latestCampRes,
         latestNlRes,
+        totalSentLogsRes,
+        totalErrorLogsRes,
       ] = await Promise.all([
         supabase
           .from('campaigns')
@@ -72,8 +74,7 @@ export default async function HomePage() {
           .eq('status', 'sending'),
         supabase
           .from('email_logs')
-          .select('id', { count: 'exact', head: true })
-          .eq('event_type', 'sent')
+          .select('created_at, event_type')
           .gte('created_at', startOfDay.toISOString()),
         supabase
           .from('campaign_leads')
@@ -93,6 +94,14 @@ export default async function HomePage() {
           .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle(),
+        supabase
+          .from('email_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('event_type', 'sent'),
+        supabase
+          .from('email_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('event_type', 'error'),
       ]);
 
       campaignsTotal = totalCampRes.count || 0;
@@ -100,8 +109,32 @@ export default async function HomePage() {
       newslettersTotal = totalNlRes.count || 0;
       newslettersScheduled = schedNlRes.count || 0;
       newslettersSending = sendNlRes.count || 0;
-      todaySends = todaySendsRes.count || 0;
       pendingLeadsCount = pendingLeadsRes.count || 0;
+
+      const totalSentAll = totalSentLogsRes.count || 0;
+      const totalErrorsAll = totalErrorLogsRes.count || 0;
+      const allTimeAttempts = totalSentAll + totalErrorsAll;
+      const globalPlacementRate = allTimeAttempts > 0 
+        ? Math.round((totalSentAll / allTimeAttempts) * 100) 
+        : 100;
+
+      const hourlySends = new Array(10).fill(0);
+      let todayErrors = 0;
+
+      if (todayLogsRes.data) {
+        for (const log of todayLogsRes.data) {
+          if (log.event_type === 'sent') {
+            todaySends++;
+            const hour = new Date(log.created_at).getHours();
+            const bucket = hour - 9; // 09:00 -> 0, 18:00 -> 9
+            if (bucket >= 0 && bucket < 10) {
+              hourlySends[bucket]++;
+            }
+          } else if (log.event_type === 'error') {
+            todayErrors++;
+          }
+        }
+      }
 
       if (latestCampRes.data) {
         const camp = latestCampRes.data;
@@ -130,6 +163,25 @@ export default async function HomePage() {
       if (latestNlRes.data) {
         latestNewsletter = latestNlRes.data;
       }
+
+      return (
+        <HubLiveView
+          stats={{
+            campaignsTotal,
+            campaignsActive,
+            newslettersTotal,
+            newslettersScheduled,
+            newslettersSending,
+            todaySends,
+            todayErrors,
+            hourlySends,
+            pendingLeadsCount,
+            latestCampaign,
+            latestNewsletter,
+            globalPlacementRate,
+          }}
+        />
+      );
     }
   } catch (err) {
     console.error('Error fetching hub data:', err);
@@ -144,9 +196,12 @@ export default async function HomePage() {
         newslettersScheduled,
         newslettersSending,
         todaySends,
+        todayErrors: 0,
+        hourlySends: new Array(10).fill(0),
         pendingLeadsCount,
         latestCampaign,
         latestNewsletter,
+        globalPlacementRate: 100,
       }}
     />
   );

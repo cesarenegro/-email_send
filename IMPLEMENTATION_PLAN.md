@@ -1,5 +1,34 @@
 # IMPLEMENTATION PLAN: CORREZIONI 1/3 - ISOLAMENTO DATABASE E ACCESSI PUBBLICI
 
+## Integrazione Editor Visuale Email Semplice (Stile Dummies) — 2026-10-14 07:15 +08:00
+- [x] Task 1: Aggiunto switcher a due modalità ("✍️ Editor Semplice" e "💻 Codice HTML") nella toolbar di CampaignForm.tsx accanto a "Salva Codice HTML".
+- [x] Task 2: Integrato VisualEmailEditor con toolbar di formattazione facile (titoli H1/H2, testo normale, grassetto, corsivo, elenchi puntati/numerati, link e segnaposti {{NOME_AZIENDA}} / {{email}}).
+- [x] Task 3: Sincronizzazione automatica e istantanea bidirezionale con `formData.html_template` e sanitizzazione XSS.
+- [x] Task 4: Verifica TypeScript (`npx tsc --noEmit`) superata con 0 errori e build Next.js (`npm run build`) superata con codice 0.
+- [x] Vincolo utente rigoroso rispettato: nessun git commit né push eseguito.
+
+
+## Risoluzione Bug Critico Recapito Globale/SMTP e Rimozione Testi Dashboard — 2026-10-14 07:15 +08:00
+- [x] Bug Critico 1 (Recapito Globale vuoto '—'): risolto calcolando `globalPlacementRate` all-time direttamente su `email_logs` (1198 invii / 6 errori = 100%), visualizzando sempre il tasso di recapito reale senza mai lasciare il trattino vuoto nelle ore notturne o pre-invio.
+- [x] Bug Critico 2 (Relay Nessun SMTP / Non Attivo): risolto implementando il fallback su `/api/settings` per caricare la configurazione SMTP del server (Hostinger SMTP SSL 465) attiva per l'account.
+- [x] Rimozione 5 testi richiesti dalla dashboard Hub Overview:
+  - "Console di orchestrazione outbound e newsletter ad alta precisione."
+  - "Campagne di invio massivo B2B per studi e brand con personalizzazione dinamica {{companyName}}, intervallo dilazionato (240s) anti-spam."
+  - "Invio programmato a liste iscritte con anteprima grafica HTML fotorealistica, cadenza controllata e monitoraggio unificato della resa tipografica e dei tassi d’apertura."
+  - "Pubblicazioni Studio"
+  - "Sequenza Outbound B2B Massive"
+- [x] Validazione TypeScript (`npx tsc --noEmit`) superata con 0 errori.
+- [x] Validazione Build (`npm run build`) superata con codice 0 e 22/22 pagine statiche.
+- [x] Vincolo utente rigoroso rispettato: nessun commit né push eseguito.
+
+## Risoluzione Completa Card Hardcoded -> Dinamiche — 2026-10-14 06:34 +08:00
+- [x] Task 1: CampaignsLiveView.tsx: calcolo reale deliveryRatePercent e rimozione width: 85% fissa; calcolo dinamico campagne mese corrente; limite invii dinamico.
+- [x] Task 2: HubLiveView.tsx: collegamento telemetria SMTP reale (provider, porta, protocollo); percentuale recapito calcolata; stato reale newsletter; telemetria footer allineata.
+- [x] Task 3: settings/page.tsx: badge porta e crittografia dinamico basato sulla configurazione reale caricata.
+- [x] Task 4: Verifica integrità TypeScript (`npx tsc --noEmit` superato con 0 errori) e build di produzione Next.js (`npm run build` superato con codice 0).
+- [x] Vincolo utente rigoroso rispettato: nessun git commit né push eseguito.
+
+
 ## Modifica UI Colori Background Card Hub Overview — 2026-10-14 06:12 +08:00
 - [x] Specifiche utente da screenshot `mod.png`:
   - Card 1 (Email Massive): impostato background `#BADFCD`.

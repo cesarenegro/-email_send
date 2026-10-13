@@ -266,18 +266,32 @@ export default function SettingsPage() {
           <div>
             <div className="flex items-center justify-between pb-space-sm border-b border-[#e5e5e0]">
               <div className="flex items-center gap-space-sm">
-                <div className="w-10 h-10 rounded-lg bg-[#f5f3f0] flex items-center justify-center text-[#036e13]">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${smtpHost ? 'bg-[#f5f3f0] text-[#036e13]' : 'bg-[#fff1f0] text-[#cf1322]'}`}>
                   <span className="material-symbols-outlined text-[20px]">dns</span>
                 </div>
                 <div>
-                  <h3 className="font-headline-md text-headline-md text-[#1b1c1a]">{t.settings.serverSmtpTitle}</h3>
+                  <h3 className="font-headline-md text-headline-md text-[#1b1c1a]">
+                    {smtpHost 
+                      ? (smtpHost.toLowerCase().includes('hostinger') 
+                          ? 'Hostinger SMTP' 
+                          : smtpHost.toLowerCase().includes('google') || smtpHost.toLowerCase().includes('gmail')
+                          ? 'Google Workspace SMTP'
+                          : smtpHost.toLowerCase().includes('aruba')
+                          ? 'Aruba SMTP'
+                          : smtpHost.toLowerCase().includes('sendgrid')
+                          ? 'SendGrid SMTP'
+                          : `${smtpHost}`)
+                      : (locale === 'en' ? 'SMTP Server' : 'Server SMTP')}
+                  </h3>
                   <span className="font-label-sm text-label-sm text-[#5c5e63]">
-                    {t.settings.serverSmtpSub}
+                    {smtpHost ? t.settings.serverSmtpSub : (locale === 'en' ? 'No outbound connection configured' : 'Nessuna connessione in uscita configurata')}
                   </span>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ecf8eb] text-[#036e13] font-label-sm text-[10px] font-bold">
-                PORT 465 (SSL)
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label-sm text-[10px] font-bold ${
+                smtpHost ? 'bg-[#ecf8eb] text-[#036e13]' : 'bg-[#f5f3f0] text-[#5c5e63]'
+              }`}>
+                {smtpHost ? `PORT ${smtpPort || 465} (${Number(smtpPort) === 465 ? 'SSL' : 'TLS'})` : (locale === 'en' ? 'NOT CONFIGURED' : 'NON CONFIGURATO')}
               </span>
             </div>
 

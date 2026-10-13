@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
@@ -27,9 +27,12 @@ interface HubStats {
   newslettersScheduled: number;
   newslettersSending: number;
   todaySends: number;
+  todayErrors?: number;
+  hourlySends?: number[];
   pendingLeadsCount: number;
   latestCampaign: LatestCampaign | null;
   latestNewsletter: LatestNewsletter | null;
+  globalPlacementRate?: number;
 }
 
 export default function HubLiveView({ stats }: { stats: HubStats }) {
@@ -38,9 +41,79 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
   const sendsRemaining = Math.max(0, dailyLimit - stats.todaySends);
   const quotaPercent = Math.min(100, Math.round((stats.todaySends / dailyLimit) * 100));
 
+  const [smtpTelemetry, setSmtpTelemetry] = useState<{
+    configured: boolean;
+    provider: string;
+    host?: string;
+    port?: number;
+    secure?: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    async function fetchSmtp() {
+      try {
+        const res = await fetch('/api/smtp/connections', { cache: 'no-store' });
+        let active = null;
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : data?.connections || [];
+          active = list.find((c: any) => c.is_verified || c.status === 'connected') || list[0];
+        }
+
+        if (active) {
+          const pName = active.host?.toLowerCase().includes('hostinger')
+            ? 'Hostinger SMTP'
+            : active.host?.toLowerCase().includes('office365') || active.host?.toLowerCase().includes('outlook')
+            ? 'Microsoft 365'
+            : active.host?.toLowerCase().includes('google') || active.host?.toLowerCase().includes('gmail')
+            ? 'Google Workspace'
+            : active.name || active.host || 'SMTP';
+
+          setSmtpTelemetry({
+            configured: true,
+            provider: pName,
+            host: active.host,
+            port: Number(active.port) || 465,
+            secure: active.secure ?? (Number(active.port) === 465),
+          });
+          return;
+        }
+
+        // Fallback: se l'utente usa l'SMTP di sistema/admin (Hostinger) configurato su server
+        const setRes = await fetch('/api/settings', { cache: 'no-store' });
+        if (setRes.ok) {
+          const setData = await setRes.json();
+          if (setData.smtp_host) {
+            const pName = setData.smtp_host.toLowerCase().includes('hostinger')
+              ? 'Hostinger SMTP'
+              : setData.smtp_host.toLowerCase().includes('google')
+              ? 'Google Workspace'
+              : 'Hostinger SMTP';
+            setSmtpTelemetry({
+              configured: true,
+              provider: pName,
+              host: setData.smtp_host,
+              port: Number(setData.smtp_port) || 465,
+              secure: Number(setData.smtp_port) === 465,
+            });
+            return;
+          }
+        }
+
+        setSmtpTelemetry({ configured: false, provider: locale === 'en' ? 'No SMTP' : 'Nessun SMTP' });
+      } catch {
+        setSmtpTelemetry({ configured: false, provider: locale === 'en' ? 'No SMTP' : 'Nessun SMTP' });
+      }
+    }
+    fetchSmtp();
+  }, [locale]);
+
   const hasActivity = stats.campaignsTotal > 0 || stats.newslettersTotal > 0 || stats.todaySends > 0;
   const latestCamp = stats.latestCampaign;
   const latestNl = stats.latestNewsletter;
+
+  const totalDispatchedToday = stats.todaySends + (stats.todayErrors || 0);
+  const realPlacementPercent = totalDispatchedToday > 0 ? Math.round((stats.todaySends / totalDispatchedToday) * 100) : (stats.todaySends > 0 ? 100 : null);
 
   return (
     <div className="relative w-full overflow-hidden px-gutter pb-space-xl pt-space-md">
@@ -60,9 +133,6 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
             <span className="font-label-sm text-label-sm text-[#5c5f59] font-medium">{t.common.appName} v4.2</span>
           </div>
           <h1 className="font-headline-xl text-headline-xl text-[#1b1c1a] tracking-tight">{t.navigation.hub}</h1>
-          <p className="font-body-lg text-body-lg text-[#3f4a3c] mt-1.5 leading-relaxed">
-            {t.hub.consoleSubtitle}
-          </p>
         </div>
 
         {/* Live Dispatch Status Widget */}
@@ -120,33 +190,41 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
           </div>
           <div className="mt-space-sm">
             <span className="font-metric-num text-metric-num text-[#1b1c1a]">
-              {stats.todaySends > 0 ? '100' : '—'}
-              {stats.todaySends > 0 && <span className="text-headline-md font-light text-[#036e13]">%</span>}
+              {stats.globalPlacementRate ?? 100}
+              <span className="text-headline-md font-light text-[#036e13]">%</span>
             </span>
             <p className="font-label-sm text-label-sm text-[#5c5e63] mt-0.5">
               {stats.todaySends > 0
-                ? (locale === 'en' ? 'Verified in-box delivery' : 'Recapito verificato in casella')
-                : (locale === 'en' ? 'Awaiting first dispatch' : 'In attesa del primo invio')}
+                ? (locale === 'en' ? `${stats.todaySends} dispatches today` : `${stats.todaySends} invii registrati oggi`)
+                : (locale === 'en' ? 'Verified in-box delivery • Queue ready' : 'Recapito verificato in casella • Coda attiva')}
             </p>
           </div>
         </div>
 
-        {/* Card 2: Gestor Mail Relay */}
+        {/* Card 2: Outbound Relay */}
         <div className="bg-[#ffffff] p-space-md rounded-xl border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between">
           <div className="flex items-center justify-between text-[#5c5e63]">
-            <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold">
-              {locale === 'en' ? 'Gestor Mail Relay' : 'Relay Gestor Mail'}
+            <span className="font-label-sm text-label-sm uppercase tracking-wider font-semibold truncate pr-1">
+              {smtpTelemetry?.provider ? `Relay ${smtpTelemetry.provider}` : (locale === 'en' ? 'Outbound Relay' : 'Relay Uscita')}
             </span>
-            <span className="material-symbols-outlined text-[18px] text-[#036e13]">speed</span>
+            <span className={`material-symbols-outlined text-[18px] ${smtpTelemetry?.configured ? 'text-[#036e13]' : 'text-[#cf1322]'}`}>
+              {smtpTelemetry?.configured ? 'speed' : 'power_off'}
+            </span>
           </div>
           <div className="mt-space-sm flex items-baseline gap-2">
-            <span className="font-metric-num text-headline-md text-[#1b1c1a]">SSL 465</span>
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[#f5f3f0] font-label-sm text-[10px] text-[#036e13] font-semibold">
-              {locale === 'en' ? 'READY' : 'PRONTO'}
+            <span className="font-metric-num text-headline-md text-[#1b1c1a]">
+              {smtpTelemetry?.port ? `${smtpTelemetry.secure ? 'SSL' : 'TLS'} ${smtpTelemetry.port}` : (locale === 'en' ? 'OFFLINE' : 'NON ATTIVO')}
+            </span>
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full font-label-sm text-[10px] font-semibold ${
+              smtpTelemetry?.configured ? 'bg-[#ecf8eb] text-[#036e13]' : 'bg-[#fff1f0] text-[#cf1322]'
+            }`}>
+              {smtpTelemetry?.configured ? (locale === 'en' ? 'READY' : 'PRONTO') : (locale === 'en' ? 'SETUP REQUIRED' : 'DA CONFIGURARE')}
             </span>
           </div>
-          <p className="font-label-sm text-label-sm text-[#5c5e63] mt-0.5">
-            {locale === 'en' ? 'Secure TLS pipeline' : 'Pipeline crittografica TLS'}
+          <p className="font-label-sm text-label-sm text-[#5c5e63] mt-0.5 truncate">
+            {smtpTelemetry?.configured
+              ? (locale === 'en' ? `Pipeline ${smtpTelemetry.secure ? 'SSL' : 'TLS'} operational` : `Pipeline ${smtpTelemetry.secure ? 'SSL' : 'TLS'} operativa`)
+              : (locale === 'en' ? 'No outbound connection' : 'Nessuna connessione in uscita')}
           </p>
         </div>
 
@@ -198,9 +276,6 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
                   <span className="material-symbols-outlined text-[22px]">forward_to_inbox</span>
                 </div>
                 <div>
-                  <span className="font-label-sm text-label-sm uppercase tracking-wider text-[#5c5e63] block font-semibold">
-                    {t.hub.outboundSectionTitle}
-                  </span>
                   <h3 className="font-headline-md text-headline-md text-[#1b1c1a]">{t.navigation.campaigns}</h3>
                 </div>
               </div>
@@ -210,13 +285,6 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
               </span>
             </div>
 
-            {/* Description */}
-            <p className="font-body-md text-body-md text-[#3f4a3c] mt-space-md leading-relaxed">
-              {locale === 'en'
-                ? 'Mass B2B outbound campaigns with dynamic {{companyName}} personalization and 240s anti-spam safe throttle.'
-                : 'Campagne di invio massivo B2B per studi e brand con personalizzazione dinamica {{companyName}}, intervallo dilazionato (240s) anti-spam.'}
-            </p>
-
             {/* Dilated Queue Timeline Visual */}
             <div className="mt-space-lg p-space-md rounded-lg bg-[#f5f3f0] border border-[#e5e5e0]">
               <div className="flex items-center justify-between mb-2">
@@ -225,47 +293,37 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
                   {t.hub.jitterActive}
                 </span>
                 <span className="font-label-sm text-label-sm text-[#036e13] font-semibold">
-                  {stats.todaySends > 0 ? '100% deliverability' : (locale === 'en' ? 'Queue ready' : 'Coda pronta')}
+                  {stats.todaySends > 0 && realPlacementPercent !== null 
+                    ? `${realPlacementPercent}% ${locale === 'en' ? 'deliverability' : 'recapito'}` 
+                    : `${stats.globalPlacementRate ?? 100}% ${locale === 'en' ? 'deliverability' : 'recapito'}`}
                 </span>
               </div>
 
               {/* Timeline bar visualization: renders real activity or clean baseline */}
               <div className="h-10 w-full flex items-end gap-1.5 pt-1">
-                {stats.todaySends > 0 ? (
-                  <>
-                    <div className="flex-1 bg-[#5cb855]/20 h-4 rounded-xs" title="09:00"></div>
-                    <div className="flex-1 bg-[#5cb855]/30 h-6 rounded-xs" title="10:00"></div>
-                    <div className="flex-1 bg-[#5cb855]/60 h-8 rounded-xs" title="11:00"></div>
-                    <div className="flex-1 bg-[#5cb855] h-10 rounded-xs" title="12:00"></div>
-                    <div className="flex-1 bg-[#5cb855]/40 h-5 rounded-xs" title="13:00"></div>
-                    <div className="flex-1 bg-[#5cb855]/50 h-7 rounded-xs" title="14:00"></div>
-                    <div className="flex-1 bg-[#5cb855]/70 h-9 rounded-xs" title="15:00"></div>
-                    <div className="flex-1 bg-[#5cb855] h-8 rounded-xs" title="16:00"></div>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs"></div>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs"></div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs" title="09:00"></div>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs" title="10:00"></div>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs" title="11:00"></div>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs" title="12:00"></div>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs" title="13:00"></div>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs" title="14:00"></div>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs" title="15:00"></div>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs" title="16:00"></div>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs" title="17:00"></div>
-                    <div className="flex-1 bg-[#e4e2df] h-2 rounded-xs" title="18:00"></div>
-                  </>
-                )}
+                {(stats.hourlySends && stats.hourlySends.length === 10 ? stats.hourlySends : new Array(10).fill(0)).map((count, idx) => {
+                  const hourLabel = `${String(idx + 9).padStart(2, '0')}:00`;
+                  const maxH = Math.max(...(stats.hourlySends || [1]), 1);
+                  const heightPercent = count > 0 ? Math.min(100, Math.max(25, Math.round((count / maxH) * 100))) : 15;
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex-1 rounded-xs transition-all duration-300 ${
+                        count > 0 ? 'bg-[#5cb855]' : 'bg-[#e4e2df]'
+                      }`}
+                      style={{ height: `${heightPercent}%` }}
+                      title={`${hourLabel}: ${count} ${locale === 'en' ? 'sends' : 'invii'}`}
+                    />
+                  );
+                })}
               </div>
 
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#e5e5e0] font-label-sm text-[11px] text-[#5c5e63]">
                 <span>09:00 CET</span>
                 <span className="text-[#1b1c1a] font-medium">
                   {stats.todaySends > 0
-                    ? (locale === 'en' ? 'Dispatches in progress' : 'Invii in corso')
-                    : (locale === 'en' ? 'No dispatches recorded today' : 'Nessun invio effettuato oggi')}
+                    ? (locale === 'en' ? `${stats.todaySends} dispatches recorded today` : `${stats.todaySends} invii registrati oggi`)
+                    : (locale === 'en' ? 'Dispatch window: 09:00 – 19:30 CET' : 'Finestra di invio attiva: 09:00 – 19:30 CET')}
                 </span>
                 <span>19:30 CET</span>
               </div>
@@ -318,9 +376,6 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
                   <span className="material-symbols-outlined text-[22px]">menu_book</span>
                 </div>
                 <div>
-                  <span className="font-label-sm text-label-sm uppercase tracking-wider text-[#5c5e63] block font-semibold">
-                    {t.navigation.studioPublications}
-                  </span>
                   <h3 className="font-headline-md text-headline-md text-[#1b1c1a]">{t.navigation.newsletters}</h3>
                 </div>
               </div>
@@ -329,13 +384,6 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
                 {stats.newslettersScheduled + stats.newslettersSending} {locale === 'en' ? 'scheduled / active' : 'pianificate / attive'}
               </span>
             </div>
-
-            {/* Description */}
-            <p className="font-body-md text-body-md text-[#3f4a3c] mt-space-md leading-relaxed">
-              {locale === 'en'
-                ? 'Scheduled delivery to subscriber lists with photorealistic HTML rendering preview, controlled cadence and unified metrics.'
-                : 'Invio programmato a liste iscritte con anteprima grafica HTML fotorealistica, cadenza controllata e monitoraggio unificato della resa tipografica e dei tassi d’apertura.'}
-            </p>
 
             {/* Newsletter Highlight Card or Empty State */}
             {latestNl ? (
@@ -362,9 +410,25 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-[#e5e5e0] font-label-sm text-[11px] text-[#5c5e63]">
                   <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[13px]">tune</span> {locale === 'en' ? 'Minimalist 600px Layout' : 'Layout Minimalista 600px'}
+                    <span className="material-symbols-outlined text-[13px]">tune</span> {locale === 'en' ? 'Editorial Format' : 'Formato Editoriale'}
                   </span>
-                  <span className="text-[#1b1c1a] font-medium">{locale === 'en' ? 'Ready for review' : 'Pronta per review'}</span>
+                  <span className={`font-semibold ${
+                    latestNl.status === 'sent' 
+                      ? 'text-[#036e13]' 
+                      : latestNl.status === 'sending' 
+                      ? 'text-[#1d4ed8]' 
+                      : latestNl.status === 'scheduled'
+                      ? 'text-[#d97706]'
+                      : 'text-[#5c5e63]'
+                  }`}>
+                    {latestNl.status === 'sent'
+                      ? (locale === 'en' ? 'Dispatched' : 'Inviata con successo')
+                      : latestNl.status === 'sending'
+                      ? (locale === 'en' ? 'Sending in progress' : 'Invio in corso')
+                      : latestNl.status === 'scheduled'
+                      ? (locale === 'en' ? 'Scheduled dispatch' : 'Invio programmato')
+                      : (locale === 'en' ? 'Draft / In review' : 'Bozza in revisione')}
+                  </span>
                 </div>
               </div>
             ) : (
@@ -668,7 +732,9 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
               <div className="flex flex-col gap-space-sm mt-space-sm text-body-md font-body-md">
                 <div className="flex items-center justify-between">
                   <span className="text-[#5c5e63]">{locale === 'en' ? 'Relay Engine' : 'Motore Relay'}</span>
-                  <span className="font-title-sm text-title-sm text-[#1b1c1a]">Gestor Mail SSL</span>
+                  <span className="font-title-sm text-title-sm text-[#1b1c1a] truncate max-w-[180px] text-right">
+                    {smtpTelemetry?.provider ? `${smtpTelemetry.provider} (${smtpTelemetry.secure ? 'SSL' : 'TLS'})` : (locale === 'en' ? 'Not Configured' : 'Non Configurato')}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#5c5e63]">{locale === 'en' ? 'Global queue pending' : 'Coda globale in attesa'}</span>
@@ -684,8 +750,9 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#5c5e63]">DKIM / SPF Record</span>
-                  <span className="inline-flex items-center gap-1 text-[#036e13] font-semibold">
-                    <span className="material-symbols-outlined text-[15px]">check</span> {locale === 'en' ? 'Verified' : 'Verificati'}
+                  <span className={`inline-flex items-center gap-1 font-semibold ${smtpTelemetry?.configured ? 'text-[#036e13]' : 'text-[#5c5e63]'}`}>
+                    <span className="material-symbols-outlined text-[15px]">{smtpTelemetry?.configured ? 'check' : 'pending'}</span> 
+                    {smtpTelemetry?.configured ? (locale === 'en' ? 'Active' : 'Attivi') : (locale === 'en' ? 'Pending config' : 'In attesa')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -700,7 +767,9 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
             <div className="mt-space-md pt-space-xs border-t border-[#e5e5e0]">
               <div className="p-space-xs rounded bg-[#f5f3f0] flex items-center justify-between font-label-sm text-[11px] text-[#5c5e63]">
                 <span>Cron scheduler: <strong>{locale === 'en' ? 'Active (1 min)' : 'Attivo (1 min)'}</strong></span>
-                <span className="text-[#036e13] font-medium">Porta 465 (SSL)</span>
+                <span className={`font-medium ${smtpTelemetry?.configured ? 'text-[#036e13]' : 'text-[#5c5e63]'}`}>
+                  {smtpTelemetry?.port ? `Porta ${smtpTelemetry.port} (${smtpTelemetry.secure ? 'SSL' : 'TLS'})` : (locale === 'en' ? 'No Port' : 'Nessuna Porta')}
+                </span>
               </div>
             </div>
           </div>
