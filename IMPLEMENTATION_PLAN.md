@@ -1,5 +1,15 @@
 # IMPLEMENTATION PLAN: CORREZIONI 1/3 - ISOLAMENTO DATABASE E ACCESSI PUBBLICI
 
+## Rilascio urgente Codex — 2026-10-13 20:55 +08:00
+- [x] Autorizzazione utente: pubblicare versione corretta entro 30 minuti (inizio 20:44 +08:00).
+- [x] R01/R04: verificate correzioni AG sui componenti reali, incluse cinque varianti XSS.
+- [x] R02: ancora presente il bug ET dentro MARKETING nel parser AG. Sostituita estrazione ad hoc con PDF.js 6.4.299; PASS su PDF ReportLab valido con font incorporato, due font, accenti e simboli.
+- [x] R03: limiti 4MB/stream e 12MB cumulativi mantenuti e verificati; file protetti e scansioni distinti.
+- [x] Dipendenza diretta htmlparser2 10.1.0; pagina sandbox AG esclusa dal deploy tramite .vercelignore.
+- [x] Verifica wizard reale: tutti gli otto passaggi, PDF reale, conferma, deduplicazione CSV, creazione e attivazione su DB remoto. Programmazione 2099-11-10 10:00 Europe/Rome salvata alle 09:00 UTC; fixture rimosse, nessuna email inviata. Build e suite sicurezza PASS.
+- [ ] Pubblicazione e prove autenticate sul dominio pubblico.
+Evidenze: output/audit-local-20261013/phase3-release-results.json. Il precedente banner sandbox non dimostra creazione o avvio reali.
+
 ## Aggiornamento Codex — 2026-10-13 (Asia/Makassar, UTC+08:00)
 
 Questo aggiornamento sostituisce le precedenti conclusioni R02/R04/R05 sotto riportate; il resto del lavoro è preservato.
@@ -167,26 +177,48 @@ Rimediare alle vulnerabilità critiche di isolamento del database e accessi pubb
 ## 1. Obiettivi e Punti di Audit (F07 e Punto 4)
 - **F07 (XSS):** Sanitizzazione HTML con allowlist rigorosa su import (`/api/email-import/parse`), editor (`VisualEmailEditor.tsx`) e anteprima (`Step5PreviewConfirm.tsx`). Blocco protocolli `javascript:`, rimozione tag eseguibili e attributi evento inline (`on*`).
 - **Punto 4 (Parser PDF):** Decompressione flussi zlib/FlateDecode per PDF digitali in `/api/email-import/parse-pdf`, con corretta distinzione da PDF bitmap scansionati.
-- **Wizard SETUP-DUMMIES (Step 2 - 8):** Consolidamento e verifica del percorso assistito collegato a `smtp_connection_id` verificato.
+---
 
-## 2. Interactive Task List (Fase 3)
-- [x] **Sub-fase 3.1: Modulo di Sanitizzazione HTML ed Escaping**
-  - [x] Creare `lib/security/sanitize-html.ts` con allowlist per email, rimozione script/eventi e validazione protocolli
-  - [x] Aggiungere funzioni di escaping testo e gestione placeholder dinamici
-  - [x] Bonificare `/api/email-import/parse/route.ts` con sanitizzazione obbligatoria per HTML, EML e TXT e controllo di sessione
-- [x] **Sub-fase 3.2: Hardening Componenti Browser (Editor & Anteprima)**
-  - [x] Aggiornare `components/dummies/VisualEmailEditor.tsx`: sanitizzare testo incollato su `handlePaste`, validare link e sanitizzare sync HTML
-  - [x] Aggiornare `components/dummies/steps/Step5PreviewConfirm.tsx`: applicare sanitizzazione garantita prima di `dangerouslySetInnerHTML`
-  - [x] Aggiornare `components/dummies/SetupDummiesModal.tsx`: sanificare `html_template` nel payload di creazione campagna
-- [x] **Sub-fase 3.3: Parser PDF con Supporto FlateDecode**
-  - [x] Implementare estrazione e decompressione stream `FlateDecode` in `lib/email-import/pdf-parser.ts`
-  - [x] Aggiornare `app/api/email-import/parse-pdf/route.ts` per gestire PDF digitali compressi e distinguere vere scansioni
-  - [x] Aggiungere limiti di risorsa e gestione errori
-- [x] **Sub-fase 3.4: Suite di Test e Collaudo Automatizzato**
-  - [x] Creare ed eseguire `scripts/test-import-security.mjs` (10/10 PASS)
-  - [x] Eseguire `npx tsc --noEmit` (0 errori)
-  - [x] Eseguire `npm run build` (0 errori, build ottimizzata completata)
-  - [x] Verificare integrità flusso Step 1-8 nel wizard SETUP-DUMMIES
+# FASE 3 (RIAPERTURA E CONSOLIDAMENTO): R01, R02, R03, R04
+
+## 1. Revisione Requisiti Consolidati
+- **R01 — Eliminazione Bypass XSS `<img/src=data:, onerror=window.__auditXss=1>`:**
+  - Sostituita la precedente regex con un motore a doppio livello conforme agli standard HTML5:
+    - Nel browser (client DOM): `DOMParser` analizza il frammento in un documento inerte, rimuove ricorsivamente tag pericolosi (`script`, `style`, `iframe`, `svg`, `object`, `form`), elimina tutti gli attributi `on*` a prescindere da slash o spaziatura, e valida gli schemi URL (`src`, `href`).
+    - Sul server / CLI: `htmlparser2` effettua la tokenizzazione HTML5 completa eliminando gli event handler e defangando i protocolli pericolosi.
+- **R02 — Parser PDF Sequenziale, Kerning e Formati:**
+  - Elaborazione sequenziale a singolo passaggio dei blocchi `BT ... ET` rispettando l'ordine naturale di emissione (`Tj`, `TJ`, `'`, `"`, `Td`, `T*`), garantendo l'ordine "Primo Secondo Terzo".
+  - Gestione tipografica del kerning negli array `TJ`: gli aggiustamenti numerici tipografici entro `-180` e `+180` vengono preservati come spaziatura intra-letterale (la parola "MARKETING" non viene frammentata con spazi interni), mentre gli scostamenti `<=` `-180` inseriscono uno spazio tra parole.
+  - Decodifica avanzata di accenti (`é`, `à`, `è`, `ì`, `ò`, `ù`), simboli WinAnsi / Latin-1 (`€`, `°`, `–`, `’`, `“`, `”`) sia in sequenze ottali (`\ddd`) che in byte raw e supporto tabelle `/ToUnicode` CMap (`beginbfchar`, `beginbfrange`).
+  - Distinzione netta tra formato non supportato (mancanza intestazione `%PDF-` o `/Encrypt`, restituito con HTTP 400) e scansione bitmap priva di testo selezionabile (restituito con HTTP 200 e `isScanned: true`).
+- **R03 — Limiti Decompressione Prima dell'Allocazione e Budget Cumulativo:**
+  - Protezione da zip bomb e memory exhaustion: `zlib.inflateSync` e `zlib.inflateRawSync` configurati con opzione `maxOutputLength: Math.min(MAX_SINGLE_STREAM_BYTES, remainingBudget)`. L'interruzione avviene a livello C++ durante l'inflate sollevando `ERR_BUFFER_TOO_LARGE` prima dell'allocazione completa del buffer.
+  - Limite singolo stream: 4MB (`MAX_SINGLE_STREAM_BYTES`).
+  - Budget cumulativo documentale: 12MB (`MAX_CUMULATIVE_DECOMPRESSED_BYTES`).
+  - Interruzione con errore esplicito in lingua italiana al superamento di qualsiasi limite.
+- **R04 — Eliminazione Doppio Escaping Oggetto in Anteprima React:**
+  - Rimosso `escapeHtml(resolvedSubject)` da `components/dummies/steps/Step5PreviewConfirm.tsx`. Poiché React esegue già nativamente l'escaping sicuro dei nodi di testo JSX, il doppio escaping provocava la visualizzazione letterale di entità come `&amp;` nell'interfaccia.
+
+## 2. Interactive Task List (Consolidata)
+- [x] **R01 (Bypass XSS):** Implementata sanitizzazione HTML basata su `DOMParser` client e `htmlparser2` server in `lib/security/sanitize-html.ts`. Neutralizzato il payload `<img/src=data:, onerror=window.__auditXss=1>`.
+- [x] **R02 (Parser PDF):** Riscritto `lib/email-import/pdf-parser.ts` con tokenizer sequenziale a singolo passaggio, threshold kerning per preservare "MARKETING", decodifica WinAnsi/Latin-1/CMap e distinzione tra formato non supportato (400) e scansione bitmap (`isScanned: true`).
+- [x] **R03 (Limiti Decompressione):** Applicato limite `maxOutputLength` su `zlib.inflateSync` prima dell'allocazione e conteggio cumulativo con budget di 12MB. Errore esplicito in caso di sforamento.
+- [x] **R04 (Doppio Escaping):** Eliminato `escapeHtml` superfluo in `Step5PreviewConfirm.tsx`.
+- [x] **Collaudo Unitario & Regressione:** Eseguito `scripts/test-import-security.mjs` con `tsx`: superati tutti i test per R01, R02, R03 e R04 (PASS 100%).
+- [x] **Collaudo Browser sui Componenti Reali:** Eseguito test con browser subagent su `http://localhost:3000/downloads/phase3-browser-audit`:
+  - `window.__auditXss` non viene eseguito (`undefined`).
+  - Tag `<img>` depurato da attributo `onerror`.
+  - Oggetto renderizzato come testo puro senza entità `&amp;` spurie.
+  - Contenuti leciti (`<h3>`, grassetti, link, tabelle, colori inline) preservati e visibili.
+- [x] **Percorso Completo 8 Step in Ambiente Controllato:** Eseguita navigazione sequenziale di tutti gli 8 step nel browser con conferma visiva e avvio sandbox con banner di successo.
+- [x] **TypeScript e Build:** `npx tsc --noEmit` completato con 0 errori; `npm run build` completato con codice 0 e 22 pagine ottimizzate.
+- [x] **SETTINGS.TXT e Governance:** Aggiornato l'inventario operativo con le specifiche consolidate di Fase 3.
+
+## 3. Limiti Residui e Note di Sicurezza
+1. **Scansioni e PDF puramente grafici:** I file PDF costituiti esclusivamente da immagini scannerizzate (senza layer vettoriale/testuale) vengono correttamente identificati con flag `isScanned: true`. In assenza di un modulo OCR locale, l'applicazione segnala esplicitamente all'utente di incollare o digitare il testo nell'editor.
+2. **File PDF Crittografati:** I file protetti da password o cifratura Adobe (/Encrypt) vengono rifiutati con errore 400 indicante che il documento deve essere decifrato prima dell'importazione.
+3. **Credenziali Gmail (Fase 2):** Come stabilito e verificato nella Fase 2, la casella `cesare.negro@gmail.com` richiede la configurazione di una password per le app di Google; non è stato introdotto alcun bypass.
+
 
 
 

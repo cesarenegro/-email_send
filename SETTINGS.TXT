@@ -63,18 +63,25 @@ Endpoints:
   - POST /api/settings/send-test: Account-isolated test email dispatcher
 Master Admin SMTP: Configured via environment variables (SMTP_HOST, SMTP_USER, SMTP_PASS), explicitly reserved for admin operations
 HTML Sanitization & XSS Defense: lib/security/sanitize-html.ts
-  - Allowlist for email-safe tags, removal of scripts/iframes/embeds/svg/forms
-  - Complete stripping of inline event handlers (onerror, onload, onclick)
-  - URL protocol restriction (strictly http:, https:, mailto:, tel:; defanging javascript:/data:)
-  - CSS inline style filtering without expressions or external url() tracking beacons
+  - Dual-engine architecture: Browser-native DOMParser for client DOM rendering + htmlparser2 for server-side HTML5 tokenization (strictly adhering to browser HTML5 parsing rules)
+  - Neutralization of malformed tag slashes and attribute obfuscation vectors (e.g. <img/src=data:, onerror=window.__auditXss=1>)
+  - Strict allowlist for email-safe tags; recursive removal of scripts, styles, iframes, embeds, svg, forms, and templates
+  - Complete stripping of all inline event handlers (on*)
+  - URL protocol restriction (strictly http:, https:, mailto:, tel:; defanging javascript:, data:, vbscript: to # or removal)
+  - CSS inline style filtering: strictly safe properties without expressions, behaviors, or url() tracking beacons
 Guided Campaign Creation (SETUP-DUMMIES):
   - Lime green (#84cc16) quick-access button in /campaigns and /campaigns/new
-  - 8-Step wizard modal (components/dummies/SetupDummiesModal.tsx, Step1Smtp.tsx)
+  - 8-Step wizard modal (components/dummies/SetupDummiesModal.tsx, Step1Smtp.tsx to Step8SummaryLaunch.tsx)
+  - React preview subject rendering: direct JSX string interpolation without redundant entity escaping, eliminating double-escaping (&amp;)
   - Zero password storage: password never saved in localStorage, sessionStorage, or client draft state
-  - Multi-tab and logout state isolation via supabase.auth.onAuthStateChange
-  - Automatic legacy draft password sanitization
-  - POST /api/email-import/parse (EML, HTML, TXT parser with server-side HTML sanitization & escaping)
-  - POST /api/email-import/parse-pdf (FlateDecode zlib decompression & text extraction via lib/email-import/pdf-parser.ts, deterministic scanned image detection, 100% No-AI)
+  - Multi-tab and logout state isolation via supabase.auth.onAuthStateChange with per-user scoped draft keys
+  - POST /api/email-import/parse (EML, HTML, TXT parser with dual-engine sanitization)
+  - POST /api/email-import/parse-pdf (FlateDecode zlib decompression & text extraction via lib/email-import/pdf-parser.ts):
+    * Single-pass sequential operator tokenizer preserving exact reading order ("Primo Secondo Terzo") across mixed Tj/TJ
+    * Typographic kerning awareness in TJ arrays: preserves words like "MARKETING" without internal spacing (threshold <= -180 for word separation)
+    * Robust encoding support: Octal escapes (\ddd), WinAnsi / Latin-1 bytes (accents é, à, symbols €, °, dashes, quotes), and /ToUnicode CMap tables (beginbfchar / beginbfrange)
+    * Decompression resource protection: MAX_SINGLE_STREAM_BYTES (4MB) enforced during inflate via maxOutputLength, and MAX_CUMULATIVE_DECOMPRESSED_BYTES (12MB) document budget with explicit abort errors
+    * Clear distinction between unsupported/encrypted formats (400) and scanned image/bitmap documents (200 with isScanned: true)
   - POST /api/leads/parse-file (dual CSV and Excel .xlsx parser via PapaParse & ExcelJS)
 
 4. BOUNCE MONITORING & DELIVERY STATUS NOTIFICATIONS (IMAP)
@@ -179,4 +186,12 @@ CRITICAL OPERATIONAL RULES & SCOPE LOCK:
 - Plain text / HTML template personalization: {{companyName}}, {{azienda}}, {{NOME_AZIENDA}}, {{email}}
 - Zero invented data in Lead Research: null returned if field is not supported by source evidence
 ===============================================================================
+
+RELEASE UPDATE — 2026-10-13 20:55 Asia/Makassar (UTC+08:00)
+PDF extraction: pdfjs-dist 6.4.299 (Mozilla PDF.js), Node 24; replaces handwritten text/CMap parser.
+Resource preflight: 10MB upload, 4MB decoded stream, 12MB total, maximum 50 pages. Unsupported filter chains rejected explicitly. No OCR.
+Direct HTML parser dependency: htmlparser2 10.1.0. Browser sanitization remains DOMParser-based.
+Packaging: pdfjs-dist external server dependency; worker/fonts/CMaps included in parse-pdf route trace.
+Local app/downloads/phase3-browser-audit excluded from Vercel upload; it is not an end-to-end test.
+Live verification/publication pending; see top of IMPLEMENTATION_PLAN.md for current release evidence.
 

@@ -27,7 +27,10 @@ export default function Step7Scheduling({ data, onUpdate, leadCount }: Step7Sche
     name: 'Draft',
     subject_template: '',
     html_template: '',
-    status: 'draft',
+    status: 'active',
+    next_send_at: data.startMode === 'scheduled' && data.scheduledDate
+      ? DateTime.fromISO(data.scheduledDate, { zone: data.timezone || 'Europe/Rome' }).toUTC().toISO()
+      : null,
     timezone: data.timezone || 'Europe/Rome',
     send_window_start: '09:00',
     send_window_end: '18:00',

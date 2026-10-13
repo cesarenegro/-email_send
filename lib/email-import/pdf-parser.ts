@@ -1,279 +1,117 @@
 import zlib from 'node:zlib';
-import { escapeHtml } from '@/lib/security/sanitize-html';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
+import path from 'node:path';
+import { escapeHtml } from '../security/sanitize-html';
 
 export interface PdfExtractionResult {
-  success: boolean;
-  text: string;
-  html: string;
-  isScanned: boolean;
-  pageCount?: number;
-  message?: string;
+  success: boolean; text: string; html: string; isScanned: boolean;
+  unsupportedFormat?: boolean; pageCount?: number; message?: string;
 }
-
-const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
-const MAX_DECOMPRESSED_BYTES = 20 * 1024 * 1024; // 20MB zip-bomb defense
-
-/**
- * Decodes PDF string escapes (octal, hex, and standard escapes).
- */
-function decodePdfLiteralString(raw: string): string {
-  // 1. Octal escapes \ddd
-  let decoded = raw.replace(/\\([0-7]{1,3})/g, (_m, oct) => {
-    return String.fromCharCode(parseInt(oct, 8));
-  });
-
-  // 2. Standard single-character escapes
-  decoded = decoded
-    .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '\r')
-    .replace(/\\t/g, '\t')
-    .replace(/\\b/g, '\b')
-    .replace(/\\f/g, '\f')
-    .replace(/\\([()\\])/g, '$1');
-
-  return decoded;
+export const MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024;
+export const MAX_SINGLE_STREAM_BYTES = 4 * 1024 * 1024;
+export const MAX_CUMULATIVE_DECOMPRESSED_BYTES = 12 * 1024 * 1024;
+function unsupported(message: string): PdfExtractionResult {
+  return { success: false, text: '', html: '', isScanned: false, unsupportedFormat: true, message };
 }
-
-/**
- * Decodes PDF hexadecimal string <48656c6c6f>.
- */
-function decodePdfHexString(hex: string): string {
-  const cleanHex = hex.replace(/\s+/g, '');
-  const bytes: number[] = [];
-  for (let i = 0; i < cleanHex.length; i += 2) {
-    const byteHex = cleanHex.slice(i, i + 2);
-    if (byteHex.length === 2) {
-      bytes.push(parseInt(byteHex, 16));
-    }
-  }
-
-  // Check for UTF-16BE BOM (0xFE 0xFF)
-  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
-    let str = '';
-    for (let i = 2; i < bytes.length; i += 2) {
-      if (i + 1 < bytes.length) {
-        str += String.fromCharCode((bytes[i] << 8) | bytes[i + 1]);
-      }
-    }
-    return str;
-  }
-
-  return Buffer.from(bytes).toString('utf-8');
-}
-
-/**
- * Extracts text chunks from a decompressed or raw PDF content stream.
- */
-function extractTextFromStreamContent(streamContent: string): string[] {
-  const chunks: string[] = [];
-  const btRegex = /BT[\s\S]*?ET/g;
-  let btMatch: RegExpExecArray | null;
-
-  while ((btMatch = btRegex.exec(streamContent)) !== null) {
-    const block = btMatch[0];
-
-    // Case A: (...) Tj - literal string
-    const tjLiteralRegex = /\(([\s\S]*?)\)\s*Tj/g;
-    let tjMatch: RegExpExecArray | null;
-    while ((tjMatch = tjLiteralRegex.exec(block)) !== null) {
-      const decoded = decodePdfLiteralString(tjMatch[1]).trim();
-      if (decoded) chunks.push(decoded);
-    }
-
-    // Case B: <...> Tj - hex string
-    const tjHexRegex = /<([0-9a-fA-F\s]+)>\s*Tj/g;
-    let hexMatch: RegExpExecArray | null;
-    while ((hexMatch = tjHexRegex.exec(block)) !== null) {
-      const decoded = decodePdfHexString(hexMatch[1]).trim();
-      if (decoded) chunks.push(decoded);
-    }
-
-    // Case C: [(...)] TJ or [<...>] TJ - array of strings and spacing
-    const arrayTjRegex = /\[([\s\S]*?)\]\s*TJ/g;
-    let arrayMatch: RegExpExecArray | null;
-    while ((arrayMatch = arrayTjRegex.exec(block)) !== null) {
-      const inner = arrayMatch[1];
-      const partRegex = /\(([\s\S]*?)\)|<([0-9a-fA-F\s]+)>/g;
-      let partMatch: RegExpExecArray | null;
-      let assembledLine = '';
-
-      while ((partMatch = partRegex.exec(inner)) !== null) {
-        if (partMatch[1] !== undefined) {
-          assembledLine += decodePdfLiteralString(partMatch[1]);
-        } else if (partMatch[2] !== undefined) {
-          assembledLine += decodePdfHexString(partMatch[2]);
-        }
-      }
-
-      if (assembledLine.trim()) {
-        chunks.push(assembledLine.trim());
-      }
-    }
-
-    // Case D: ' or " single-quote text operators
-    const quoteRegex = /\(([\s\S]*?)\)\s*['"]/g;
-    let quoteMatch: RegExpExecArray | null;
-    while ((quoteMatch = quoteRegex.exec(block)) !== null) {
-      const decoded = decodePdfLiteralString(quoteMatch[1]).trim();
-      if (decoded) chunks.push(decoded);
-    }
-  }
-
-  return chunks;
-}
-
-/**
- * Parses a PDF buffer, decompressing FlateDecode streams as needed,
- * and extracts text formatted as clean, safe HTML paragraphs.
- */
-export async function parsePdfBuffer(buffer: Buffer): Promise<PdfExtractionResult> {
-  if (!buffer || buffer.length === 0) {
-    return {
-      success: false,
-      text: '',
-      html: '',
-      isScanned: false,
-      message: 'Il file PDF è vuoto.',
-    };
-  }
-
-  if (buffer.length > MAX_PDF_SIZE_BYTES) {
-    return {
-      success: false,
-      text: '',
-      html: '',
-      isScanned: false,
-      message: 'Il file PDF supera la dimensione massima consentita di 10MB.',
-    };
-  }
-
-  const rawString = buffer.toString('binary');
-  if (!rawString.includes('%PDF-')) {
-    return {
-      success: false,
-      text: '',
-      html: '',
-      isScanned: false,
-      message: 'Il file caricato non sembra un formato PDF valido.',
-    };
-  }
-
-  // Count pages if possible
-  const pagesMatches = rawString.match(/\/Type\s*\/Page\b/g);
-  const pageCount = pagesMatches ? pagesMatches.length : 1;
-
-  // Detect image-only indicators
-  const hasImages =
-    rawString.includes('/Subtype /Image') ||
-    rawString.includes('/Subtype/Image') ||
-    rawString.includes('/DCTDecode') ||
-    rawString.includes('/JPXDecode');
-
-  const allChunks: string[] = [];
-  let totalDecompressedBytes = 0;
-
-  // Stream matching regex: extracts dict << ... >> and binary stream
-  const streamRegex = /<<([\s\S]*?)>>\s*stream[\r\n]+([\s\S]*?)[\r\n]+endstream/g;
-  let streamMatch: RegExpExecArray | null;
-
-  while ((streamMatch = streamRegex.exec(rawString)) !== null) {
-    const dict = streamMatch[1];
-    const streamContent = streamMatch[2];
-    const streamBuf = Buffer.from(streamContent, 'binary');
-
-    let decompressedStr = '';
-
-    // Check if stream is compressed with FlateDecode
-    if (dict.includes('/FlateDecode')) {
-      try {
-        const uncompressed = zlib.inflateSync(streamBuf);
-        totalDecompressedBytes += uncompressed.length;
-        if (totalDecompressedBytes > MAX_DECOMPRESSED_BYTES) {
-          throw new Error('Limite di decompressione superato');
-        }
-        decompressedStr = uncompressed.toString('latin1');
-      } catch {
-        try {
-          const uncompressed = zlib.inflateRawSync(streamBuf);
-          totalDecompressedBytes += uncompressed.length;
-          if (totalDecompressedBytes > MAX_DECOMPRESSED_BYTES) {
-            throw new Error('Limite di decompressione superato');
-          }
-          decompressedStr = uncompressed.toString('latin1');
-        } catch {
-          // Non-critical stream or font data failed to decompress
-        }
-      }
-    } else {
-      // Uncompressed stream
-      decompressedStr = streamContent;
-    }
-
-    if (decompressedStr) {
-      const chunks = extractTextFromStreamContent(decompressedStr);
-      allChunks.push(...chunks);
-    }
-  }
-
-  // Also check uncompressed text directly in the raw PDF body if any was missed
-  if (allChunks.length === 0) {
-    const directChunks = extractTextFromStreamContent(rawString);
-    allChunks.push(...directChunks);
-  }
-
-  const rawFullText = allChunks.join(' ').replace(/\s+/g, ' ').trim();
-
-  // If very little text is extracted (< 20 chars) and images exist, consider scanned
-  const isScanned = rawFullText.length < 25 && hasImages;
-
-  if (isScanned) {
-    return {
-      success: false,
-      text: rawFullText,
-      html: '',
-      isScanned: true,
-      pageCount,
-      message: 'Questo PDF sembra una scansione o contiene solo immagini. Incolla il testo manualmente nell\'editor.',
-    };
-  }
-
-  if (rawFullText.length === 0) {
-    return {
-      success: false,
-      text: '',
-      html: '',
-      isScanned: false,
-      pageCount,
-      message: 'Nessun testo estraibile trovato in questo documento PDF.',
-    };
-  }
-
-  // Format extracted chunks into clean, escaped HTML paragraphs
-  const paragraphs: string[] = [];
-  let currentPara: string[] = [];
-
-  for (const chunk of allChunks) {
-    currentPara.push(chunk);
-    // Break into new paragraph on sentence-ending punctuation or long chunk
-    if (chunk.endsWith('.') || chunk.endsWith(':') || chunk.endsWith('!') || chunk.endsWith('?') || currentPara.length >= 4) {
-      paragraphs.push(currentPara.join(' '));
-      currentPara = [];
-    }
-  }
-  if (currentPara.length > 0) {
-    paragraphs.push(currentPara.join(' '));
-  }
-
-  const html = paragraphs
-    .filter((p) => p.trim().length > 0)
-    .map((p) => `<p style="margin: 0 0 14px 0; line-height: 1.6;">${escapeHtml(p)}</p>`)
-    .join('');
-
-  return {
-    success: true,
-    text: rawFullText,
-    html,
-    isScanned: false,
-    pageCount,
+function ascii85(input: Buffer): Buffer {
+  const text = input.toString('latin1').replace(/\s/g, '').replace(/^<~/, '').replace(/~>$/, '');
+  const out: number[] = [];
+  let group: number[] = [];
+  const emit = (digits: number[], count: number) => {
+    let value = 0;
+    for (const digit of digits) value = value * 85 + digit;
+    if (value > 0xffffffff) throw new Error('Codifica ASCII85 PDF non valida.');
+    for (let i = 0; i < count; i++) out.push((value >>> (24 - 8 * i)) & 255);
+    if (out.length > MAX_SINGLE_STREAM_BYTES) throw new Error('Flusso PDF supera il limite consentito durante la decompressione.');
   };
+  for (const char of text) {
+    if (char === 'z' && !group.length) { emit([0, 0, 0, 0, 0], 4); continue; }
+    const digit = char.charCodeAt(0) - 33;
+    if (digit < 0 || digit > 84) throw new Error('Codifica ASCII85 PDF non valida.');
+    group.push(digit);
+    if (group.length === 5) { emit(group, 4); group = []; }
+  }
+  if (group.length === 1) throw new Error('Codifica ASCII85 PDF incompleta.');
+  if (group.length > 1) { const count = group.length - 1; while (group.length < 5) group.push(84); emit(group, count); }
+  return Buffer.from(out);
+}
+// Resource preflight only: PDF.js interprets PDF syntax, fonts and text order.
+// Unknown filter chains are refused instead of bypassing the resource budget.
+export function checkPdfResourceLimits(buffer: Buffer): void {
+  const raw = buffer.toString('latin1');
+  let total = 0;
+  const streams = /<<([\s\S]*?)>>\s*stream\r?\n([\s\S]*?)endstream/g;
+  for (const match of raw.matchAll(streams)) {
+    const dict = match[1];
+    if (/#/.test(dict)) throw new Error('Codifica dei nomi PDF non supportata per l’importazione sicura.');
+    const length = /\/Length\s+(\d+)\b(?!\s+\d+\s+R)/.exec(dict);
+    let data: Buffer = Buffer.from(match[2], 'latin1');
+    if (length) data = data.subarray(0, Number(length[1]));
+    else data = data.subarray(0, data.length - (match[2].endsWith('\r\n') ? 2 : match[2].endsWith('\n') ? 1 : 0));
+    const filter = /\/Filter\s*(\[[^\]]*\]|\/\w+)/.exec(dict);
+    if (/\/Filter\b/.test(dict) && !filter) throw new Error('Filtro PDF indiretto non supportato per l’importazione sicura.');
+    const filters = filter?.[1].match(/\/\w+/g) || [];
+    for (const name of filters) {
+      if (name === '/ASCII85Decode' || name === '/A85') data = ascii85(data);
+      else if (name === '/FlateDecode' || name === '/Fl') {
+        const remaining = MAX_CUMULATIVE_DECOMPRESSED_BYTES - total;
+        if (remaining <= 0) throw new Error('Superato il budget cumulativo di decompressione di 12MB.');
+        try { data = zlib.inflateSync(data, { maxOutputLength: Math.min(MAX_SINGLE_STREAM_BYTES, remaining) }); }
+        catch (error: any) {
+          if (error.code === 'ERR_BUFFER_TOO_LARGE') throw new Error('Flusso compresso supera il limite consentito durante la decompressione (4MB per stream, 12MB totali).');
+          throw new Error('Flusso PDF compresso non valido o non supportato.');
+        }
+      } else if (!['/DCTDecode', '/JPXDecode', '/CCITTFaxDecode'].includes(name)) {
+        throw new Error('Filtro PDF non supportato per l’importazione sicura.');
+      }
+    }
+    if (data.length > MAX_SINGLE_STREAM_BYTES) throw new Error('Flusso PDF supera il limite consentito durante la decompressione.');
+    total += data.length;
+    if (total > MAX_CUMULATIVE_DECOMPRESSED_BYTES) throw new Error('Superato il budget cumulativo di decompressione di 12MB.');
+  }
+}
+export async function parsePdfBuffer(buffer: Buffer): Promise<PdfExtractionResult> {
+  if (!buffer?.length) return unsupported('Il file PDF caricato è vuoto.');
+  if (buffer.length > MAX_PDF_SIZE_BYTES) throw new Error('Il file PDF supera la dimensione massima consentita di 10MB.');
+  if (!buffer.subarray(0, 1024).includes(Buffer.from('%PDF-'))) return unsupported('Il file non corrisponde a un documento PDF valido.');
+  if (/\/Encrypt\b/.test(buffer.toString('latin1'))) return unsupported('Questo PDF richiede una password: esportane una copia senza protezione.');
+  checkPdfResourceLimits(buffer);
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const require = createRequire(path.join(process.cwd(), 'package.json'));
+  const packageRoot = path.dirname(require.resolve('pdfjs-dist/package.json'));
+  pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(path.join(packageRoot, 'legacy/build/pdf.worker.mjs')).href;
+  const task = pdfjs.getDocument({
+    data: new Uint8Array(buffer), useSystemFonts: false, disableFontFace: true, stopAtErrors: true, verbosity: 0,
+    standardFontDataUrl: path.join(packageRoot, 'standard_fonts').replace(/\\/g, '/') + '/',
+    cMapUrl: path.join(packageRoot, 'cmaps').replace(/\\/g, '/') + '/', cMapPacked: true, maxImageSize: 0,
+  });
+  try {
+    const document = await task.promise;
+    if (document.numPages > 50) throw new Error('Importa un PDF di massimo 50 pagine.');
+    const paragraphs: string[] = [];
+    for (let number = 1; number <= document.numPages; number++) {
+      const page = await document.getPage(number);
+      const content = await page.getTextContent();
+      let line = '';
+      for (const item of content.items) {
+        if (!('str' in item)) continue;
+        line += item.str;
+        if (item.hasEOL) { if (line.trim()) paragraphs.push(line.trim()); line = ''; }
+      }
+      if (line.trim()) paragraphs.push(line.trim());
+      page.cleanup();
+    }
+    const text = paragraphs.join('\n').trim();
+    if (!text) return {
+      success: false, text: '', html: '', isScanned: /\/Subtype\s*\/Image\b/.test(buffer.toString('latin1')),
+      pageCount: document.numPages,
+      message: 'Nessun testo selezionabile trovato. Se il PDF è una scansione, scrivi o incolla il testo nell’editor.',
+    };
+    return { success: true, text, html: paragraphs.map(p => '<p>' + escapeHtml(p) + '</p>').join(''), isScanned: false, pageCount: document.numPages };
+  } catch (error: any) {
+    if (error.name === 'PasswordException') return unsupported('Questo PDF richiede una password: esportane una copia senza protezione.');
+    if (error.name === 'InvalidPDFException' || error.name === 'FormatError') return unsupported('Documento PDF non valido o formato non supportato.');
+    throw error;
+  } finally { await task.destroy(); }
 }

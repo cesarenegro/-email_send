@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { DateTime } from 'luxon';
 import {
   X,
   ChevronLeft,
@@ -329,7 +330,10 @@ export default function SetupDummiesModal({
       case 6:
         return leads.validLeads.length > 0;
       case 7:
-        return true;
+        return scheduling.startMode === 'immediate' || (
+          DateTime.fromISO(scheduling.scheduledDate, { zone: scheduling.timezone }).isValid &&
+          DateTime.fromISO(scheduling.scheduledDate, { zone: scheduling.timezone }).toMillis() > Date.now()
+        );
       case 8:
         return leads.validLeads.length > 0 && !isSubmitting;
       default:
@@ -352,6 +356,8 @@ export default function SetupDummiesModal({
         return 'Spunta la casella per confermare che il messaggio è pronto.';
       case 6:
         return 'Carica un file di contatti con almeno un indirizzo email valido.';
+      case 7:
+        return 'Scegli una data e ora futura nel fuso orario selezionato.';
       default:
         return null;
     }
@@ -394,7 +400,9 @@ export default function SetupDummiesModal({
         send_window_end: '18:00',
         send_interval_seconds: scheduling.sendIntervalSeconds || 240,
         daily_limit: scheduling.dailyLimit || 80,
-        start_at: scheduling.startMode === 'scheduled' && scheduling.scheduledDate ? scheduling.scheduledDate : null,
+        start_at: scheduling.startMode === 'scheduled' && scheduling.scheduledDate
+          ? DateTime.fromISO(scheduling.scheduledDate, { zone: scheduling.timezone }).toUTC().toISO()
+          : null,
         smtp_connection_id: smtp.smtpConnectionId || null,
       };
 

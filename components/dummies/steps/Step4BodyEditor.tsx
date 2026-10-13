@@ -47,6 +47,9 @@ export default function Step4BodyEditor({
         });
         const data = await res.json();
 
+        if (!res.ok) {
+          throw new Error(data.error || data.message || 'Impossibile importare questo PDF.');
+        }
         if (data.isScanned || !data.success) {
           setImportNotice({
             type: 'warn',

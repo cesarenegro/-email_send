@@ -1,0 +1,3 @@
+# Keep local audit harness and evidence out of the production release.
+app/downloads/phase3-browser-audit
+output

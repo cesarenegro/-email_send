@@ -30,7 +30,7 @@ export default function Step5PreviewConfirm({
     email: 'info@studiobellini.it',
   };
 
-  const resolvedSubject = escapeHtml(renderTemplate(subject || '', sampleLead));
+  const resolvedSubject = renderTemplate(subject || '', sampleLead);
   const rawResolvedHtml = renderTemplate(html || '', sampleLead);
   const resolvedHtml = sanitizeEmailHtml(rawResolvedHtml);
 
