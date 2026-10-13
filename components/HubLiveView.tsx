@@ -188,7 +188,7 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
       {/* Section Two: Operational Feature Cards */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-space-lg mt-space-lg">
         {/* Card 1: Email Massive */}
-        <div className="bg-[#ffffff] rounded-xl border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] p-space-lg flex flex-col justify-between relative overflow-hidden group">
+        <div className="bg-[#BADFCD] rounded-xl border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] p-space-lg flex flex-col justify-between relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#036e13]/5 rounded-bl-full pointer-events-none transition-transform duration-500 group-hover:scale-110"></div>
           <div>
             {/* Top Row Header */}
@@ -308,7 +308,7 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
         </div>
 
         {/* Card 2: Newsletter */}
-        <div className="bg-[#ffffff] rounded-xl border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] p-space-lg flex flex-col justify-between relative overflow-hidden group">
+        <div className="bg-[#A4D4D4] rounded-xl border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] p-space-lg flex flex-col justify-between relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#dedfe5]/30 rounded-bl-full pointer-events-none transition-transform duration-500 group-hover:scale-110"></div>
           <div>
             {/* Top Row Header */}
@@ -418,7 +418,7 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
         </div>
 
         {/* Card 3: Ricerca Leads */}
-        <div className="bg-[#ffffff] rounded-xl border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] p-space-lg flex flex-col justify-between relative overflow-hidden group">
+        <div className="bg-[#E0CDB2] rounded-xl border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] p-space-lg flex flex-col justify-between relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#036e13]/10 rounded-bl-full pointer-events-none transition-transform duration-500 group-hover:scale-110"></div>
           <div>
             {/* Top Row Header */}

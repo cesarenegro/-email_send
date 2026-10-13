@@ -1,5 +1,17 @@
 # IMPLEMENTATION PLAN: CORREZIONI 1/3 - ISOLAMENTO DATABASE E ACCESSI PUBBLICI
 
+## Modifica UI Colori Background Card Hub Overview — 2026-10-14 06:12 +08:00
+- [x] Specifiche utente da screenshot `mod.png`:
+  - Card 1 (Email Massive): impostato background `#BADFCD`.
+  - Card 2 (Newsletter): impostato background `#A4D4D4`.
+  - Card 3 (Ricerca Leads): impostato background `#E0CDB2`.
+- [x] Modifica applicata in `components/HubLiveView.tsx` (righe 191, 311, 421).
+- [x] Validazione TypeScript: `npx tsc --noEmit` completato con 0 errori.
+- [x] Validazione ESLint: 0 errori su `components/HubLiveView.tsx`.
+- [x] Validazione Build: `npm run build` Next.js Turbopack completato con codice 0 e 22/22 pagine statiche.
+- [ ] Commit e push su `main`.
+- [ ] Verifica deployment Vercel.
+
 ## Correzione KPI "Invii Oggi" (event_type vs status) — 2026-10-14 06:05 +08:00
 - [x] Diagnosi verificata: in `public.email_logs` la colonna `status` non esiste. La colonna corretta è `event_type` ('sent', 'error') (cfr. `003_email_logs.sql`, `lib/scheduling/daily-limit.ts`). La query con `.eq('status', 'sent')` provocava errore 400 Bad Request da PostgREST azzerando la metrica.
 - [x] Correzione minima applicata:
@@ -43,7 +55,7 @@ Test: scripts/test-smtp-live.mjs e scripts/verify-imap-receipt.mjs.
 
 **Document Type:** Formal Implementation Plan & Interactive Task List  
 **Created:** 2026-10-13 14:50 +08:00  
-**Last modified:** 2026-10-14 06:05 +08:00  
+**Last modified:** 2026-10-14 06:12 +08:00  
 **Agent:** Antigravity  
 **Repository:** [cesarenegro/-email_send](https://github.com/cesarenegro/-email_send)  
 **Branch / HEAD:** `main` @ `eb8a9d6`  
