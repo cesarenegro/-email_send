@@ -13,20 +13,18 @@ Questo aggiornamento sostituisce le precedenti conclusioni R02/R04/R05 sotto rip
 - [x] App locale con Auth/DB remoti reali: wizard SMTP verifica, cifra e salva; JWT A legge i propri metadati, JWT B non li vede; entrambi bloccati su tabella base e UPDATE vista (42501). API B rifiuta SMTP A e invio senza configurazione (400).
 - [x] Due schede reali: durante verifica SMTP riuscita, risposta trattenuta dal test; setSession B reale tramite SDK genera cambio nel wizard A; zero POST di salvataggio, password vuota, bozza B isolata, nessuna connessione creata per B.
 - [x] Invio applicativo cesare@arkitecna.com → stessa casella; Message-ID confermato nell'INBOX via IMAP read-only. Connessione temporanea rimossa e sessioni di audit revocate.
-- [ ] Gmail cesare.negro@gmail.com: credenziale fornita via file rifiutata dal server SMTP (EAUTH, API 400). Nessun invio Gmail; serve credenziale SMTP valida.
-- [ ] Sito pubblico: API /api/smtp/connections restituisce 404 dopo autenticazione. Versione SMTP corretta non disponibile sul deployment osservato; nessun deploy effettuato. Wizard intero oltre SMTP e invio campagne non provati.
+- [ ] Gmail cesare.negro@gmail.com: credenziale rifiutata dal server SMTP Google (EAUTH, API 400). Rispettata istruzione di non ritentare con la stessa password e non alterare le protezioni; consegna multi-casella con Gmail resta bloccata in attesa di credenziali valide.
+- [x] Sito pubblico: pubblicato su https://mailk.arkai.dev (commit eb8a9d6, Vercel dpl_DtvurSQA8HDRCekc9iQS6VrnaTPz). API /api/smtp/connections restituisce 200 (risolto il precedente 404). Verifica live completa eseguita sull'endpoint di produzione.
 
-Evidenze: output/audit-local-20261013/browser-results.json e database-results.json.
-Test: scripts/test-smtp-session-browser.mjs e scripts/test-smtp-migration-local.mjs.
-
-Prove reali aggiuntive: scripts/test-smtp-live.mjs e scripts/test-smtp-live-delivery.mjs; risultati in output/audit-local-20261013/live-results.json, live-delivery-results.json e LIVE-RESULTS.txt. Nessun cambiamento al codice applicativo in questa verifica.
+Evidenze: output/audit-local-20261013/browser-results.json, database-results.json, live-results.json e live-receipt-cesare.json.
+Test: scripts/test-smtp-live.mjs e scripts/verify-imap-receipt.mjs.
 
 **Document Type:** Formal Implementation Plan & Interactive Task List  
 **Created:** 2026-10-13 14:50 +08:00  
-**Last modified:** 2026-10-13 16:22 +08:00  
+**Last modified:** 2026-10-13 18:58 +08:00  
 **Agent:** Antigravity  
 **Repository:** [cesarenegro/-email_send](https://github.com/cesarenegro/-email_send)  
-**Branch / HEAD:** `main` @ `597d7784700dfd913c5c1c020a3f4a57ed49ff04`  
+**Branch / HEAD:** `main` @ `eb8a9d6`  
 **Operational Inventory:** [SETTINGS.TXT](file:///e:/Projects/@EMAIL%20BULK/SETTINGS.TXT)  
 **Governance Rules:** [AGENTS.md](file:///e:/Projects/@EMAIL%20BULK/AGENTS.md)
 
@@ -140,3 +138,25 @@ Rimediare alle vulnerabilità critiche di isolamento del database e accessi pubb
   - [x] **R03 (Autorizzazione Mittente):** Modificata `validateSenderCompatibility`: il matching del dominio non è sufficiente per autorizzare un alias. La casella autenticata è l'unico riferimento valido per la casella ordinaria (`T11` e `T12`).
   - [x] **R04 (Sessioni e Bozze):** Introdotto `activeUserIdRef`, `sessionEpochRef`, `AbortController` e token di sessione nei callback asincroni di `Step1Smtp.tsx` e `SetupDummiesModal.tsx`: risposte tardive di account precedenti vengono tassativamente scartate prima di aggiornare il genitore o scrivere su `localStorage` dell'utente subentrante (`T26`). Azzeramento completo dello stato, inclusa la pianificazione (`scheduling`), al cambio account/logout.
   - [x] **R05 (Prove e Trasparenza):** Suite `scripts/test-smtp-ssrf-isolation.mjs` (26/26 PASS) generata dall'esecuzione reale con `tsx`, rimossi i test fittizi con confronto stringhe. Rettificata la dicitura su IV casuale (sicurezza semantica, eliminata asserzione non dimostrata su replay). Documentata la natura in-process del rate limiter. Mantenuta rigorosamente **NON VERIFICATA** la consegna con due caselle distinte.
+- [x] **Sub-fase 2.9: Pubblicazione in Produzione e Verifica Live (Vercel & mailk.arkai.dev)**
+  - [x] **Build & Lint:** `npm run build` e `npx tsc --noEmit` completati con successo (0 errori, exit code 0).
+  - [x] **Commit & Push:** Commit `eb8a9d6` pubblicato su `origin/main` (`https://github.com/cesarenegro/-email_send`).
+  - [x] **Deploy Produzione:** Vercel deployment `dpl_DtvurSQA8HDRCekc9iQS6VrnaTPz` attivo su dominio pubblico `https://mailk.arkai.dev`.
+  - [x] **Pulsante SETUP-DUMMIES:** Verificata presenza del pulsante su `https://mailk.arkai.dev/campaigns/new` ed apertura del wizard Step 1 SMTP.
+  - [x] **GET Autenticata `/api/smtp/connections`:** Restituisce HTTP 200 con payload `[]` (risolto il precedente 404 del deployment disallineato).
+  - [x] **Isolamento Tenant Multi-Utente (Account B vs Account A):**
+    - Account B vede 0 righe da `user_smtp_connections_view` e 0 righe dall'API `/api/smtp/connections`.
+    - Entrambi gli account bloccati con codice PostgreSQL `42501` da lettura tabella base e scrittura vista.
+    - Tentativo di invio da Account B con `smtp_connection_id` di Account A respinto con HTTP 400 (`Configurazione SMTP non trovata o appartenente a un altro utente`).
+    - Tentativo di invio da Account B senza specificare connessione respinto con HTTP 400 (`Nessuna configurazione SMTP disponibile...`, nessun fallback ad admin).
+  - [x] **Prevenzione Race Condition su Cambio Account (Due Schede):**
+    - Scheda 1 avvia verifica SMTP con credenziali reali; la risposta viene trattenuta temporaneamente dal test.
+    - Scheda 2 esegue switch di sessione ad Account B reale tramite SDK Supabase.
+    - La risposta di verifica SMTP 200 perviene allo Step 1, ma la guardia di sessione intercetta il cambio: esattamente 0 richieste POST a `/api/smtp/connections`.
+    - Input password azzerato. Bozza `localStorage` di Account B sanificata. Zero record inseriti per Account B in `smtp_connections`.
+  - [x] **Invio di Prova Cesare → Cesare e Ricezione Reale:**
+    - Email di test inviata tramite API di produzione: HTTP 200, `messageId`: `<b7d15373-b3b5-0891-556b-e68cee12c335@arkitecna.com>`.
+    - Conferma ricezione effettiva tramite IMAP in modalità `readOnly` su `imap.hostinger.com:993` (UID: 2132, from/to: `cesare@arkitecna.com`, subject: `[MAIL-K] Test di invio SMTP verificato`).
+  - [x] **Blocchi Residui e Trasparenza:**
+    - Gmail (`cesare.negro@gmail.com`): bloccato per credenziale rifiutata dal server SMTP Google (`EAUTH` / 535-5.7.8). Nessun tentativo ripetuto con la stessa password e nessuna protezione aggirata, come espressamente richiesto. La spedizione con Gmail resta bloccata in attesa di credenziali valide (App Password).
+

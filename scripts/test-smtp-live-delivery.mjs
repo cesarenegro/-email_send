@@ -4,7 +4,7 @@ import {readFile,writeFile} from 'node:fs/promises';
 import {ImapFlow} from 'imapflow';
 import {admin,login,cookiesFor,revoke,tools} from './audit-live-helpers.mjs';
 const {chromium}=tools('playwright');
-const origin='http://localhost:3000';
+const origin = process.env.LIVE_ORIGIN || 'https://mailk.arkai.dev';
 const first=JSON.parse(await readFile('output/audit-local-20261013/live-results.json','utf8'));
 const report={at:new Date().toISOString(),checks:[]};
 let G,browser,id,imap;

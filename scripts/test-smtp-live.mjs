@@ -6,8 +6,8 @@ import {writeFile} from 'node:fs/promises';
 import {admin,login,cookiesFor,revoke,tools,url,anonKey} from './audit-live-helpers.mjs';
 const {chromium}=tools('playwright');
 const {build}=tools('esbuild');
-const origin='http://localhost:3000';
-const report={at:new Date().toISOString(),origin,database:new URL(url).hostname,checks:[],limits:['Public deployment /api/smtp/connections returned authenticated 404. Tests below target local app and real remote dependencies.']};
+const origin = process.env.LIVE_ORIGIN || 'https://mailk.arkai.dev';
+const report = { at: new Date().toISOString(), origin, database: new URL(url).hostname, checks: [], limits: [] };
 const fixtureIds=[];
 let A,B,browser,release;
 function pass(name,evidence){report.checks.push({name,status:'PASS',evidence});console.log('PASS '+name+(evidence?' '+JSON.stringify(evidence):''));}

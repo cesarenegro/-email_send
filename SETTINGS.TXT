@@ -1,13 +1,16 @@
 ================================================================================
 MAIL-K (PRECISION OUTBOUND) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-13 18:15 +08:00
-Audit addendum: 2026-10-13 (UTC+08:00), Codex.
-Local test tools only: PostgreSQL 16 isolated cluster (127.0.0.1:55439),
-Playwright + esbuild in output/audit-local-20261013/tools; installed Edge Chromium.
-No production dependency/lockfile changes. No remote migration, deploy or real email.
-Reproducible tests: scripts/test-smtp-migration-local.mjs (fresh isolated cluster)
-and scripts/test-smtp-session-browser.mjs (real component, simulated HTTP/session).
+Last updated: 2026-10-13 18:58 +08:00
+Deployment: Production live at https://mailk.arkai.dev (Vercel dpl_DtvurSQA8HDRCekc9iQS6VrnaTPz)
+Commit: eb8a9d6 (origin/main)
+Database: cayceyagmorwlbmmvyoc.supabase.co (Migrations 001-010 active and verified)
+Live Verification: Full suite against production endpoint https://mailk.arkai.dev
+- GET /api/smtp/connections returns 200
+- Tenant isolation: User B cannot list or use User A SMTP (400, 0 records)
+- Two-tab auth switch during verify: zero save POSTs, draft and password clean
+- Self-send Cesare->Cesare delivered and confirmed via read-only IMAP (UID 2132)
+- Gmail blocked by provider credential rejection (EAUTH); no bypass applied
 Project / Application: MAIL-K (Precision Outbound)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://mailk.arkai.dev (Vercel Project: mail-k)
