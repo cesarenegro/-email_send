@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { DateTime } from 'luxon';
+import { resolveAuthorizedTransportContext, SmtpDatabaseError } from '@/lib/email/transporter';
 
 export async function POST(
   request: NextRequest,
@@ -25,6 +26,26 @@ export async function POST(
 
   if (fetchError || !newsletter) {
     return NextResponse.json({ error: 'Newsletter non trovata' }, { status: 404 });
+  }
+
+  // Pre-flight check: transport & verified sender authorization
+  try {
+    await resolveAuthorizedTransportContext({
+      userId: newsletter.user_id || user.id,
+      smtpConnectionId: (newsletter as any).smtp_connection_id,
+      allowAdminFallback: false,
+    });
+  } catch (transportErr: any) {
+    if (transportErr instanceof SmtpDatabaseError) {
+      return NextResponse.json(
+        { error: `Errore database durante verifica configurazione invio: ${transportErr.message}` },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json(
+      { error: `Configurazione invio non valida o non verificata: ${transportErr.message}` },
+      { status: 400 }
+    );
   }
 
   // Check if there are pending subscribers

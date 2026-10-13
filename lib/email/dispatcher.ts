@@ -2,11 +2,12 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { computeSubsequentSendTime } from '@/lib/scheduling/next-send-time';
 import { renderTemplate } from '@/lib/email/render-template';
 import { sendEmail } from '@/lib/email/send-email';
+import { resolveAuthorizedTransportContext, SmtpConfigurationError, SmtpDatabaseError } from '@/lib/email/transporter';
 import { DateTime } from 'luxon';
 import { Campaign, CampaignLead } from '@/types/database';
 
 export interface DispatchResult {
-  status: 'sent' | 'error_handled' | 'no_leads' | 'completed' | 'waiting';
+  status: 'sent' | 'error_handled' | 'no_leads' | 'completed' | 'waiting' | 'error_configuration' | 'error_transient';
   message?: string;
   lead?: {
     id: string;
@@ -26,7 +27,49 @@ export async function dispatchNextEmailForCampaign(
   supabase: SupabaseClient,
   campaign: Campaign
 ): Promise<DispatchResult> {
-  // 1. Atomically claim one lead using PostgreSQL RPC (FOR UPDATE SKIP LOCKED)
+  // 1. Pre-flight Transport Verification BEFORE claiming any lead
+  // Prevents burning recipient retry attempts if SMTP configuration is unusable or unverified
+  let verifiedTransport: any;
+  try {
+    verifiedTransport = await resolveAuthorizedTransportContext({
+      userId: campaign.user_id,
+      smtpConnectionId: (campaign as any).smtp_connection_id,
+      allowAdminFallback: false,
+      supabaseClient: supabase,
+    });
+  } catch (err: any) {
+    if (err instanceof SmtpConfigurationError) {
+      console.error(`[dispatcher] Campaign ${campaign.id} SMTP config error: ${err.message}`);
+      const { error: pauseError } = await supabase
+        .from('campaigns')
+        .update({ status: 'paused' })
+        .eq('id', campaign.id);
+
+      if (pauseError) {
+        console.error(`[dispatcher] Impossibile aggiornare stato a paused per campagna ${campaign.id}: ${pauseError.message}`);
+        return {
+          status: 'error_configuration',
+          message: `Configurazione SMTP non valida: ${err.message}. ATTENZIONE: aggiornamento stato a 'paused' fallito (${pauseError.message}).`,
+          error: `${err.message} (Aggiornamento stato fallito: ${pauseError.message})`,
+        };
+      }
+
+      return {
+        status: 'error_configuration',
+        message: `Configurazione SMTP non valida: ${err.message}. Campagna sospesa senza consumare tentativi dei destinatari.`,
+        error: err.message,
+      };
+    }
+
+    // Transient DB error
+    return {
+      status: 'error_transient',
+      message: `Errore temporaneo verifica SMTP: ${err.message}`,
+      error: err.message,
+    };
+  }
+
+  // 2. Atomically claim one lead using PostgreSQL RPC (FOR UPDATE SKIP LOCKED)
   const { data: claimedRows, error: claimError } = await supabase.rpc(
     'claim_next_campaign_lead',
     { p_campaign_id: campaign.id }
@@ -100,6 +143,8 @@ export async function dispatchNextEmailForCampaign(
       subject: renderedSubject,
       html: renderedHtml,
       userId: campaign.user_id,
+      smtpConnectionId: (campaign as any).smtp_connection_id,
+      transportContext: verifiedTransport,
     });
   } catch (err: any) {
     sendError = err;

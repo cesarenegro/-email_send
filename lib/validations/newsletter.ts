@@ -18,6 +18,7 @@ export const NewsletterSchema = z.object({
     .nullish()
     .transform((val) => (val && val.trim() !== '' ? val : null)),
   send_interval_seconds: z.coerce.number().min(30, "L'intervallo minimo è 30 secondi").default(60),
+  smtp_connection_id: z.string().uuid('ID connessione SMTP non valido').nullish(),
 });
 
 export type NewsletterInput = z.infer<typeof NewsletterSchema>;

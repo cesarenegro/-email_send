@@ -43,17 +43,20 @@ export async function GET() {
     });
   }
 
+  const isPrimaryAdmin = user.email === 'cesare@arkitecna.com';
+  const defaultUserDisplayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Utente';
+
   return NextResponse.json({
-    from_name: userSet?.from_name || map.from_name || process.env.SMTP_FROM_NAME || 'Stefano Martini | ARKITECNA',
-    from_email: userSet?.from_email || map.from_email || process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'cesare@arkitecna.com',
-    reply_to: userSet?.reply_to || map.reply_to || map.from_email || process.env.SMTP_REPLY_TO || 'cesare@arkitecna.com',
+    from_name: userSet?.from_name || (isPrimaryAdmin ? (map.from_name || process.env.SMTP_FROM_NAME || 'Stefano Martini | ARKITECNA') : defaultUserDisplayName),
+    from_email: userSet?.from_email || (isPrimaryAdmin ? (map.from_email || process.env.SMTP_FROM_EMAIL || 'cesare@arkitecna.com') : user.email),
+    reply_to: userSet?.reply_to || (isPrimaryAdmin ? (map.reply_to || map.from_email || 'cesare@arkitecna.com') : user.email),
     preferred_timezone: userSet?.preferred_timezone || 'Europe/Rome',
     send_window_start: userSet?.send_window_start || '09:00',
     send_window_end: userSet?.send_window_end || '18:00',
-    onboarding_completed: userSet?.onboarding_completed ?? (user.email === 'cesare@arkitecna.com'),
+    onboarding_completed: userSet?.onboarding_completed ?? isPrimaryAdmin,
     smtp_host: process.env.SMTP_HOST || 'smtp.hostinger.com',
     smtp_port: process.env.SMTP_PORT || '465',
-    smtp_user: process.env.SMTP_USER || 'cesare@arkitecna.com',
+    smtp_user: isPrimaryAdmin ? (process.env.SMTP_USER || 'cesare@arkitecna.com') : (userSet?.from_email || user.email),
   });
 }
 

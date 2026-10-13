@@ -60,12 +60,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
-  // 5. Check SMTP credentials
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    return NextResponse.json(
-      { error: 'Credenziali SMTP non configurate sul server (SMTP_USER / SMTP_PASS).' },
-      { status: 400 }
-    );
+  // 5. Verify campaign ownership
+  if (campaign.user_id && campaign.user_id !== user.id && user.email !== 'cesare@arkitecna.com') {
+    return NextResponse.json({ error: 'Non autorizzato a inviare per questa campagna' }, { status: 403 });
   }
 
   const adminSupabase = createAdminClient();
@@ -92,6 +89,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
         next_send_at: result.next_send_at,
         message: `Email inviata con successo a ${result.lead?.email}! Prossimo invio programmato tra ${minutesInterval} minuti.`,
       });
+    }
+
+    if (result.status === 'error_configuration') {
+      return NextResponse.json({
+        success: false,
+        status: 'error_configuration',
+        error: result.error || result.message,
+        message: result.message || 'Configurazione SMTP non valida',
+      }, { status: 400 });
+    }
+
+    if (result.status === 'error_transient') {
+      return NextResponse.json({
+        success: false,
+        status: 'error_transient',
+        error: result.error || result.message,
+        message: result.message || 'Errore transitorio durante l\'invio.',
+      }, { status: 500 });
     }
 
     if (result.status === 'error_handled') {

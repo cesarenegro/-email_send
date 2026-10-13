@@ -1,6 +1,13 @@
 -- =====================================================================
--- ARKITECNA MAILER - ALL DATABASE MIGRATIONS (COMBINED)
--- Copy and run this script inside Supabase SQL Editor
+-- ARKITECNA MAILER - INITIAL BASELINE MIGRATIONS (001 - 006)
+-- NOTE / LIMITI: Questo file rappresenta lo snapshot cumulativo di bootstrap
+-- iniziale (tabelle base, campagne, multi-tenant 001-006).
+-- NON SOSTITUISCE le migrazioni successive modulari:
+--   - supabase/migrations/007_newsletters.sql
+--   - supabase/migrations/008_lead_research.sql
+--   - supabase/migrations/009_security_hardening.sql
+-- Per installazioni o aggiornamenti di sicurezza, applicare sempre i file
+-- numerati in supabase/migrations/ in ordine sequenziale.
 -- =====================================================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -179,4 +186,11 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
 ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.campaign_leads ENABLE ROW LEVEL SECURITY;
+
+-- ---------------------------------------------------------------------
+-- Per le migrazioni successive, fare riferimento ai file dedicati:
+--   007_newsletters.sql        -> Newsletters e subscriber claim atomico
+--   008_lead_research.sql      -> Lead research jobs, usage e budget
+--   009_security_hardening.sql -> Hardening RLS, revoca RPC e search_path
+-- ---------------------------------------------------------------------
 

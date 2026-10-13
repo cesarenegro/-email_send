@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getNewsletterStats } from '@/lib/newsletters/stats';
 
 export async function GET(
@@ -50,6 +51,35 @@ export async function PATCH(
   }
 
   const body = await request.json();
+
+  // Validate smtp_connection_id if being updated
+  if (body.smtp_connection_id) {
+    const admin = createAdminClient();
+    const { data: conn, error: connErr } = await admin
+      .from('smtp_connections')
+      .select('id, user_id, is_verified')
+      .eq('id', body.smtp_connection_id)
+      .maybeSingle();
+
+    if (connErr) {
+      return NextResponse.json({ error: `Errore verifica connessione: ${connErr.message}` }, { status: 500 });
+    }
+
+    if (!conn) {
+      return NextResponse.json({ error: 'La connessione SMTP specificata non esiste.' }, { status: 400 });
+    }
+
+    if (conn.user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Violazione di sicurezza: tentativo di utilizzare una connessione SMTP appartenente a un altro utente.' },
+        { status: 403 }
+      );
+    }
+
+    if (!conn.is_verified) {
+      return NextResponse.json({ error: 'La connessione SMTP specificata non risulta verificata.' }, { status: 400 });
+    }
+  }
 
   const { data, error } = await supabase
     .from('newsletters')

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { CampaignSchema } from '@/lib/validations/campaign';
 import { enrichCampaignsWithStats } from '@/lib/campaigns/stats';
 
@@ -46,12 +47,54 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Dati non validi' }, { status: 400 });
   }
 
-  const insertPayload = {
-    ...parsed.data,
+  const { smtp_connection_id, ...campaignFields } = parsed.data;
+
+  // STRICT TENANT ISOLATION & VALIDATION FOR SMTP CONNECTION
+  if (smtp_connection_id) {
+    const admin = createAdminClient();
+    const { data: conn, error: connErr } = await admin
+      .from('smtp_connections')
+      .select('id, user_id, is_verified')
+      .eq('id', smtp_connection_id)
+      .maybeSingle();
+
+    if (connErr) {
+      return NextResponse.json({ error: `Errore verifica connessione SMTP: ${connErr.message}` }, { status: 500 });
+    }
+
+    if (!conn) {
+      return NextResponse.json(
+        { error: 'La connessione SMTP specificata non esiste.' },
+        { status: 400 }
+      );
+    }
+
+    if (conn.user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Violazione di sicurezza: tentativo di utilizzare una connessione SMTP appartenente a un altro utente.' },
+        { status: 403 }
+      );
+    }
+
+    if (!conn.is_verified) {
+      return NextResponse.json(
+        { error: 'La connessione SMTP specificata non risulta verificata.' },
+        { status: 400 }
+      );
+    }
+  }
+
+  const insertPayload: Record<string, any> = {
+    ...campaignFields,
     user_id: user.id,
-    start_at: parsed.data.start_at || null,
+    start_at: campaignFields.start_at || null,
   };
 
+  if (smtp_connection_id) {
+    insertPayload.smtp_connection_id = smtp_connection_id;
+  }
+
+  // Strictly preserve smtp_connection_id: do not silently drop chosen connection if column/insert fails
   const { data, error } = await supabase
     .from('campaigns')
     .insert([insertPayload])

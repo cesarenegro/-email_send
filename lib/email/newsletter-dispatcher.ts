@@ -1,11 +1,12 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { renderTemplate } from '@/lib/email/render-template';
 import { sendEmail } from '@/lib/email/send-email';
+import { resolveAuthorizedTransportContext, SmtpConfigurationError, SmtpDatabaseError } from '@/lib/email/transporter';
 import { DateTime } from 'luxon';
 import { Newsletter, NewsletterSubscriber } from '@/types/database';
 
 export interface NewsletterDispatchResult {
-  status: 'sent' | 'error_handled' | 'no_subscribers' | 'completed' | 'waiting';
+  status: 'sent' | 'error_handled' | 'no_subscribers' | 'completed' | 'waiting' | 'error_configuration' | 'error_transient';
   message?: string;
   subscriber?: {
     id: string;
@@ -25,7 +26,49 @@ export async function dispatchNextEmailForNewsletter(
   supabase: SupabaseClient,
   newsletter: Newsletter
 ): Promise<NewsletterDispatchResult> {
-  // 1. Atomically claim one subscriber using PostgreSQL RPC (FOR UPDATE SKIP LOCKED)
+  // 1. Pre-flight Transport Verification BEFORE claiming any subscriber
+  // Prevents marking subscribers failed if SMTP configuration is unusable or unverified
+  let verifiedTransport: any;
+  try {
+    verifiedTransport = await resolveAuthorizedTransportContext({
+      userId: newsletter.user_id || undefined,
+      smtpConnectionId: (newsletter as any).smtp_connection_id,
+      allowAdminFallback: false,
+      supabaseClient: supabase,
+    });
+  } catch (err: any) {
+    if (err instanceof SmtpConfigurationError) {
+      console.error(`[newsletter-dispatcher] Newsletter ${newsletter.id} SMTP config error: ${err.message}`);
+      const { error: pauseError } = await supabase
+        .from('newsletters')
+        .update({ status: 'paused' })
+        .eq('id', newsletter.id);
+
+      if (pauseError) {
+        console.error(`[newsletter-dispatcher] Impossibile aggiornare stato a paused per newsletter ${newsletter.id}: ${pauseError.message}`);
+        return {
+          status: 'error_configuration',
+          message: `Configurazione SMTP newsletter non valida: ${err.message}. ATTENZIONE: aggiornamento a 'paused' fallito (${pauseError.message}).`,
+          error: `${err.message} (Aggiornamento fallito: ${pauseError.message})`,
+        };
+      }
+
+      return {
+        status: 'error_configuration',
+        message: `Configurazione SMTP newsletter non valida: ${err.message}. Newsletter sospesa senza consumare iscritti.`,
+        error: err.message,
+      };
+    }
+
+    // Transient DB error
+    return {
+      status: 'error_transient',
+      message: `Errore temporaneo verifica SMTP newsletter: ${err.message}`,
+      error: err.message,
+    };
+  }
+
+  // 2. Atomically claim one subscriber using PostgreSQL RPC (FOR UPDATE SKIP LOCKED)
   const { data: claimedRows, error: claimError } = await supabase.rpc(
     'claim_next_newsletter_subscriber',
     { p_newsletter_id: newsletter.id }
@@ -86,6 +129,8 @@ export async function dispatchNextEmailForNewsletter(
       subject: renderedSubject,
       html: renderedHtml,
       userId: newsletter.user_id || undefined,
+      smtpConnectionId: (newsletter as any).smtp_connection_id,
+      transportContext: verifiedTransport,
     });
   } catch (err: any) {
     sendError = err;

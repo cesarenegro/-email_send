@@ -362,11 +362,19 @@ Remaining issues
 
 
 
-The record SHOULD be updated while work progresses and retained as a historical record unless the user instructs otherwise.
+The record MUST be updated in real time while work progresses and retained as a historical record unless the user instructs otherwise.
 
+### Mandatory Real-Time Task List and Implementation Plan Synchronization (CRITICAL)
 
+CRITICAL: Whenever an implementation plan or task list exists (both in workspace documents and active IDE artifact files), the agent MUST ALWAYS keep the task checklist updated in real-time as work progresses.
 
-\## 3.4 Mandatory root `SETTINGS.TXT`
+Specifically:
+* As soon as an action or task begins, transitions, or completes, the agent MUST immediately update both the workspace implementation plan file and the active IDE plan artifact file (`implementation_plan.md`).
+* The agent MUST NOT leave tasks marked as incomplete (`[ ]`) when they have already been completed or verified.
+* All steps must accurately reflect verified status (`[x]`).
+* A task execution that finishes without immediately synchronizing the active task checklist is incomplete and in violation of this critical protocol.
+
+## 3.4 Mandatory root `SETTINGS.TXT`
 
 
 

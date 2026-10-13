@@ -30,6 +30,7 @@ export const CampaignSchema = z.object({
     .default('18:00'),
   send_interval_seconds: z.coerce.number().min(60, "L'intervallo minimo è 60 secondi").default(240),
   daily_limit: z.coerce.number().min(1, 'Il limite giornaliero deve essere maggiore di 0').default(80),
+  smtp_connection_id: z.string().uuid('ID connessione SMTP non valido').nullish(),
 });
 
 export type CampaignInput = z.infer<typeof CampaignSchema>;

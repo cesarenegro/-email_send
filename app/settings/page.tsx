@@ -11,14 +11,14 @@ export default function SettingsPage() {
   const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
 
   // Editable sender fields
-  const [fromName, setFromName] = useState('Stefano Martini | ARKITECNA');
-  const [fromEmail, setFromEmail] = useState('info@arkitecna.com');
-  const [replyTo, setReplyTo] = useState('info@arkitecna.com');
+  const [fromName, setFromName] = useState('');
+  const [fromEmail, setFromEmail] = useState('');
+  const [replyTo, setReplyTo] = useState('');
 
   // Read-only server config
-  const [smtpHost, setSmtpHost] = useState('smtp.hostinger.com');
+  const [smtpHost, setSmtpHost] = useState('');
   const [smtpPort, setSmtpPort] = useState('465');
-  const [smtpUser, setSmtpUser] = useState('cesare@arkitecna.com');
+  const [smtpUser, setSmtpUser] = useState('');
 
   // Diagnostic states
   const [testingConnection, setTestingConnection] = useState(false);

@@ -1,120 +1,142 @@
-# IMPLEMENTATION PLAN: ARKITECNA MAILER (V1)
+# IMPLEMENTATION PLAN: CORREZIONI 1/3 - ISOLAMENTO DATABASE E ACCESSI PUBBLICI
 
-**Document Type:** Formal Implementation Plan / Engineering Blueprint  
-**Created:** 2026-10-07 14:59 +08:00  
-**Last modified:** 2026-10-07 14:59 +08:00  
+## Aggiornamento Codex — 2026-10-13 (Asia/Makassar, UTC+08:00)
+
+Questo aggiornamento sostituisce le precedenti conclusioni R02/R04/R05 sotto riportate; il resto del lavoro è preservato.
+- [x] R02: revocati anche i privilegi predefiniti di authenticated sulla vista prima di concedere SELECT.
+- [x] R02: migrazione completa eseguita su PostgreSQL 16 isolato, schema minimo con default privileges equivalenti. 15 controlli PASS, inclusa riproduzione controllata del precedente bypass.
+- [x] R04: invalidazione operazioni allo smontaggio e tramite token della sessione del parent; segnale di annullamento su caricamento, riconoscimento, verifica e salvataggio SMTP.
+- [x] R04: 7 controlli browser Edge/Chromium sul vero Step1Smtp (React StrictMode), HTTP e sessione parent simulati. Compresi cambio A/B, logout/login stesso utente, risposta di salvataggio tardiva e prova che disabilitando le guardie il difetto riappare.
+- [x] R05: rimosso il vecchio T26 che duplicava la logica; sostituito dalla suite separata scripts/test-smtp-session-browser.mjs. Il precedente conteggio 26/26 non è evidenza del componente reale.
+- [x] TypeScript: npx tsc --noEmit superato.
+- [x] 2026-10-13: utente ha applicato 010; permessi remoti verificati (authenticated solo SELECT sulla vista, nessun accesso tabella base).
+- [x] App locale con Auth/DB remoti reali: wizard SMTP verifica, cifra e salva; JWT A legge i propri metadati, JWT B non li vede; entrambi bloccati su tabella base e UPDATE vista (42501). API B rifiuta SMTP A e invio senza configurazione (400).
+- [x] Due schede reali: durante verifica SMTP riuscita, risposta trattenuta dal test; setSession B reale tramite SDK genera cambio nel wizard A; zero POST di salvataggio, password vuota, bozza B isolata, nessuna connessione creata per B.
+- [x] Invio applicativo cesare@arkitecna.com → stessa casella; Message-ID confermato nell'INBOX via IMAP read-only. Connessione temporanea rimossa e sessioni di audit revocate.
+- [ ] Gmail cesare.negro@gmail.com: credenziale fornita via file rifiutata dal server SMTP (EAUTH, API 400). Nessun invio Gmail; serve credenziale SMTP valida.
+- [ ] Sito pubblico: API /api/smtp/connections restituisce 404 dopo autenticazione. Versione SMTP corretta non disponibile sul deployment osservato; nessun deploy effettuato. Wizard intero oltre SMTP e invio campagne non provati.
+
+Evidenze: output/audit-local-20261013/browser-results.json e database-results.json.
+Test: scripts/test-smtp-session-browser.mjs e scripts/test-smtp-migration-local.mjs.
+
+Prove reali aggiuntive: scripts/test-smtp-live.mjs e scripts/test-smtp-live-delivery.mjs; risultati in output/audit-local-20261013/live-results.json, live-delivery-results.json e LIVE-RESULTS.txt. Nessun cambiamento al codice applicativo in questa verifica.
+
+**Document Type:** Formal Implementation Plan & Interactive Task List  
+**Created:** 2026-10-13 14:50 +08:00  
+**Last modified:** 2026-10-13 16:22 +08:00  
 **Agent:** Antigravity  
 **Repository:** [cesarenegro/-email_send](https://github.com/cesarenegro/-email_send)  
-**Primary Specification:** [ARKITECNA_MAILER_AG_BUILD_INSTRUCTIONS.md](file:///e:/Projects/@EMAIL%20BULK/ARKITECNA_MAILER_AG_BUILD_INSTRUCTIONS.md)  
-**Operating Rules:** [E:\#ANTIGRAVITY_GLOBAL_RULES.md](file:///E:/%23ANTIGRAVITY_GLOBAL_RULES.md) (mirrored in [.agents/rules/ANTIGRAVITY_GLOBAL_RULES.md](file:///e:/Projects/@EMAIL%20BULK/.agents/rules/ANTIGRAVITY_GLOBAL_RULES.md) and [AGENTS.md](file:///e:/Projects/@EMAIL%20BULK/AGENTS.md))  
-**Operational Inventory:** [SETTINGS.TXT](file:///e:/Projects/@EMAIL%20BULK/SETTINGS.TXT)
+**Branch / HEAD:** `main` @ `597d7784700dfd913c5c1c020a3f4a57ed49ff04`  
+**Operational Inventory:** [SETTINGS.TXT](file:///e:/Projects/@EMAIL%20BULK/SETTINGS.TXT)  
+**Governance Rules:** [AGENTS.md](file:///e:/Projects/@EMAIL%20BULK/AGENTS.md)
 
 ---
 
-## 1. Executive Summary & Objective
+## 1. Obiettivo della Fase 1/3
 
-Build a lean, robust, internal single-tenant web application for **ARKITECNA** to send staggered outbound email campaigns from a single Hostinger SMTP mailbox.
-
-### Core Workflow
-$$\text{CSV Lead Import} \longrightarrow \text{HTML Template Paste} \longrightarrow \text{Company Personalization} \longrightarrow \text{Staggered SMTP Dispatch}$$
-
-### Operating Constraints (Strict Scope Lock)
-- **Zero Scope Creep:** No CRM features, no lead scoring, no AI copywriting, no follow-up sequences, no warm-up, no open/click tracking pixels or redirect domains.
-- **Safety First:** Strict limit of **1 email per cron execution globally** (no mass bursts, no concurrent race conditions).
-- **Idempotency & Concurrency Control:** Atomic PostgreSQL lead acquisition using `FOR UPDATE SKIP LOCKED`.
-- **Security:** Credentials stored exclusively in environment variables and [PASSWORD.TXT](file:///e:/Projects/@EMAIL%20BULK/PASSWORD.TXT) (git-ignored). Never commit or expose passwords or service role keys.
+Rimediare alle vulnerabilità critiche di isolamento del database e accessi pubblici confermate dall'audit indipendente (F01, F02, F03, Advisor warnings) su `MAIL-K`:
+1. `public.claim_next_campaign_lead`: RPC SECURITY DEFINER accessibile da `PUBLIC`/`anon`/`authenticated` senza controllo del chiamante.
+2. `public.claim_next_newsletter_subscriber`: RPC SECURITY DEFINER accessibile da `PUBLIC`/`anon`/`authenticated` senza controllo del chiamante.
+3. `public.email_logs`: Tabella sprovvista di Row Level Security (RLS) con log accessibili pubblicamente.
+4. `public.app_settings`: Policy `ALL` permissiva per qualunque utente autenticato che consentiva la modifica diretta di parametri globali.
+5. Funzioni privilegiate senza `search_path` vincolato (`SET search_path = public, pg_temp`).
 
 ---
 
-## 2. Verified Current State
+## 2. Decisioni Architetturali e Verifiche Concluse
 
-1. **Workspace Root:** `e:\Projects\@EMAIL BULK`
-2. **Git Repository:** Initialized with remote `origin https://github.com/cesarenegro/-email_send`.
-3. **Ignored Files:** `.gitignore` configured; [PASSWORD.TXT](file:///e:/Projects/@EMAIL%20BULK/PASSWORD.TXT) verified ignored by git.
-4. **Rules Configuration:**
-   - Workspace rules: [.agents/rules/ANTIGRAVITY_GLOBAL_RULES.md](file:///e:/Projects/@EMAIL%20BULK/.agents/rules/ANTIGRAVITY_GLOBAL_RULES.md)
-   - Root rules: [AGENTS.md](file:///e:/Projects/@EMAIL%20BULK/AGENTS.md)
-   - Global IDE rules: `C:\Users\user\.gemini\config\rules\ANTIGRAVITY_GLOBAL_RULES.md`
-5. **Operational Inventory:** [SETTINGS.TXT](file:///e:/Projects/@EMAIL%20BULK/SETTINGS.TXT) created in workspace root.
+### 1. Eliminazione del Bypass `current_user` in SECURITY DEFINER
+- Rimosso completamente `current_user` dalle RPC.
+- Modello di privilegio minimo: le RPC claiming sono strettamente riservate a `service_role`.
+- `EXECUTE` revocato da `PUBLIC`, `anon` e `authenticated`. Concesso unicamente a `service_role`.
 
----
+### 2. Test di Concorrenza Isolato
+- Test T15 eseguito su campagna sintetica dedicata con esattamente 1 lead eleggibile: dimostrato zero errori, esattamente 1 claim vincente con status `sending` e attempts `1`, e zero righe alla seconda chiamata simultanea (`FOR UPDATE SKIP LOCKED`).
 
-## 3. Technology Stack & Architecture
-
-| Component | Technology | Version / Details | Purpose |
-|---|---|---|---|
-| **Framework** | Next.js | App Router (latest stable) | Fullstack application & server actions / API routes |
-| **Language** | TypeScript | Strict mode | Type safety across schemas and operations |
-| **Styling** | Tailwind CSS | Neutral palette (`#F7F5F0`, `#FFFFFF`, `#1A1A1E`, `#D8D2C8`) | Clean, non-distracting internal UI |
-| **Database** | Supabase (PostgreSQL) | Managed Cloud | Relational persistence & atomic stored procedures |
-| **Auth** | Supabase Auth | Email / Password | Private internal single/few-user access control |
-| **Email Client** | Nodemailer | Standard SMTP | Connection to Hostinger SMTP (`smtp.hostinger.com:465`) |
-| **CSV Parser** | PapaParse | Client/Server | Robust handling of comma, semicolon, BOM, and UTF-8 |
-| **Validation** | Zod | Server & Client | Strict schema validation for inputs and campaign state |
-| **Date / Timezone** | Luxon | IANA timezone support | Timezone-aware window (09:00–18:00 Europe/Rome) and weekday scheduling |
-| **Scheduler** | Vercel Cron | `* * * * *` | Minute-by-minute invocation of `/api/cron/send` protected by `CRON_SECRET` |
+### 3. Affidabilità del Test Harness
+- `app_settings` testato con probe pre-creata via `service_role`: blocco UPDATE e INSERT certificato con codice PostgreSQL `42501`.
+- Esclusione `PGRST202` dai controlli autorizzativi; verifica specifica di codice PostgreSQL `42501`.
+- Convalidati i casi positivi: lettura log Utente A, claim newsletter e claim lead con `service_role`.
+- Tracciamento e pulizia a zero residui con UUID precisi (0 leftover verificato).
 
 ---
 
-## 4. Database Schema & RPC Specifications
+## 3. Checklist delle Attività
 
-### 4.1 Tables
-- `campaigns`: Core campaign configuration, scheduling windows, intervals, and template strings.
-- `campaign_leads`: Recipients with company name, email, status (`pending`, `sending`, `sent`, `retry`, `failed`), attempts counter, and error logs.
-- `email_logs`: Append-only audit trail for every send or error event.
-
-### 4.2 Constraints & Indexes
-- Unique constraint: `UNIQUE (campaign_id, email)` on `campaign_leads` to guarantee zero cross-lead duplicates within a campaign.
-- Lead lookup index: `(campaign_id, status)` on `campaign_leads`.
-- Retry index: `(retry_at) WHERE status = 'retry'` on `campaign_leads`.
-- Log index: `(campaign_id, created_at)` on `email_logs`.
-
-### 4.3 Atomic Lead Claim RPC (`claim_next_campaign_lead`)
-Uses PostgreSQL `FOR UPDATE SKIP LOCKED` inside a PL/pgSQL function to isolate and atomically transition candidate leads into `sending` state without lock contention or duplicate dispatches.
-
----
-
-## 5. Scheduler Execution Algorithm (`/api/cron/send`)
-
-Every minute, Vercel Cron calls `/api/cron/send`:
-1. **Verify Security Header:** Check `Authorization: Bearer ${CRON_SECRET}`.
-2. **Find Eligible Campaign:** Oldest `next_send_at <= now()` with `status = 'active'`, `LIMIT 1`.
-3. **Evaluate Timezone Window (Luxon):** Respect Monday–Friday and 09:00–18:00 (Europe/Rome).
-4. **Evaluate Daily Limit:** Respect `daily_limit` (default 80) per campaign.
-5. **Atomically Claim 1 Lead:** Via `claim_next_campaign_lead(p_campaign_id)`.
-6. **Render & Send:** Replace placeholders (`{{companyName}}`, `{{azienda}}`, `{{email}}`) and send via Nodemailer.
-7. **Handle Result:** Record status (`sent` or `retry`/`failed`) and log to `email_logs`.
-8. **Reschedule Campaign:** Compute next slot from current time + `send_interval_seconds` (normalized to sending window).
+- [x] **Fase 1: Ispezione e Mappatura Completa dei Chiamanti**
+  - [x] Verificati chiamanti `dispatcher.ts`, `/api/cron/send`, `send-now`, `newsletter-dispatcher.ts`, `budget.ts`.
+  - [x] Confermato che nessun utente frontend necessita di `EXECUTE` su RPC claiming.
+  - [x] Chiarita la chiamata precedente sulla campagna reale: `data: []` ha certificato zero righe modificate.
+- [x] **Fase 2: Perfezionamento della Migrazione Locale `009_security_hardening.sql`**
+  - [x] Rimosso bypass `current_user` in SECURITY DEFINER.
+  - [x] Vincolo esclusivo su `auth.role() = 'service_role'`.
+  - [x] Revoca `EXECUTE` da `authenticated`, `anon`, `PUBLIC`.
+  - [x] RLS restrittiva su `email_logs` e revoca scritture `app_settings`.
+  - [x] Transazione atomica `BEGIN ... COMMIT`.
+  - [x] Allineato `supabase/all_migrations.sql` come snapshot 001-006 di bootstrap con limiti documentati.
+- [x] **Fase 3: Esecuzione Test Rigorosi (`scripts/test-db-security.mjs`)**
+  - [x] Baseline vulnerabile pre-migrazione documentata (exit code 1).
+  - [x] Migrazione `009_security_hardening.sql` applicata dall'utente su DB remoto (`cayceyagmorwlbmmvyoc`).
+  - [x] Test post-migrazione eseguito con esito **17/17 PASS** ed `exit code 0`.
+  - [x] Pulizia a zero residui certificata (6/6 fixture rimosse, 0 leftover).
+- [x] **Fase 4: Consolidamento e Preparazione Fase 2 (Trasporto SMTP e Credenziali)**
+  - [x] Revisione dei risultati Fase 1 con l'utente (17/17 PASS verificati su DB remoto).
+  - [x] Ispezione e mappatura completa del flusso SMTP (`transporter.ts`, `send-email.ts`, `dispatcher.ts`, `newsletter-dispatcher.ts`, `SetupDummiesModal.tsx`, `Step1Smtp.tsx`).
 
 ---
 
-## 6. Implementation Phases (12 Steps)
+# FASE 2: ISOLAMENTO SMTP, ELIMINAZIONE FALLBACK AMMINISTRATORE, CREDENZIALI E SSRF
 
-- **Phase 1: Project Bootstrap** — [COMPLETED] Next.js 16 (App Router), TypeScript, Tailwind CSS, Supabase client setup, `.env.example`.
-- **Phase 2: Database & SQL Migrations** — [COMPLETED] `001_campaigns.sql`, `002_campaign_leads.sql`, `003_email_logs.sql`, `004_claim_lead_rpc.sql`, `all_migrations.sql`.
-- **Phase 3: Supabase Authentication** — [COMPLETED] Email/password login (`/login`), middleware session guards (`middleware.ts`), logout.
-- **Phase 4: Campaign CRUD & Dashboard** — [COMPLETED] Summary cards and table (`/`, `/campaigns`), creation form (`/campaigns/new`), detail view (`/campaigns/[id]`).
-- **Phase 5: CSV Import & Mapping Engine** — [COMPLETED] PapaParse integration, column mapping dropdowns, deduplication (`UNIQUE(campaign_id, email)`), batch insertion.
-- **Phase 6: Template Renderer & Iframe Preview** — [COMPLETED] Placeholder rendering (`{{companyName}}`, `{{azienda}}`, `{{email}}`), sandboxed iframe preview, HTML size warning (>150 KB).
-- **Phase 7: SMTP Client & Settings Tester** — [COMPLETED] Hostinger SMTP transporter, connection tester, test email sender (`/settings`).
-- **Phase 8: Timezone & Scheduler Math** — [COMPLETED] Luxon calendar engine, Monday-Friday allowed weekdays, 09:00-18:00 window, daily cap checking.
-- **Phase 9: Vercel Cron Endpoint** — [COMPLETED] `/api/cron/send` route with bearer auth, oldest due campaign selection, single-send limit, error retry policy.
-- **Phase 10: Campaign Control State Machine** — [COMPLETED] START, PAUSE, RESUME, auto-COMPLETED, edit lockout when active, delete confirmation.
-- **Phase 11: Real QA with Test Leads** — [COMPLETED] Automated verification test (`scripts/verify-logic.ts`) passed 100%.
-- **Phase 12: Production Verification & README** — [COMPLETED] Full `README.md`, `SETTINGS.TXT`, production build passed (`npm run build`).
-- **Phase 13: Stitch UI Redesign (Architectural Precision & Editorial Luxury)** — [IN PROGRESS] Integration of Stitch design system (`Premium Email Outreach Platform`), fixed sidebar & topbar layout shell, Hub Overview, Campaigns live view, Campaign detail with interactive preview, and aligned views.
+## 1. Modello Architetturale di Sicurezza
+
+1. **Protezione SSRF e DNS Rebinding (`lib/security/ssrf.ts`):**
+   - Validazione rigorosa degli host e IP (blocco loopback IPv4/IPv6, reti RFC1918, link-local, cloud metadata `169.254.169.254`, multicast, documentation prefixes).
+   - Allowlist porte SMTP: solo 25, 465, 587, 2525. Tutte le altre porte respinte con 400.
+   - Risoluzione DNS e pinning IP con TLS SNI preservato per scongiurare Time-Of-Check to Time-Of-Use (DNS rebinding).
+2. **Cifratura Server-Side delle Credenziali (`lib/crypto/encryption.ts`):**
+   - Cifratura AES-256-GCM autenticata con IV casuale a 12 byte e authentication tag a 16 byte.
+   - Nessuna password esposta in API, log, o localStorage.
+3. **Isolamento Connessioni SMTP e Rimozione Fallback Admin (`lib/email/transporter.ts`, `lib/email/send-email.ts`):**
+   - Ogni utente standard deve utilizzare esclusivamente la propria connessione SMTP verificata.
+   - Rimozione totale del fallback alle credenziali di ambiente o all'identità di `cesare@arkitecna.com` / `info@arkitecna.com` per utenti standard.
+   - Se la connessione utente manca, è non autorizzata o il database fallisce: blocco immediato con eccezione esplicita.
+4. **Sanitizzazione Bozze Browser (`SetupDummiesModal.tsx`, `Step1Smtp.tsx`):**
+   - Esclusione tassativa dei campi password dalla serializzazione in `localStorage`.
+   - Pulizia automatica immediata di eventuali password residue da bozze legacy.
+   - Reset dello stato del wizard al cambio account o logout (gestione multi-tab).
+5. **Migrazione Locale Isolata (`supabase/migrations/010_user_smtp_connections.sql`):**
+   - Definizione della tabella `public.smtp_connections` e collegamenti FK su `campaigns` e `newsletters` con RLS rigorosa. Conservata in locale senza applicazione al DB remoto.
 
 ---
 
-## 7. Verification Results
+## 2. Checklist Operativa di Fase 2
 
-1. **Automated Logic Tests (`scripts/verify-logic.ts`):**
-   - Template rendering: PASSED
-   - Email normalization & duplicate handling: PASSED
-   - Next send scheduling boundary (Wed 17:58 + 4m $\to$ Thu 09:00): PASSED
-   - Weekend skip (Fri 17:58 + 4m $\to$ Mon 09:00): PASSED
-2. **TypeScript Compilation:** `npx tsc --noEmit` exited with code 0.
-3. **Production Next.js Build:** `npm run build` completed successfully, optimizing all 17 routes.
-4. **Git Hygiene & Security:** Initialized local git repository with remote `origin https://github.com/cesarenegro/-email_send`. Staged files verified; `PASSWORD.TXT` confirmed ignored. Committed locally as `544ae61`.
-
-
+- [x] **Sub-fase 2.1: Ispezione e Mappatura Completa**
+  - [x] Ispezionati `lib/email/transporter.ts`, `lib/email/send-email.ts`, `lib/email/dispatcher.ts`, `lib/email/newsletter-dispatcher.ts`.
+  - [x] Ispezionati `app/api/smtp/verify/route.ts`, `app/api/settings/send-test/route.ts`, `components/dummies/SetupDummiesModal.tsx`, `Step1Smtp.tsx`.
+- [x] **Sub-fase 2.2: Modulo Protezione SSRF e DNS Rebinding**
+  - [x] Implementazione `lib/security/ssrf.ts` con controlli completi IPv4/IPv6, CIDR riservati e pinning IP per Nodemailer.
+  - [x] Protezione `/api/smtp/verify/route.ts` con autenticazione utente obbligatoria, validazione porte ammesse e verifica SSRF.
+- [x] **Sub-fase 2.3: Modulo Cifratura Credenziali Server-Side**
+  - [x] Implementazione `lib/crypto/encryption.ts` con AES-256-GCM e derivazione chiave sicura.
+  - [x] Predisposizione migrazione locale `supabase/migrations/010_user_smtp_connections.sql` con RLS.
+  - [x] Creazione endpoint `/api/smtp/connections` con sanitizzazione password nelle risposte API.
+- [x] **Sub-fase 2.4: Isolamento Transporter ed Eliminazione Fallback Admin**
+  - [x] Refactor `lib/email/transporter.ts` e `lib/email/send-email.ts`: blocco assoluto di fallback per utenti non admin.
+  - [x] Aggiornamento `dispatcher.ts`, `newsletter-dispatcher.ts`, `send-test/route.ts`, `send-now/route.ts`.
+  - [x] Vincolo di appartenenza connessione in creazione campagna (`/api/campaigns`).
+- [x] **Sub-fase 2.5: Sanitizzazione Bozze Browser e Cambio Account**
+  - [x] Bonifica salvataggio bozza in `SetupDummiesModal.tsx` (rimozione password da localStorage).
+  - [x] Rimozione selezione fittizia "casella verificata" non autenticata in `Step1Smtp.tsx`.
+  - [x] Gestione eventi auth (logout / cambio utente) per azzeramento stato wizard.
+- [x] **Sub-fase 2.6: Test Suite e Certificazione Finale**
+  - [x] Creazione ed esecuzione `scripts/test-smtp-ssrf-isolation.mjs`.
+  - [x] Regression test Fase 1 `scripts/test-db-security.mjs` (17/17 PASS, exit code 0, 0 leftovers).
+  - [x] Verifica assenza regressioni TypeScript con `npx tsc --noEmit` (exit code 0).
+  - [x] Aggiornamento `SETTINGS.TXT` e documentazione dei punti non verificati (mancanza seconda credenziale live).
+- [x] **Sub-fase 2.8: Verifica Consolidata R01 - R05 (Completamento Punti Residui e Hardening)**
+  - [x] **R01 (Coerenza Avvio-Invio):** Unificata la risoluzione del trasporto tra `/start` (campagne e newsletter), `/send-now`, `dispatcher.ts` e `newsletter-dispatcher.ts` con pre-flight check. Gestione esplicita di `error_transient` (mai `success: true`), verifica dell'esito dell'aggiornamento a `paused`, e passaggio del `transportContext` pre-verificato a `sendEmail` per garantire coerenza totale ed eliminare query duplicate. Suite applicativa `T21` (caso positivo), `T22` (rifiuto non verificata), `T23` (distinzione SmtpDatabaseError), `T24` (dispatcher campagne 0 tentativi consumati) e `T25` (dispatcher newsletter 0 iscritti consumati).
+  - [x] **R02 (Integrità Database):** Corretto `GRANT ALL ON TABLE public.smtp_connections TO service_role;` in `010`. Risolta l'incompatibilità `security_invoker`: rimossa e sostituita con `security_barrier = true` (eseguita come owner della vista per prevenire errori di permission denied con la tabella protetta), notando che i metadati sono primariamente mediati dall'API server `/api/smtp/connections`. Distinta esplicitamente la revisione statica del codice SQL dalla verifica di esecuzione: l'esecuzione PostgreSQL su DB isolato resta **NON VERIFICATA** per assenza di istanza DB locale e divieto di migrazione remota.
+  - [x] **R03 (Autorizzazione Mittente):** Modificata `validateSenderCompatibility`: il matching del dominio non è sufficiente per autorizzare un alias. La casella autenticata è l'unico riferimento valido per la casella ordinaria (`T11` e `T12`).
+  - [x] **R04 (Sessioni e Bozze):** Introdotto `activeUserIdRef`, `sessionEpochRef`, `AbortController` e token di sessione nei callback asincroni di `Step1Smtp.tsx` e `SetupDummiesModal.tsx`: risposte tardive di account precedenti vengono tassativamente scartate prima di aggiornare il genitore o scrivere su `localStorage` dell'utente subentrante (`T26`). Azzeramento completo dello stato, inclusa la pianificazione (`scheduling`), al cambio account/logout.
+  - [x] **R05 (Prove e Trasparenza):** Suite `scripts/test-smtp-ssrf-isolation.mjs` (26/26 PASS) generata dall'esecuzione reale con `tsx`, rimossi i test fittizi con confronto stringhe. Rettificata la dicitura su IV casuale (sicurezza semantica, eliminata asserzione non dimostrata su replay). Documentata la natura in-process del rate limiter. Mantenuta rigorosamente **NON VERIFICATA** la consegna con due caselle distinte.

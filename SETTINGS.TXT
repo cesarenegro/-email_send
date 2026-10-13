@@ -1,7 +1,13 @@
 ================================================================================
 MAIL-K (PRECISION OUTBOUND) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-11 14:55 +08:00
+Last updated: 2026-10-13 18:15 +08:00
+Audit addendum: 2026-10-13 (UTC+08:00), Codex.
+Local test tools only: PostgreSQL 16 isolated cluster (127.0.0.1:55439),
+Playwright + esbuild in output/audit-local-20261013/tools; installed Edge Chromium.
+No production dependency/lockfile changes. No remote migration, deploy or real email.
+Reproducible tests: scripts/test-smtp-migration-local.mjs (fresh isolated cluster)
+and scripts/test-smtp-session-browser.mjs (real component, simulated HTTP/session).
 Project / Application: MAIL-K (Precision Outbound)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://mailk.arkai.dev (Vercel Project: mail-k)
@@ -24,35 +30,44 @@ Interactive Modals: LoginModal (Stitch Login Pop-up with backdrop blur, Google /
 Database Provider: Supabase (PostgreSQL)
 Authentication: Supabase Auth (Email / Password, Sign Up with emailRedirectTo, Deep Link Auth Callback /auth/callback, Password Reset, Multi-Tenant User Metadata, OAuth SSO: Google, Facebook, LinkedIn OIDC)
 Access Library: @supabase/supabase-js (^2.49.0), @supabase/ssr (^0.6.0)
-Database Migrations: supabase/migrations/ (001_campaigns.sql, 002_campaign_leads.sql, 003_email_logs.sql, 004_claim_lead_rpc.sql, 005_app_settings.sql, 006_multi_tenant.sql, 007_newsletters.sql, all_migrations.sql)
+Database Migrations: supabase/migrations/ (001_campaigns.sql, 002_campaign_leads.sql, 003_email_logs.sql, 004_claim_lead_rpc.sql, 005_app_settings.sql, 006_multi_tenant.sql, 007_newsletters.sql, 008_lead_research.sql, 009_security_hardening.sql, 010_user_smtp_connections.sql [locale], all_migrations.sql)
 Tables:
-  - public.campaigns (includes user_id uuid FK to auth.users, RLS protected)
+  - public.campaigns (includes user_id uuid FK, smtp_connection_id uuid FK, RLS protected)
   - public.campaign_leads (RLS protected per campaign ownership; statuses: pending, sending, sent, retry, failed)
-  - public.newsletters (dedicated scheduled newsletters table, includes user_id FK, status: draft, scheduled, sending, sent, paused, RLS protected)
+  - public.newsletters (dedicated scheduled newsletters table, includes user_id FK, smtp_connection_id FK, status: draft, scheduled, sending, sent, paused, RLS protected)
   - public.newsletter_subscribers (dedicated subscribers per newsletter; statuses: pending, sending, sent, failed, RLS protected)
-  - public.email_logs (events: sent, error; records bounce error details)
-  - public.app_settings (global fallback key-value config)
-  - public.user_settings (per-user sender identity: from_name, from_email, reply_to, preferred_timezone, onboarding_completed)
+  - public.email_logs (events: sent, error; RLS protected per campaign ownership; read-only for authenticated, write restricted to service_role)
+  - public.app_settings (global fallback key-value config; read-only for authenticated users, write restricted to service_role)
+  - public.user_settings (per-user sender identity: from_name, from_email, reply_to, preferred_timezone, onboarding_completed, RLS protected)
+  - public.smtp_connections (per-user verified SMTP credentials with server-side AES-256-GCM encryption, RLS protected)
 Stored Procedures / RPCs:
-  - public.claim_next_campaign_lead (atomic row lock via FOR UPDATE SKIP LOCKED)
-  - public.claim_next_newsletter_subscriber (atomic subscriber lock via FOR UPDATE SKIP LOCKED)
-  - public.set_updated_at (trigger function)
+  - public.claim_next_campaign_lead (atomic row lock via FOR UPDATE SKIP LOCKED; SECURITY DEFINER with SET search_path = public, pg_temp; execute restricted to service_role)
+  - public.claim_next_newsletter_subscriber (atomic subscriber lock via FOR UPDATE SKIP LOCKED; SECURITY DEFINER with SET search_path = public, pg_temp; execute restricted to service_role)
+  - public.set_updated_at (trigger function with SET search_path = public, pg_temp)
 
-3. EMAIL DELIVERY (SMTP)
+3. EMAIL DELIVERY (SMTP) & SECURITY HARDENING
 --------------------------------------------------------------------------------
-SMTP Provider: Gestor Mail
-Host: smtp.hostinger.com
-Port: 465
-Security: SSL/TLS (SMTP_SECURE=true)
-Library: Nodemailer (^6.10.0)
-Default Sender Identity: Configurable via /settings (saved in public.app_settings with fallback to env)
-Configured Sender Name: Stefano Martini | ARKITECNA
-Configured Sender Email: info@arkitecna.com (Gestor Mail alias supported over master SMTP authentication)
-Configured Reply-To: info@arkitecna.com
-Concurrency: Strictly 1 outbound email globally per cron execution
-Minimum Interval: 60 seconds (default 240 seconds / 4 minutes)
-Default Daily Cap: 80 emails / day per campaign
-Immediate Dispatch: POST /api/campaigns/[id]/send-now (manual immediate send bypassing schedule)
+SMTP Isolation: Rigorously Per-User with Zero Fallback to Admin Identity or Hostinger Credentials for Standard Accounts
+Transporter Engine: lib/email/transporter.ts, lib/email/send-email.ts (strictly requires user verified connection; hard failure if missing or unauthorized)
+Server-Side Credential Encryption: lib/crypto/encryption.ts (AES-256-GCM authenticated encryption, random 96-bit IV, 128-bit auth tag)
+SSRF & DNS Rebinding Protection: lib/security/ssrf.ts
+  - Port Allowlist: Strictly 25, 465, 587, 2525 (all arbitrary ports rejected)
+  - IP Filtering: IPv4/IPv6 loopback, RFC1918 private, link-local, cloud metadata (169.254.169.254), multicast, documentation
+  - Rebinding Defense: DNS pre-lookup inspection with Nodemailer socket IP pinning while preserving TLS SNI
+Endpoints:
+  - POST /api/smtp/verify: Session-authenticated, SSRF-protected transient SMTP handshake tester
+  - GET/POST /api/smtp/connections: Per-user verified SMTP connection manager (zero plaintext password exposure)
+  - POST /api/settings/send-test: Account-isolated test email dispatcher
+Master Admin SMTP: Configured via environment variables (SMTP_HOST, SMTP_USER, SMTP_PASS), explicitly reserved for admin operations
+Guided Campaign Creation (SETUP-DUMMIES):
+  - Lime green (#84cc16) quick-access button in /campaigns and /campaigns/new
+  - 8-Step wizard modal (components/dummies/SetupDummiesModal.tsx, Step1Smtp.tsx)
+  - Zero password storage: password never saved in localStorage, sessionStorage, or client draft state
+  - Multi-tab and logout state isolation via supabase.auth.onAuthStateChange
+  - Automatic legacy draft password sanitization
+  - POST /api/email-import/parse (EML, HTML, TXT parser via Mailparser)
+  - POST /api/email-import/parse-pdf (deterministic text PDF parser with scanned image alerts, 100% No-AI)
+  - POST /api/leads/parse-file (dual CSV and Excel .xlsx parser via PapaParse & ExcelJS)
 
 4. BOUNCE MONITORING & DELIVERY STATUS NOTIFICATIONS (IMAP)
 --------------------------------------------------------------------------------
@@ -127,6 +142,7 @@ TAVILY_API_KEY
 LEAD_RESEARCH_ENABLED
 LEAD_RESEARCH_OPENAI_MODEL
 LEAD_RESEARCH_PRICING_VERSION
+ENCRYPTION_MASTER_KEY
 
 9. SEARCH ENGINE INDEXING & SEO (GOOGLE & BING)
 --------------------------------------------------------------------------------

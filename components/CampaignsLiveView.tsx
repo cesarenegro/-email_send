@@ -5,6 +5,7 @@ import Link from 'next/link';
 import CampaignTable from '@/components/CampaignTable';
 import { CampaignWithStats } from '@/types/database';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import SetupDummiesModal from '@/components/dummies/SetupDummiesModal';
 
 interface CampaignsLiveViewProps {
   initialCampaigns: CampaignWithStats[];
@@ -17,6 +18,7 @@ export default function CampaignsLiveView({ initialCampaigns }: CampaignsLiveVie
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showDummiesModal, setShowDummiesModal] = useState<boolean>(false);
 
   const refreshData = useCallback(async () => {
     try {
@@ -90,6 +92,17 @@ export default function CampaignsLiveView({ initialCampaigns }: CampaignsLiveVie
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-space-sm">
+          {/* SETUP-DUMMIES Lime Green Button */}
+          <button
+            type="button"
+            onClick={() => setShowDummiesModal(true)}
+            className="h-10 px-space-md rounded-lg bg-[#84cc16] hover:bg-[#65a30d] text-[#1b1c1a] font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+            title="Procedura guidata per creare una campagna in modo semplice e veloce"
+          >
+            <span className="material-symbols-outlined text-[18px]">auto_fix_high</span>
+            <span>SETUP-DUMMIES</span>
+          </button>
+
           <Link
             href="/campaigns/new"
             className="h-10 px-space-md rounded-lg bg-[#30312f] text-[#f2f0ed] hover:bg-[#5c5e63] transition-colors flex items-center gap-2 font-label-md text-label-md shadow-xs"
@@ -250,6 +263,12 @@ export default function CampaignsLiveView({ initialCampaigns }: CampaignsLiveVie
 
       {/* Campaign Data Table */}
       <CampaignTable campaigns={filteredCampaigns} />
+
+      {/* SETUP-DUMMIES Modal */}
+      <SetupDummiesModal
+        isOpen={showDummiesModal}
+        onClose={() => setShowDummiesModal(false)}
+      />
     </div>
   );
 }
