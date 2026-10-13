@@ -73,7 +73,7 @@ export default async function HomePage() {
         supabase
           .from('email_logs')
           .select('id', { count: 'exact', head: true })
-          .eq('status', 'sent')
+          .eq('event_type', 'sent')
           .gte('created_at', startOfDay.toISOString()),
         supabase
           .from('campaign_leads')

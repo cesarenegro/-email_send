@@ -1,5 +1,15 @@
 # IMPLEMENTATION PLAN: CORREZIONI 1/3 - ISOLAMENTO DATABASE E ACCESSI PUBBLICI
 
+## Correzione KPI "Invii Oggi" (event_type vs status) — 2026-10-14 06:05 +08:00
+- [x] Diagnosi verificata: in `public.email_logs` la colonna `status` non esiste. La colonna corretta è `event_type` ('sent', 'error') (cfr. `003_email_logs.sql`, `lib/scheduling/daily-limit.ts`). La query con `.eq('status', 'sent')` provocava errore 400 Bad Request da PostgREST azzerando la metrica.
+- [x] Correzione minima applicata:
+  - `app/page.tsx`: sostituito `.eq('status', 'sent')` con `.eq('event_type', 'sent')`.
+  - `components/AppSidebar.tsx`: allineata medesima query telemetrica laterale (`t.hub.sendsTodayCard` / "Invii Oggi").
+- [x] Validazione TypeScript: `npx tsc --noEmit` completato con 0 errori.
+- [x] Validazione ESLint e Build di produzione: Next.js Turbopack completato con codice 0 e 22/22 pagine statiche generate.
+- [ ] Commit e push su `main`.
+- [ ] Verifica deployment Vercel e collaudo live su `https://mailk.arkai.dev`.
+
 ## Rilascio urgente Codex — 2026-10-13 20:55 +08:00
 - [x] Autorizzazione utente: pubblicare versione corretta entro 30 minuti (inizio 20:44 +08:00).
 - [x] R01/R04: verificate correzioni AG sui componenti reali, incluse cinque varianti XSS.
@@ -31,7 +41,7 @@ Test: scripts/test-smtp-live.mjs e scripts/verify-imap-receipt.mjs.
 
 **Document Type:** Formal Implementation Plan & Interactive Task List  
 **Created:** 2026-10-13 14:50 +08:00  
-**Last modified:** 2026-10-13 18:58 +08:00  
+**Last modified:** 2026-10-14 06:05 +08:00  
 **Agent:** Antigravity  
 **Repository:** [cesarenegro/-email_send](https://github.com/cesarenegro/-email_send)  
 **Branch / HEAD:** `main` @ `eb8a9d6`  

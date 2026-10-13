@@ -44,7 +44,7 @@ export default function AppSidebar() {
         const { count: logCount } = await supabase
           .from('email_logs')
           .select('id', { count: 'exact', head: true })
-          .eq('status', 'sent')
+          .eq('event_type', 'sent')
           .gte('created_at', startOfDay.toISOString());
         if (logCount !== null && logCount !== undefined) {
           setTodaySends(logCount);
