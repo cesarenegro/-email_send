@@ -169,6 +169,8 @@ export default function CampaignForm({
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+  const [importingEmail, setImportingEmail] = useState(false);
   const editorRef = useRef<VisualEmailEditorHandle>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const targetedSlotRef = useRef<TemplateImageSlot | null>(null);
@@ -558,6 +560,76 @@ export default function CampaignForm({
     }
   };
 
+  const handleImportEmailFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportingEmail(true);
+    setError(null);
+    setUploadErrorMessage(null);
+    setUploadSuccessMessage(null);
+
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', file);
+
+    try {
+      const res = await fetch('/api/email-import/parse', {
+        method: 'POST',
+        body: formDataUpload,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || (locale === 'en' ? 'Error importing file' : 'Errore durante l’importazione del file'));
+      }
+
+      // Update name and subject if present
+      if (data.subject) {
+        updateFormData((prev) => ({
+          ...prev,
+          name: prev.name ? prev.name : data.subject,
+          subject_template: data.subject,
+        }));
+      }
+
+      // Update HTML
+      if (data.html) {
+        updateFormData((prev) => ({
+          ...prev,
+          html_template: data.html,
+        }));
+      }
+
+      // Add extracted images to uploadedImages state
+      if (data.images && data.images.length > 0) {
+        setUploadedImages((prev) => {
+          const existingPaths = new Set(prev.map((img) => img.path));
+          const toAdd = data.images.filter((img: UploadedImageItem) => !existingPaths.has(img.path));
+          return [...toAdd, ...prev];
+        });
+      }
+
+      // Automatically switch to Extended mode and Live Preview
+      setSuiteMode('extended');
+      setEditorMode('preview');
+
+      const imgCount = data.images?.length || 0;
+      setUploadSuccessMessage(
+        locale === 'en'
+          ? `Imported ${file.name} successfully! (${imgCount} image(s) extracted and uploaded to storage).`
+          : `Email importata con successo da ${file.name}! (${imgCount} immagini estratte e collegate in HTTPS).`
+      );
+      setTimeout(() => setUploadSuccessMessage(null), 5000);
+    } catch (err: any) {
+      setUploadErrorMessage(err.message || (locale === 'en' ? 'Error importing file' : 'Errore durante l’importazione'));
+    } finally {
+      setImportingEmail(false);
+      if (importFileInputRef.current) {
+        importFileInputRef.current.value = '';
+      }
+    }
+  };
+
   const buildPayload = () => ({
     ...formData,
     send_window_start: formData.send_window_start ? formData.send_window_start.slice(0, 5) : '09:00',
@@ -683,34 +755,47 @@ export default function CampaignForm({
               : (locale === 'en' ? 'Extended mode: upload images to Supabase Storage, auto-match template slots, and live email preview.' : 'Modalità Estesa: upload immagini su Supabase Storage, auto-collegamento slot template e anteprima live.')}
           </p>
         </div>
-        <div className="flex items-center bg-[#EAE8E5] p-1 rounded-lg border border-[#D8D2C8] text-xs font-semibold shrink-0">
+        <div className="flex items-center flex-wrap gap-2 shrink-0">
           <button
             type="button"
-            onClick={() => {
-              setSuiteMode('standard');
-              if (editorMode === 'preview') setEditorMode('code');
-            }}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
-              suiteMode === 'standard'
-                ? 'bg-white text-[#1B1C1A] shadow-xs'
-                : 'text-[#666666] hover:text-[#1B1C1A]'
-            }`}
+            onClick={() => importFileInputRef.current?.click()}
+            disabled={importingEmail || disabled}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-700 text-white text-xs font-bold hover:bg-indigo-800 transition-all shadow-xs disabled:opacity-50"
+            title={locale === 'en' ? 'Import from Outlook / Apple Mail (.eml) or .zip archive with images' : 'Importa email già pronta da Outlook, Apple Mail (.eml) o archivio .zip con immagini'}
           >
-            <FileText className="w-3.5 h-3.5" />
-            <span>{locale === 'en' ? 'STANDARD' : 'STANDARD (Base)'}</span>
+            {importingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
+            <span>{importingEmail ? (locale === 'en' ? 'Importing...' : 'Importazione...') : (locale === 'en' ? 'IMPORTA (.EML / .ZIP)' : 'IMPORTA (.EML / .ZIP)')}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setSuiteMode('extended')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
-              suiteMode === 'extended'
-                ? 'bg-[#036E13] text-white shadow-xs font-bold'
-                : 'text-[#666666] hover:text-[#1B1C1A]'
-            }`}
-          >
-            <ImageIcon className="w-3.5 h-3.5" />
-            <span>{locale === 'en' ? 'EXTENDED (With Images)' : 'ESTESA (Con Immagini)'}</span>
-          </button>
+
+          <div className="flex items-center bg-[#EAE8E5] p-1 rounded-lg border border-[#D8D2C8] text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => {
+                setSuiteMode('standard');
+                if (editorMode === 'preview') setEditorMode('code');
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
+                suiteMode === 'standard'
+                  ? 'bg-white text-[#1B1C1A] shadow-xs'
+                  : 'text-[#666666] hover:text-[#1B1C1A]'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>{locale === 'en' ? 'STANDARD' : 'STANDARD (Base)'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSuiteMode('extended')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
+                suiteMode === 'extended'
+                  ? 'bg-[#036E13] text-white shadow-xs font-bold'
+                  : 'text-[#666666] hover:text-[#1B1C1A]'
+              }`}
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+              <span>{locale === 'en' ? 'EXTENDED (With Images)' : 'ESTESA (Con Immagini)'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -721,6 +806,15 @@ export default function CampaignForm({
         multiple
         accept="image/jpeg,image/png,image/webp,image/gif"
         onChange={handleImageFileSelect}
+        className="hidden"
+      />
+
+      {/* Hidden file input for pre-made email import (.eml, .msg, .zip, .html, .txt) */}
+      <input
+        ref={importFileInputRef}
+        type="file"
+        accept=".eml,.msg,.zip,.html,.htm,.txt"
+        onChange={handleImportEmailFile}
         className="hidden"
       />
 
@@ -1040,6 +1134,17 @@ export default function CampaignForm({
           {/* Main Extended Toolbar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#E6E2DC]">
             <div className="flex items-center flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => importFileInputRef.current?.click()}
+                disabled={importingEmail || disabled}
+                className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-indigo-700 text-white text-xs font-bold hover:bg-indigo-800 transition-all shadow-xs disabled:opacity-50"
+                title={locale === 'en' ? 'Import pre-made email from Outlook, Apple Mail (.eml) or .zip archive' : 'Importa email già pronta da Outlook, Apple Mail (.eml) o archivio .zip'}
+              >
+                {importingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                <span>{importingEmail ? (locale === 'en' ? 'Importing...' : 'Importazione...') : (locale === 'en' ? 'IMPORTA (.EML / .ZIP)' : 'IMPORTA (.EML / .ZIP)')}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {

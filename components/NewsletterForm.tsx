@@ -149,6 +149,8 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const visualEditorRef = useRef<VisualEmailEditorHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+  const [importingEmail, setImportingEmail] = useState(false);
 
   // Scoped folder identifier for uploaded images
   const draftIdRef = useRef<string>(initialNewsletter?.id || 'draft');
@@ -569,6 +571,67 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
     } else {
       setUploadErrorMessage('Nessuna corrispondenza trovata tra le immagini caricate e i tag nel template.');
       setTimeout(() => setUploadErrorMessage(null), 4000);
+    }
+  };
+
+  // Import pre-made email from .eml, .msg, .zip or .html
+  const handleImportEmailFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportingEmail(true);
+    setError(null);
+    setUploadErrorMessage(null);
+    setUploadSuccessMessage(null);
+
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', file);
+
+    try {
+      const res = await fetch('/api/email-import/parse', {
+        method: 'POST',
+        body: formDataUpload,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Errore durante l’importazione del file');
+      }
+
+      if (data.subject) {
+        setSubject(data.subject);
+        if (!title) {
+          setTitle(data.subject);
+        }
+      }
+
+      if (data.html) {
+        setHtmlContent(data.html);
+      }
+
+      if (data.images && data.images.length > 0) {
+        setUploadedImages((prev) => {
+          const existing = new Set(prev.map((img) => img.path));
+          const toAdd = data.images.filter((img: UploadedImageItem) => !existing.has(img.path));
+          return [...toAdd, ...prev];
+        });
+      }
+
+      setActiveTab('preview');
+
+      const imgCount = data.images?.length || 0;
+      setUploadSuccessMessage(
+        `Email importata con successo da ${file.name}! (${imgCount} immagini estratte e collegate in HTTPS).`
+      );
+      setTimeout(() => setUploadSuccessMessage(null), 5000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setUploadErrorMessage(msg || 'Errore durante l’importazione');
+    } finally {
+      setImportingEmail(false);
+      if (importFileInputRef.current) {
+        importFileInputRef.current.value = '';
+      }
     }
   };
 
@@ -1104,6 +1167,23 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
             </div>
           )}
 
+          {/* Hidden inputs for image upload and email import */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={handleImageFileSelect}
+            className="hidden"
+          />
+          <input
+            ref={importFileInputRef}
+            type="file"
+            accept=".eml,.msg,.zip,.html,.htm,.txt"
+            onChange={handleImportEmailFile}
+            className="hidden"
+          />
+
           {/* HTML Editor & Live Preview Card */}
           <div className="bg-white border border-[#D8D2C8] rounded-xl shadow-sm overflow-hidden flex flex-col">
             {/* Toolbar */}
@@ -1151,8 +1231,19 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
                 </button>
               </div>
 
-              {/* Action buttons: CARICA IMMAGINE */}
+              {/* Action buttons: CARICA IMMAGINE & IMPORTA EMAIL */}
               <div className="flex items-center flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => importFileInputRef.current?.click()}
+                  disabled={importingEmail || uploadingImage || convertingBase64}
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-700 text-white text-xs font-semibold hover:bg-indigo-800 disabled:opacity-50 transition-colors shadow-xs"
+                  title="Importa email già pronta da Outlook, Apple Mail (.eml) o archivio .zip con immagini"
+                >
+                  {importingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
+                  <span>{importingEmail ? 'Importazione...' : 'IMPORTA (.EML / .ZIP)'}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}

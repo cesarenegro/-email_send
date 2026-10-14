@@ -1,9 +1,9 @@
 ================================================================================
 MAIL-K (PRECISION OUTBOUND) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-14 17:26 +08:00
+Last updated: 2026-10-14 18:46 +08:00
 Deployment: Production live at https://mailk.arkai.dev
-Application commit: 4186cb5 (origin/main)
+Application commit: 0d0a635 (origin/main)
 Database: cayceyagmorwlbmmvyoc.supabase.co (Migrations 001-011 active and verified)
 Live Verification: Full suite against production endpoint https://mailk.arkai.dev
 - GET /api/smtp/connections returns 200
@@ -23,6 +23,7 @@ Framework: Next.js 16.4.0 (App Router, Turbopack)
 Runtime: Node.js v24.14.0 (Vercel Serverless)
 Styling & Design System: Stitch 'Architectural Precision & Editorial Luxury' (Google Fonts Playfair Display & Plus Jakarta Sans, Material Symbols Outlined, Tailwind CSS v4, #FBF9F6 parchment canvas, #FFFFFF cards, #1B1C1A obsidian charcoal, #5CB855 botanical emerald, #036E13 primary)
 Package Manager: npm (11.9.0)
+Archive Utilities: JSZip (^3.10.1) for server/client ZIP archive decompression and asset extraction
 Brand Assets & Favicon: Official MAIL-K icon (public/icon.png, public/logo.png, public/favicon.png, public/favicon.ico, app/icon.png, app/favicon.ico)
 Internationalization (i18n): 100% Full Bilingual System (Italian it-IT & English en-US) with typed dictionaries (lib/i18n/types.ts, lib/i18n/locales/it.ts, lib/i18n/locales/en.ts), LanguageProvider, LanguageSwitcher, and reactive cookie/localStorage persistence.
 Public Routes: /landing (Editorial Outbound Landing Page), /login (Desktop Split-Screen Welcome & Supabase Auth Console), /faq (Domande Frequenti Reattive), /guida (Guida Utente Interattiva con TOC e Download TXT)
@@ -40,6 +41,7 @@ Storage Service: Supabase Storage
   - Object Path Structure:
     * Newsletters: {user_id}/{newsletter_id-or-draft}/{uuid}.{extension}
     * Campaigns: {user_id}/campaigns/{campaign_id-or-draft}/{filename}
+    * Imported Emails (.eml / .zip): {user_id}/imports/{timestamp}-{index}-{filename}
   - Security & RLS Policies on storage.objects:
     * SELECT: Public read access for all objects in bucket newsletter-images
     * INSERT: Authenticated users only, restricted to own user directory (storage.foldername(name))[1] = auth.uid()::text
@@ -48,6 +50,9 @@ Storage Service: Supabase Storage
   - Campaign Editor Modes:
     * STANDARD (Base): Essential fast visual/HTML source editor without asset manager overhead.
     * ESTESA (Con Immagini): Full media asset manager, template slots detection, multi-file upload, Base64 conversion to HTTPS, placeholders sub-toolbar, and real-time live preview.
+  - Pre-Made Email Import:
+    * EML / MSG (Outlook, Apple Mail, Thunderbird): Automatic MIME parser extracts subject, HTML body, and all inline/attached images; uploads to Supabase Storage and swaps CID/filename tags into public HTTPS URLs.
+    * ZIP Archive: Decompressed with JSZip; extracts HTML template and all images in root or subfolders, uploads images to Supabase Storage, and remaps relative paths into public HTTPS URLs.
 Database Migrations: supabase/migrations/ (001_campaigns.sql, 002_campaign_leads.sql, 003_email_logs.sql, 004_claim_lead_rpc.sql, 005_app_settings.sql, 006_multi_tenant.sql, 007_newsletters.sql, 008_lead_research.sql, 009_security_hardening.sql, 010_user_smtp_connections.sql, 011_newsletter_images_storage.sql, all_migrations.sql)
 Tables:
   - public.campaigns (includes user_id uuid FK, smtp_connection_id uuid FK, RLS protected)

@@ -1,6 +1,19 @@
 # IMPLEMENTATION PLAN: CORREZIONI 1/3 - ISOLAMENTO DATABASE E ACCESSI PUBBLICI
 
-## MAIL-K — Caricamento Immagini, Segnaposti e Template Slots nelle Campagne Massive B2B — 2026-10-14 17:25 +08:00
+## MAIL-K — Importazione Email Rapida da Programma di Posta (.EML) e Archivio (.ZIP con Immagini) — 2026-10-14 18:42 +08:00
+- [x] Task 1: API Endpoint (`/api/email-import/parse`) potenziato:
+  - Estrazione allegati/immagini inline MIME da file `.eml` (mailparser), upload su Supabase Storage e sostituzione tag `cid:...` e filename con URL HTTPS pubblici.
+  - Decompressione `.zip` (JSZip), estrazione HTML + immagini, upload automatico su Supabase Storage e riscrittura dei percorsi relativi in URL HTTPS.
+  - Estrazione automatica Oggetto (da header `Subject:` o tag `<title>`).
+- [x] Task 2: Componente `CampaignForm.tsx`:
+  - Aggiunta pulsante e dropzone "📥 Importa Email (.eml / .zip / .html)".
+  - Auto-compilazione di Oggetto e HTML, inserimento immagini caricate nella galleria e passaggio all'anteprima.
+- [x] Task 3: Componente `NewsletterForm.tsx`:
+  - Aggiunta identica funzionalità di importazione rapida `.eml` / `.zip`.
+- [x] Task 4: Verifica TypeScript, build di produzione e test nel browser (completati con codice 0).
+- [x] Task 5: Aggiornamento `SETTINGS.TXT` con `jszip` e nuova funzionalità.
+
+
 - [x] Task 1: Validazione Schema & API Backend (blocco Base64 su CampaignSchema e /api/campaigns)
 - [x] Task 2: Logica Upload & Storage in CampaignForm.tsx (client Supabase, 3MB, MIME, cartella `{user.id}/campaigns/...`)
 - [x] Task 3: Rilevamento Template Slots & Auto-Matching (slot locali `01_image.jpg`, upload multiplo, matching automatico)
