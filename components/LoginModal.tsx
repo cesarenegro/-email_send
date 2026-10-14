@@ -95,7 +95,7 @@ export default function LoginModal({ isOpen, onClose, initialMode = 'signin', in
       const appOrigin =
         typeof window !== 'undefined' && window.location.origin
           ? window.location.origin
-          : process.env.NEXT_PUBLIC_APP_URL || 'https://emailbulk.vercel.app';
+          : process.env.NEXT_PUBLIC_APP_URL || 'https://mailk.arkai.dev';
 
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),

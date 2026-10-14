@@ -1,7 +1,7 @@
 ================================================================================
 MAIL-K (PRECISION OUTBOUND) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-14 18:46 +08:00
+Last updated: 2026-10-14 19:22 +08:00
 Deployment: Production live at https://mailk.arkai.dev
 Application commit: 0d0a635 (origin/main)
 Database: cayceyagmorwlbmmvyoc.supabase.co (Migrations 001-011 active and verified)
@@ -80,6 +80,7 @@ SSRF & DNS Rebinding Protection: lib/security/ssrf.ts
 Endpoints:
   - POST /api/smtp/verify: Session-authenticated, SSRF-protected transient SMTP handshake tester
   - GET/POST /api/smtp/connections: Per-user verified SMTP connection manager (zero plaintext password exposure)
+  - DELETE /api/smtp/connections/[id]: Secure deletion of user-owned SMTP connection with strict tenant isolation
   - POST /api/settings/send-test: Account-isolated test email dispatcher
 Master Admin SMTP: Configured via environment variables (SMTP_HOST, SMTP_USER, SMTP_PASS), explicitly reserved for admin operations
 HTML Sanitization & XSS Defense: lib/security/sanitize-html.ts

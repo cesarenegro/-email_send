@@ -1,5 +1,4 @@
 import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -7,14 +6,20 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const token_hash = searchParams.get('token_hash');
   const type = searchParams.get('type') as any;
-  const next = searchParams.get('next') ?? '/';
+  const rawNext = searchParams.get('next') ?? '/';
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
 
   // Determine the canonical base URL taking into account reverse proxies / Vercel
   const forwardedHost = request.headers.get('x-forwarded-host');
   const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
   const redirectBase = forwardedHost ? `${forwardedProto}://${forwardedHost}` : origin;
 
-  const cookieStore = await cookies();
+  const targetUrl = new URL(next, redirectBase).toString();
+
+  // Create response instance FIRST so that all cookies exchanged during PKCE/OTP
+  // are attached directly as Set-Cookie headers on this exact HTTP response!
+  const response = NextResponse.redirect(targetUrl);
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -25,26 +30,30 @@ export async function GET(request: NextRequest) {
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
-        return cookieStore.getAll();
+        return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
-        } catch {
-          // Ignore set cookie errors in server components/edge
-        }
+        cookiesToSet.forEach(({ name, value }) => {
+          request.cookies.set(name, value);
+        });
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, {
+            ...options,
+            path: options?.path || '/',
+            sameSite: options?.sameSite || 'lax',
+          });
+        });
       },
     },
   });
 
-  // Flow 1: PKCE code exchange
+  // Flow 1: PKCE code exchange (OAuth Google, Facebook, LinkedIn, etc.)
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${redirectBase}${next}`);
+      return response;
     }
+    console.error('[Auth Callback] exchangeCodeForSession error:', error.message);
   }
 
   // Flow 2: Token hash verification (OTP / Magiclink / Signup confirmation)
@@ -54,8 +63,9 @@ export async function GET(request: NextRequest) {
       token_hash,
     });
     if (!error) {
-      return NextResponse.redirect(`${redirectBase}${next}`);
+      return response;
     }
+    console.error('[Auth Callback] verifyOtp error:', error.message);
   }
 
   // Fallback: If verification failed or code expired

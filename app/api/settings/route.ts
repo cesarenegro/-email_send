@@ -46,6 +46,15 @@ export async function GET() {
   const isPrimaryAdmin = user.email === 'cesare@arkitecna.com';
   const defaultUserDisplayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Utente';
 
+  // 3. Fetch user-specific SMTP connections
+  const { data: conns } = await admin
+    .from('smtp_connections')
+    .select('id, name, host, port, secure, username, from_name, from_email, reply_to, is_verified, verified_at, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  const activeConn = conns?.find((c) => c.is_verified) || conns?.[0] || null;
+
   return NextResponse.json({
     from_name: userSet?.from_name || (isPrimaryAdmin ? (map.from_name || process.env.SMTP_FROM_NAME || 'Stefano Martini | ARKITECNA') : defaultUserDisplayName),
     from_email: userSet?.from_email || (isPrimaryAdmin ? (map.from_email || process.env.SMTP_FROM_EMAIL || 'cesare@arkitecna.com') : user.email),
@@ -54,9 +63,11 @@ export async function GET() {
     send_window_start: userSet?.send_window_start || '09:00',
     send_window_end: userSet?.send_window_end || '18:00',
     onboarding_completed: userSet?.onboarding_completed ?? isPrimaryAdmin,
-    smtp_host: process.env.SMTP_HOST || 'smtp.hostinger.com',
-    smtp_port: process.env.SMTP_PORT || '465',
-    smtp_user: isPrimaryAdmin ? (process.env.SMTP_USER || 'cesare@arkitecna.com') : (userSet?.from_email || user.email),
+    smtp_host: activeConn?.host || (isPrimaryAdmin ? (process.env.SMTP_HOST || 'smtp.hostinger.com') : ''),
+    smtp_port: activeConn?.port ? String(activeConn.port) : (isPrimaryAdmin ? (process.env.SMTP_PORT || '465') : '465'),
+    smtp_user: activeConn?.username || (isPrimaryAdmin ? (process.env.SMTP_USER || 'cesare@arkitecna.com') : ''),
+    smtp_connections: conns || [],
+    active_connection: activeConn,
   });
 }
 

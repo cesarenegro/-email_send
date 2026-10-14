@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import LoginModal from '@/components/LoginModal';
+import { createClient } from '@/lib/supabase/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
@@ -12,10 +13,36 @@ export default function LandingPage() {
   const [modalMode, setModalMode] = useState<'signin' | 'signup' | 'forgot_password'>('signin');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteSubmitted, setInviteSubmitted] = useState(false);
+  const [oauthLoadingProvider, setOauthLoadingProvider] = useState<string | null>(null);
 
   const handleOpenLogin = (mode: 'signin' | 'signup' = 'signin') => {
     setModalMode(mode);
     setIsLoginModalOpen(true);
+  };
+
+  const handleDirectOAuth = async (provider: 'google' | 'facebook' | 'linkedin_oidc') => {
+    try {
+      setOauthLoadingProvider(provider);
+      const supabase = createClient();
+      const appOrigin =
+        typeof window !== 'undefined' && window.location.origin
+          ? window.location.origin
+          : process.env.NEXT_PUBLIC_APP_URL || 'https://mailk.arkai.dev';
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${appOrigin}/auth/callback`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (err: any) {
+      console.error('Direct OAuth error:', err);
+      setOauthLoadingProvider(null);
+      // Fallback: open login modal
+      handleOpenLogin('signin');
+    }
   };
 
   const handleInviteSubmit = (e: React.FormEvent) => {
@@ -816,39 +843,54 @@ export default function LandingPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 max-w-lg mx-auto mb-3">
                   <button
                     type="button"
-                    onClick={() => handleOpenLogin('signin')}
-                    className="w-full h-11 px-3 bg-[#92C775] hover:bg-[#81b863] text-white border border-[#81b863] rounded-xl shadow-xs hover:shadow-md flex items-center justify-center gap-2 font-label-md text-xs font-semibold transition-all cursor-pointer"
+                    disabled={Boolean(oauthLoadingProvider)}
+                    onClick={() => handleDirectOAuth('google')}
+                    className="w-full h-11 px-3 bg-[#92C775] hover:bg-[#81b863] text-white border border-[#81b863] rounded-xl shadow-xs hover:shadow-md flex items-center justify-center gap-2 font-label-md text-xs font-semibold transition-all cursor-pointer disabled:opacity-60"
                   >
-                    <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center shrink-0 shadow-xs">
-                      <svg aria-hidden="true" className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                        <path d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" fill="#4285F4"></path>
-                        <path d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.27 21.39 7.35 24 12 24z" fill="#34A853"></path>
-                        <path d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.97 0 12s.45 3.82 1.25 5.42l4.03-3.15z" fill="#FBBC05"></path>
-                        <path d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.94 1.19 15.23 0 12 0 7.35 0 3.27 2.61 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" fill="#EA4335"></path>
-                      </svg>
-                    </div>
+                    {oauthLoadingProvider === 'google' ? (
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    ) : (
+                      <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center shrink-0 shadow-xs">
+                        <svg aria-hidden="true" className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                          <path d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" fill="#4285F4"></path>
+                          <path d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.27 21.39 7.35 24 12 24z" fill="#34A853"></path>
+                          <path d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.97 0 12s.45 3.82 1.25 5.42l4.03-3.15z" fill="#FBBC05"></path>
+                          <path d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.94 1.19 15.23 0 12 0 7.35 0 3.27 2.61 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z" fill="#EA4335"></path>
+                        </svg>
+                      </div>
+                    )}
                     <span>{t.auth.googleButton}</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleOpenLogin('signin')}
-                    className="w-full h-11 px-3 bg-[#1877F2] hover:bg-[#166fe5] text-white border border-[#1877F2] rounded-xl shadow-xs hover:shadow-md flex items-center justify-center gap-2 font-label-md text-xs font-semibold transition-all cursor-pointer"
+                    disabled={Boolean(oauthLoadingProvider)}
+                    onClick={() => handleDirectOAuth('facebook')}
+                    className="w-full h-11 px-3 bg-[#1877F2] hover:bg-[#166fe5] text-white border border-[#1877F2] rounded-xl shadow-xs hover:shadow-md flex items-center justify-center gap-2 font-label-md text-xs font-semibold transition-all cursor-pointer disabled:opacity-60"
                   >
-                    <svg aria-hidden="true" className="w-4 h-4 fill-white" viewBox="0 0 24 24">
-                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"></path>
-                    </svg>
+                    {oauthLoadingProvider === 'facebook' ? (
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    ) : (
+                      <svg aria-hidden="true" className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"></path>
+                      </svg>
+                    )}
                     <span>{t.auth.facebookButton}</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleOpenLogin('signin')}
-                    className="w-full h-11 px-3 bg-[#0A66C2] hover:bg-[#08549e] text-white border border-[#0A66C2] rounded-xl shadow-xs hover:shadow-md flex items-center justify-center gap-2 font-label-md text-xs font-semibold transition-all cursor-pointer"
+                    disabled={Boolean(oauthLoadingProvider)}
+                    onClick={() => handleDirectOAuth('linkedin_oidc')}
+                    className="w-full h-11 px-3 bg-[#0A66C2] hover:bg-[#08549e] text-white border border-[#0A66C2] rounded-xl shadow-xs hover:shadow-md flex items-center justify-center gap-2 font-label-md text-xs font-semibold transition-all cursor-pointer disabled:opacity-60"
                   >
-                    <svg aria-hidden="true" className="w-4 h-4 fill-white" viewBox="0 0 24 24">
-                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451c.979 0 1.778-.773 1.778-1.729V1.73C24 .774 23.205 0 22.222 0h.003z"/>
-                    </svg>
+                    {oauthLoadingProvider === 'linkedin_oidc' ? (
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    ) : (
+                      <svg aria-hidden="true" className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451c.979 0 1.778-.773 1.778-1.729V1.73C24 .774 23.205 0 22.222 0h.003z"/>
+                      </svg>
+                    )}
                     <span>{t.auth.linkedinButton}</span>
                   </button>
                 </div>

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSmtpTransporter } from '@/lib/email/transporter';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const {
@@ -13,7 +13,15 @@ export async function POST() {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    const transporter = await getSmtpTransporter({ userId: user.id });
+    const body = await request.json().catch(() => ({}));
+    const { smtp_connection_id } = body;
+
+    const isPrimaryAdmin = user.email === 'cesare@arkitecna.com';
+    const transporter = await getSmtpTransporter({
+      userId: user.id,
+      smtpConnectionId: smtp_connection_id || null,
+      allowAdminFallback: isPrimaryAdmin,
+    });
     await transporter.verify();
 
     return NextResponse.json({
