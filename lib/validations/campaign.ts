@@ -4,7 +4,15 @@ import { DateTime } from 'luxon';
 export const CampaignSchema = z.object({
   name: z.string().min(1, 'Il nome della campagna è obbligatorio'),
   subject_template: z.string().default(''),
-  html_template: z.string().default(''),
+  html_template: z
+    .string()
+    .default('')
+    .refine(
+      (content) => !/data:image\/[a-zA-Z+]+;base64,/i.test(content),
+      {
+        message: 'Non è consentito salvare immagini Base64. Convertile in immagini caricate su storage prima del salvataggio.',
+      }
+    ),
   timezone: z
     .string()
     .nullish()

@@ -1,6 +1,16 @@
 # IMPLEMENTATION PLAN: CORREZIONI 1/3 - ISOLAMENTO DATABASE E ACCESSI PUBBLICI
 
-## MAIL-K — Caricamento Immagini nelle Newsletter — 2026-10-14 16:15 +08:00
+## MAIL-K — Caricamento Immagini, Segnaposti e Template Slots nelle Campagne Massive B2B — 2026-10-14 17:25 +08:00
+- [x] Task 1: Validazione Schema & API Backend (blocco Base64 su CampaignSchema e /api/campaigns)
+- [x] Task 2: Logica Upload & Storage in CampaignForm.tsx (client Supabase, 3MB, MIME, cartella `{user.id}/campaigns/...`)
+- [x] Task 3: Rilevamento Template Slots & Auto-Matching (slot locali `01_image.jpg`, upload multiplo, matching automatico)
+- [x] Task 4: Conversione Base64 & Warning Pre-Invio (estrazione, upload, sostituzione trasparente e avvisi)
+- [x] Task 5: Segnaposti Visuali & Galleria Immagini (sub-toolbar segnaposti, contatore e inserimento rapido)
+- [x] Task 6: Switcher a 2 Modalità (STANDARD base ed ESTESA con immagini) con Anteprima Live integrata in CampaignForm
+- [x] Task 7: Test, TypeCheck & Build di Produzione (`npx tsc --noEmit` e `npm run build` completati con codice 0)
+- [x] Task 8: Sincronizzazione Documentazione (SETTINGS.TXT e IMPLEMENTATION_PLAN.md)
+
+
 - [x] Fase 1: Database & Supabase Storage Migration (bucket `newsletter-images`, RLS su storage.objects verificati)
 - [x] Fase 2: Validazione Backend & Sicurezza (blocco Base64 su /api/newsletters e NewsletterSchema)
 - [x] Fase 3: Componente Editor & Upload Immagini (`components/NewsletterForm.tsx`) con validazione client 3MB, MIME types consentiti, percorso sicuro `{user_id}/{newsletter_id-or-draft}/{uuid}.{ext}`
