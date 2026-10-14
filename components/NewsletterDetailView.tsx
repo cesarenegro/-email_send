@@ -8,7 +8,6 @@ import NewsletterCsvImporter from '@/components/NewsletterCsvImporter';
 import NewsletterSubscribersTable from '@/components/NewsletterSubscribersTable';
 import EmailPreview from '@/components/EmailPreview';
 import {
-  Newspaper,
   Calendar,
   Clock,
   Play,
@@ -23,9 +22,11 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
+  Edit3,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import NewsletterForm from '@/components/NewsletterForm';
 
 export default function NewsletterDetailView({
   initialNewsletter,
@@ -40,6 +41,7 @@ export default function NewsletterDetailView({
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   const fetchNewsletter = async () => {
     try {
@@ -63,8 +65,9 @@ export default function NewsletterDetailView({
       if (!res.ok) throw new Error(data.error || 'Failed to start');
       setActionMessage({ type: 'success', text: t.newsletters.detail.statusUpdatedSuccess });
       await fetchNewsletter();
-    } catch (err: any) {
-      setActionMessage({ type: 'error', text: err.message });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setActionMessage({ type: 'error', text: msg });
     } finally {
       setActionLoading(false);
     }
@@ -79,8 +82,9 @@ export default function NewsletterDetailView({
       if (!res.ok) throw new Error(data.error || 'Failed to pause');
       setActionMessage({ type: 'success', text: t.newsletters.detail.pauseSuccess });
       await fetchNewsletter();
-    } catch (err: any) {
-      setActionMessage({ type: 'error', text: err.message });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setActionMessage({ type: 'error', text: msg });
     } finally {
       setActionLoading(false);
     }
@@ -99,8 +103,9 @@ export default function NewsletterDetailView({
         text: `${t.newsletters.detail.sendOneNowSuccess} (${data.subscriber?.email || 'subscriber'})`,
       });
       await fetchNewsletter();
-    } catch (err: any) {
-      setActionMessage({ type: 'error', text: err.message });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setActionMessage({ type: 'error', text: msg });
     } finally {
       setActionLoading(false);
     }
@@ -115,8 +120,9 @@ export default function NewsletterDetailView({
       if (!res.ok) throw new Error('Error deleting newsletter');
       router.push('/newsletters');
       router.refresh();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(msg);
     }
   };
 
@@ -125,6 +131,25 @@ export default function NewsletterDetailView({
         .setZone(newsletter.timezone || 'Europe/Rome')
         .toFormat('dd/MM/yyyy HH:mm')
     : t.newsletters.detail.notScheduledManual;
+
+  if (isEditing) {
+    return (
+      <div className="space-y-6">
+        <button
+          type="button"
+          onClick={() => {
+            setIsEditing(false);
+            fetchNewsletter();
+          }}
+          className="inline-flex items-center space-x-2 px-3 py-2 rounded-lg border border-[#D8D2C8] bg-white text-xs font-semibold text-[#1A1A1E] hover:bg-[#F7F5F0] transition-colors shadow-2xs"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Torna al Dettaglio Newsletter</span>
+        </button>
+        <NewsletterForm initialNewsletter={newsletter} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -156,6 +181,14 @@ export default function NewsletterDetailView({
             title={t.newsletters.detail.refreshTitle}
           >
             <RefreshCw className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setIsEditing(true)}
+            className="p-2 rounded-lg border border-[#D8D2C8] bg-white text-[#666666] hover:text-[#1A1A1E] transition-colors"
+            title="Modifica Newsletter & HTML"
+          >
+            <Edit3 className="w-4 h-4" />
           </button>
 
           {/* Start / Schedule or Pause */}

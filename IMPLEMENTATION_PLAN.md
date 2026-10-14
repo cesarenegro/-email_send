@@ -1,5 +1,23 @@
 # IMPLEMENTATION PLAN: CORREZIONI 1/3 - ISOLAMENTO DATABASE E ACCESSI PUBBLICI
 
+## MAIL-K — Caricamento Immagini nelle Newsletter — 2026-10-14 16:15 +08:00
+- [x] Fase 1: Database & Supabase Storage Migration (bucket `newsletter-images`, RLS su storage.objects verificati)
+- [x] Fase 2: Validazione Backend & Sicurezza (blocco Base64 su /api/newsletters e NewsletterSchema)
+- [x] Fase 3: Componente Editor & Upload Immagini (`components/NewsletterForm.tsx`) con validazione client 3MB, MIME types consentiti, percorso sicuro `{user_id}/{newsletter_id-or-draft}/{uuid}.{ext}`
+- [x] Fase 4: Sezione Immagini Caricate nell'Editor (miniatura, copia URL, inserisci tag al cursore, elimina con RLS)
+- [x] Fase 5: Conversione Automatica Base64 (estrazione, upload, sostituzione trasparente `src`, report conteggio)
+- [x] Fase 6: Validazioni Pre-Salvataggio (blocco Base64, warning HTTP non sicuro, warning peso HTML)
+- [x] Fase 7: Allineamento I18n (`it.ts`, `en.ts`, `types.ts`) e aggiornamento `SETTINGS.TXT`
+- [x] Fase 8: Test Completi e Verifica (lint, build, upload formati, rifiuto >3MB, conversione 4 immagini Base64, invio prova)
+
+## MAIL-K — Segnaposti Immagini nell'Editor e Composizione Semplice — 2026-10-14 16:50 +08:00
+- [x] Switcher a 3 modalità implementato in NewsletterForm: "✍️ Editor Semplice", "💻 Codice HTML", "👁️ Anteprima Live".
+- [x] Toolbar VisualEmailEditor estesa: aggiunto menu "🖼️ Immagine" con upload diretto dal PC, inserimento segnaposti e selezione immagini caricate.
+- [x] Pulsanti Segnaposto aggiunti nella sub-toolbar: "🖼️ Segnaposto Banner" (`{{BANNER_IMMAGINE}}`), "📦 Segnaposto Scheda" (`{{IMMAGINE_SCHEDA}}`), "🔗 {{LINK_IMMAGINE}}", "🏷️ {{IMMAGINE_1}}".
+- [x] Rilevamento automatico segnaposti presenti nel testo con contatore dinamico e badge visuale.
+- [x] Azione rapida "Allega al segnaposto" nella galleria immagini caricate: sostituisce istantaneamente il blocco segnaposto con il tag responsive email dell'immagine HTTPS.
+- [x] Collaudo nel browser e test suite automatica superati al 100% con server locale attivo su `http://localhost:3002`.
+
 ## Integrazione Editor Visuale Email Semplice (Stile Dummies) — 2026-10-14 07:15 +08:00
 - [x] Task 1: Aggiunto switcher a due modalità ("✍️ Editor Semplice" e "💻 Codice HTML") nella toolbar di CampaignForm.tsx accanto a "Salva Codice HTML".
 - [x] Task 2: Integrato VisualEmailEditor con toolbar di formattazione facile (titoli H1/H2, testo normale, grassetto, corsivo, elenchi puntati/numerati, link e segnaposti {{NOME_AZIENDA}} / {{email}}).

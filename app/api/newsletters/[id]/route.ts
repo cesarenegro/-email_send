@@ -52,6 +52,13 @@ export async function PATCH(
 
   const body = await request.json();
 
+  if (body.html_content && typeof body.html_content === 'string' && /data:image\/[a-zA-Z+]+;base64,/i.test(body.html_content)) {
+    return NextResponse.json(
+      { error: 'Non è consentito salvare immagini Base64. Convertile in immagini caricate su storage prima del salvataggio.' },
+      { status: 400 }
+    );
+  }
+
   // Validate smtp_connection_id if being updated
   if (body.smtp_connection_id) {
     const admin = createAdminClient();

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import { sanitizeEmailHtml, escapeHtml, sanitizeUrl } from '@/lib/security/sanitize-html';
 import {
   Bold,
@@ -13,23 +13,88 @@ import {
   Link as LinkIcon,
   Tag,
   Eraser,
+  ImageIcon,
+  UploadCloud,
+  ChevronDown,
+  Paperclip,
 } from 'lucide-react';
+
+export interface VisualEmailEditorHandle {
+  insertHtml: (htmlSnippet: string) => void;
+  focus: () => void;
+}
 
 interface VisualEmailEditorProps {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  onUploadImageClick?: () => void;
+  uploadedImages?: Array<{ name: string; url: string }>;
 }
 
-export default function VisualEmailEditor({
-  value,
-  onChange,
-  placeholder = 'Scrivi qui il corpo della tua email...',
-  disabled = false,
-}: VisualEmailEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const isInternalChangeRef = useRef<boolean>(false);
+const BANNER_PLACEHOLDER_HTML = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin:20px 0;">
+  <tr>
+    <td align="center" style="background:#F7F5F0;border:2px dashed #036E13;border-radius:8px;padding:26px 16px;text-align:center;">
+      <p style="margin:0 0 6px 0;font-size:15px;font-weight:bold;color:#036E13;">🖼️ [SEGNAPOSTO BANNER IMMAGINE]</p>
+      <p style="margin:0;font-size:12px;color:#666666;">Carica o allega un’immagine per sostituire questo spazio &bull; {{BANNER_IMMAGINE}}</p>
+    </td>
+  </tr>
+</table>`;
+
+const BOX_PLACEHOLDER_HTML = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin:16px 0;">
+  <tr>
+    <td align="center" style="background:#F7F5F0;border:2px dashed #2563EB;border-radius:8px;padding:22px 16px;text-align:center;">
+      <p style="margin:0 0 6px 0;font-size:14px;font-weight:bold;color:#2563EB;">📦 [SEGNAPOSTO IMMAGINE SCHEDA]</p>
+      <p style="margin:0;font-size:12px;color:#666666;">Allega un’immagine per questa scheda &bull; {{IMMAGINE_SCHEDA}}</p>
+    </td>
+  </tr>
+</table>`;
+
+const VisualEmailEditor = forwardRef<VisualEmailEditorHandle, VisualEmailEditorProps>(
+  function VisualEmailEditor(
+    {
+      value,
+      onChange,
+      placeholder = 'Scrivi qui il corpo della tua email...',
+      disabled = false,
+      onUploadImageClick,
+      uploadedImages = [],
+    },
+    ref
+  ) {
+    const editorRef = useRef<HTMLDivElement>(null);
+    const isInternalChangeRef = useRef<boolean>(false);
+    const [imageMenuOpen, setImageMenuOpen] = useState(false);
+    const imageMenuRef = useRef<HTMLDivElement>(null);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+      const handleClickOutside = (e: MouseEvent) => {
+        if (imageMenuRef.current && !imageMenuRef.current.contains(e.target as Node)) {
+          setImageMenuOpen(false);
+        }
+      };
+      if (imageMenuOpen) {
+        document.addEventListener('mousedown', handleClickOutside);
+      }
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, [imageMenuOpen]);
+
+    useImperativeHandle(ref, () => ({
+      insertHtml(htmlSnippet: string) {
+        if (editorRef.current) {
+          editorRef.current.focus();
+          document.execCommand('insertHTML', false, htmlSnippet);
+          handleInput();
+        }
+      },
+      focus() {
+        editorRef.current?.focus();
+      },
+    }));
 
   // Sync incoming value to DOM only if it changed externally, applying sanitization
   useEffect(() => {
@@ -217,6 +282,132 @@ export default function VisualEmailEditor({
           </button>
         </div>
 
+        <div className="w-[1px] h-4 bg-[#D8D2C8] mx-1" />
+
+        {/* Image & Placeholder Menu */}
+        <div className="relative" ref={imageMenuRef}>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setImageMenuOpen((prev) => !prev)}
+            className="px-2.5 py-1 text-xs font-semibold bg-[#E4E2DF] hover:bg-[#D8D2C8] text-[#1B1C1A] rounded-lg border border-[#D8D2C8] flex items-center gap-1.5 transition-colors disabled:opacity-40"
+            title="Gestisci immagini e segnaposti"
+          >
+            <ImageIcon className="w-3.5 h-3.5 text-[#036E13]" />
+            <span>Immagine</span>
+            <ChevronDown className="w-3 h-3 text-[#5C5E63]" />
+          </button>
+
+          {imageMenuOpen && (
+            <div className="absolute left-0 mt-1 w-64 bg-white border border-[#D8D2C8] rounded-xl shadow-lg z-50 p-2 space-y-1 text-xs">
+              {onUploadImageClick && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageMenuOpen(false);
+                    onUploadImageClick();
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-stone-100 flex items-center space-x-2 text-[#1A1A1E] font-medium"
+                >
+                  <UploadCloud className="w-4 h-4 text-[#036E13]" />
+                  <span>Carica immagine dal PC...</span>
+                </button>
+              )}
+
+              <div className="border-t border-stone-200 my-1" />
+              <div className="px-2.5 py-1 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                Inserisci Segnaposto:
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setImageMenuOpen(false);
+                  if (editorRef.current) {
+                    editorRef.current.focus();
+                    document.execCommand('insertHTML', false, BANNER_PLACEHOLDER_HTML);
+                    handleInput();
+                  }
+                }}
+                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-stone-100 flex items-center space-x-2 text-[#1A1A1E]"
+              >
+                <span className="text-base">🖼️</span>
+                <div>
+                  <div className="font-semibold text-[11px]">Segnaposto Banner (640px)</div>
+                  <div className="text-[10px] text-stone-500 font-mono">&#123;&#123;BANNER_IMMAGINE&#125;&#125;</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setImageMenuOpen(false);
+                  if (editorRef.current) {
+                    editorRef.current.focus();
+                    document.execCommand('insertHTML', false, BOX_PLACEHOLDER_HTML);
+                    handleInput();
+                  }
+                }}
+                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-stone-100 flex items-center space-x-2 text-[#1A1A1E]"
+              >
+                <span className="text-base">📦</span>
+                <div>
+                  <div className="font-semibold text-[11px]">Segnaposto Scheda Prodotto</div>
+                  <div className="text-[10px] text-stone-500 font-mono">&#123;&#123;IMMAGINE_SCHEDA&#125;&#125;</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setImageMenuOpen(false);
+                  handleInsertPlaceholder('{{LINK_IMMAGINE}}');
+                }}
+                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-stone-100 flex items-center space-x-2 text-[#1A1A1E]"
+              >
+                <span className="text-base">🔗</span>
+                <div>
+                  <div className="font-semibold text-[11px]">Segnaposto Link URL</div>
+                  <div className="text-[10px] text-stone-500 font-mono">&#123;&#123;LINK_IMMAGINE&#125;&#125;</div>
+                </div>
+              </button>
+
+              {uploadedImages.length > 0 && (
+                <>
+                  <div className="border-t border-stone-200 my-1" />
+                  <div className="px-2.5 py-1 text-[10px] font-bold text-stone-500 uppercase tracking-wider flex items-center space-x-1">
+                    <Paperclip className="w-3 h-3" />
+                    <span>Allega Immagine Caricata:</span>
+                  </div>
+                  <div className="max-h-36 overflow-y-auto space-y-0.5">
+                    {uploadedImages.map((img) => (
+                      <button
+                        key={img.url}
+                        type="button"
+                        onClick={() => {
+                          setImageMenuOpen(false);
+                          const imgSnippet = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin:16px 0;"><tr><td align="center"><img src="${img.url}" alt="" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0;border-radius:6px;margin:0 auto;" /></td></tr></table>`;
+                          if (editorRef.current) {
+                            editorRef.current.focus();
+                            document.execCommand('insertHTML', false, imgSnippet);
+                            handleInput();
+                          }
+                        }}
+                        className="w-full text-left px-2 py-1 rounded hover:bg-stone-100 flex items-center space-x-2 text-[#1A1A1E]"
+                        title={img.name}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img.url} alt="" className="w-6 h-6 rounded object-cover border border-stone-300 shrink-0" />
+                        <span className="text-[11px] truncate flex-1">{img.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex-1" />
 
         <button
@@ -241,4 +432,6 @@ export default function VisualEmailEditor({
       />
     </div>
   );
-}
+});
+
+export default VisualEmailEditor;

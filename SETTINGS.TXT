@@ -1,16 +1,17 @@
 ================================================================================
 MAIL-K (PRECISION OUTBOUND) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-14 07:26 +08:00
+Last updated: 2026-10-14 16:20 +08:00
 Deployment: Production live at https://mailk.arkai.dev
-Application commit: bcab84f (origin/main at release)
-Database: cayceyagmorwlbmmvyoc.supabase.co (Migrations 001-010 active and verified)
+Application commit: b78a3f2 (origin/main)
+Database: cayceyagmorwlbmmvyoc.supabase.co (Migrations 001-011 active and verified)
 Live Verification: Full suite against production endpoint https://mailk.arkai.dev
 - GET /api/smtp/connections returns 200
 - Tenant isolation: User B cannot list or use User A SMTP (400, 0 records)
 - Two-tab auth switch during verify: zero save POSTs, draft and password clean
 - Self-send Cesare->Cesare delivered and confirmed via read-only IMAP (UID 2132)
 - Gmail blocked by provider credential rejection (EAUTH); no bypass applied
+- Supabase Storage: bucket newsletter-images created, RLS verified, public HTTPS image serving verified
 Project / Application: MAIL-K (Precision Outbound)
 Repository: cesarenegro/-email_send
 Target URL / Deployment: https://mailk.arkai.dev (Vercel Project: mail-k)
@@ -33,7 +34,16 @@ Interactive Modals: LoginModal (Stitch Login Pop-up with backdrop blur, Google /
 Database Provider: Supabase (PostgreSQL)
 Authentication: Supabase Auth (Email / Password, Sign Up with emailRedirectTo, Deep Link Auth Callback /auth/callback, Password Reset, Multi-Tenant User Metadata, OAuth SSO: Google, Facebook, LinkedIn OIDC)
 Access Library: @supabase/supabase-js (^2.49.0), @supabase/ssr (^0.6.0)
-Database Migrations: supabase/migrations/ (001_campaigns.sql, 002_campaign_leads.sql, 003_email_logs.sql, 004_claim_lead_rpc.sql, 005_app_settings.sql, 006_multi_tenant.sql, 007_newsletters.sql, 008_lead_research.sql, 009_security_hardening.sql, 010_user_smtp_connections.sql [locale], all_migrations.sql)
+Storage Service: Supabase Storage
+  - Bucket: newsletter-images (Public read access, max file size 3 MB / 3145728 bytes)
+  - Allowed MIME Types: image/jpeg, image/png, image/webp, image/gif (SVG and HTML explicitly rejected)
+  - Object Path Structure: {user_id}/{newsletter_id-or-draft}/{uuid}.{extension}
+  - Security & RLS Policies on storage.objects:
+    * SELECT: Public read access for all objects in bucket newsletter-images
+    * INSERT: Authenticated users only, restricted to own user directory (storage.foldername(name))[1] = auth.uid()::text
+    * UPDATE/DELETE: Authenticated users only, restricted to own user directory (storage.foldername(name))[1] = auth.uid()::text
+    * Frontend Security: No service_role key exposed to browser; operations performed via user session token
+Database Migrations: supabase/migrations/ (001_campaigns.sql, 002_campaign_leads.sql, 003_email_logs.sql, 004_claim_lead_rpc.sql, 005_app_settings.sql, 006_multi_tenant.sql, 007_newsletters.sql, 008_lead_research.sql, 009_security_hardening.sql, 010_user_smtp_connections.sql, 011_newsletter_images_storage.sql, all_migrations.sql)
 Tables:
   - public.campaigns (includes user_id uuid FK, smtp_connection_id uuid FK, RLS protected)
   - public.campaign_leads (RLS protected per campaign ownership; statuses: pending, sending, sent, retry, failed)
