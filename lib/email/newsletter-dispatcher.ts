@@ -8,6 +8,7 @@ import {
 } from '@/lib/email/transporter';
 import { DateTime } from 'luxon';
 import type { Newsletter, NewsletterSubscriber } from '@/types/database';
+import { checkConsent } from '@/lib/konta/consent';
 
 export interface NewsletterDispatchResult {
   status: 'sent' | 'error_handled' | 'no_subscribers' | 'completed' | 'waiting' | 'error_configuration' | 'error_transient';
@@ -87,6 +88,30 @@ export async function dispatchNextEmailForNewsletter(
   }
 
   const subscriber: NewsletterSubscriber = claimedRows[0];
+
+  // 2-bis. Consenso K-CRM (newsletter o marketing revocato): nessun invio; fail-closed se non verificabile.
+  const consent = await checkConsent(supabase, newsletter.organization_id, subscriber.email, ['newsletter', 'marketing']);
+  if (consent !== 'allowed') {
+    const suppressed = consent === 'suppressed';
+    const reason = suppressed ? 'Consenso revocato in K-CRM' : 'Consenso non verificabile: invio rinviato';
+    await supabase
+      .from('mail_newsletter_subscribers')
+      .update(suppressed ? { status: 'failed', last_error: reason } : { status: 'pending', last_error: reason })
+      .eq('id', subscriber.id);
+    await supabase.from('mail_email_logs').insert({
+      organization_id: newsletter.organization_id,
+      newsletter_id: newsletter.id,
+      subscriber_id: subscriber.id,
+      event_type: 'error',
+      error_message: reason,
+    });
+    return {
+      status: 'error_handled',
+      subscriber: { id: subscriber.id, email: subscriber.email, name: subscriber.name },
+      error: reason,
+      next_send_at: newsletter.next_send_at,
+    };
+  }
 
   const renderedSubject = renderTemplate(newsletter.subject || '', {
     email: subscriber.email,

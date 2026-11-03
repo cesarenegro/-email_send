@@ -1,7 +1,7 @@
 ================================================================================
 MAIL-K (ecosistema KONTA) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-11-03 17:10 +08:00
+Last updated: 2026-11-03 18:05 +08:00
 Branch: konta-ecosystem (tappe M0 + M1; NON deployato, solo commit locali)
 Produzione attuale: main @ fbfe022 su https://mailk.arkai.dev con il progetto Supabase
   di Mail-K (cayceyagmorwlbmmvyoc) — NON toccato da questo branch.
@@ -45,6 +45,7 @@ Migrazioni Mail-K per KONTA (supabase/migrations/):
     fissato, RPC mail_claim_next_campaign_lead / mail_claim_next_newsletter_subscriber (solo
     service_role), helper mail_can_write / mail_can_manage_settings, trigger mail_tg_touch_row /
     mail_tg_guard_tenant.
+  - 20261103140000_mailk_konta_03_crm_bridge.sql: crm_segment_id, crm_person_id, source (ponte K-CRM, M3).
   - 20261103120100_mailk_konta_02_storage.sql: bucket pubblico `mail-images` con cartelle
     {organization_id}/… e policy sui membri (helper mail_storage_org_of).
   Applicate SOLO al DB locale con scripts/konta/apply-mailk-migration.mjs (pg); verificate con
@@ -112,12 +113,20 @@ Stato: disattivato (tutte le route rispondono 503 FEATURE_DISABLED se LEAD_RESEA
   voce di menu e card nascoste). Le tabelle lead_research_* NON sono state migrate su KONTA.
 Provider (quando attivo): Tavily API, OpenAI API (server-only). Decisione in M4 (commerciale).
 
+7-bis. K-CRM BRIDGE (M3)
+--------------------------------------------------------------------------------
+K-CRM API: KCRM_API_URL (origine; https in produzione). Mail-K inoltra solo i cookie di sessione
+  sb-* dell'utente. Endpoint K-CRM usati: GET/POST /api/v1/organizations/{orgId}/segments
+  (evaluate_segment). Route Mail-K: GET /api/crm/segments, POST /api/crm/import-segment.
+Consensi: lettura di public.crm_consents prima di ogni invio (mai scrittura).
+
 8. REQUIRED ENVIRONMENT VARIABLE NAMES (NO SECRETS STORED HERE)
 --------------------------------------------------------------------------------
 NEXT_PUBLIC_SUPABASE_URL                 progetto KONTA (locale: API_URL di `npx supabase status`)
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY     (ripiego legacy: NEXT_PUBLIC_SUPABASE_ANON_KEY)
 SUPABASE_SECRET_KEY                      cron e lettura credenziali cifrate (ripiego: SUPABASE_SERVICE_ROLE_KEY)
 KCRM_SECRET_ENCRYPTION_KEY               cifratura segreti a riposo (stessa chiave dell'ecosistema)
+KCRM_API_URL                             origine dell'API di K-CRM (ponte M3)
 CRON_SECRET
 NEXT_PUBLIC_APP_NAME
 NEXT_PUBLIC_APP_URL

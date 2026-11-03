@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 17:10 +08:00
+**Last modified:** 2026-11-03 18:05 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Repository:** `cesarenegro/-email_send`
@@ -77,6 +77,15 @@ Mail-K usa l'account KONTA (progetto Supabase condiviso con KONTA PRO e K-CRM) e
 - **Bucket immagini:** `node scripts/konta/test-storage-isolation.mjs` exit 0 (upload solo nella propria organizzazione, URL pubblico 200, SVG rifiutato, pulizia completa).
 - **Test logici rimasti:** `npx tsx scripts/verify-logic.ts` exit 0 (28 controlli), `node scripts/test-phase3-release.mjs` exit 0.
 - **Invio reale:** ancora NON VERIFICATO, in attesa che il proprietario inserisca una casella SMTP vera.
+
+## 5-ter. M3 — ponte K-CRM, lato Mail-K (2026-11-03)
+
+- **Migrazione 03** `supabase/migrations/20261103140000_mailk_konta_03_crm_bridge.sql` (applicata solo in locale): `crm_segment_id` su campagne e newsletter, `crm_person_id` e `source` ('manual' | 'csv' | 'crm_segment') su destinatari e iscritti. Nessuna FK verso `crm_*`.
+- **Segmenti in uscita:** `lib/konta/kcrm-client.ts` chiama l'API di K-CRM (`KCRM_API_URL`) inoltrando solo i cookie di sessione `sb-*` dell'utente: K-CRM verifica sessione e membership e calcola i destinatari (consensi, revoche, duplicati). Route `GET /api/crm/segments`, `POST /api/crm/import-segment`; pannello "Importa da segmento K-CRM" accanto all'import CSV di campagne e newsletter.
+- **Consensi in entrata:** prima di ogni invio i dispatcher leggono `crm_consents` (sola lettura). Revocato → destinatario "failed" con motivo; lettura impossibile → nessun invio, nuovo tentativo dopo 15 minuti.
+- **Verificato in locale** (K-CRM avviato su 3110 senza modificarne i file): lista segmenti 200 (vuota), segmento inesistente 404 da K-CRM, campagna inesistente 404, pannello visibile; `checkConsent` su indirizzo senza eventi → `allowed`; RLS 0; tsc 0.
+- **NON VERIFICATO:** import con un segmento reale e blocco di un consenso revocato. Le organizzazioni di prova non hanno segmenti, persone né consensi, e creare dati `crm_*` (consensi append-only, non cancellabili) richiede l'autorizzazione del proprietario.
+- **Richieste a K-CRM (ancora aperte):** (1) endpoint per ricevere gli esiti Mail-K nella scheda cliente (`mail.sent`, `mail.bounced`, `mail.failed` con `crm_person_id`), oppure una RPC dedicata; (2) evento di disiscrizione dal link nelle email → `record_consent` revoked (Mail-K oggi non ha un link di disiscrizione); (3) capacità `crm.mailk` per mostrare Mail-K nel CRM.
 
 ## 6. Istruzioni per riprendere
 

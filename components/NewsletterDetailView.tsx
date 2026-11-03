@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { NewsletterWithStats } from '@/types/database';
 import StatusBadge from '@/components/StatusBadge';
 import NewsletterCsvImporter from '@/components/NewsletterCsvImporter';
+import CrmSegmentImporter from '@/components/konta/CrmSegmentImporter';
 import NewsletterSubscribersTable from '@/components/NewsletterSubscribersTable';
 import EmailPreview from '@/components/EmailPreview';
 import {
@@ -338,6 +339,10 @@ export default function NewsletterDetailView({
               }}
               onClose={() => setShowImporter(false)}
             />
+          )}
+
+          {showImporter && (
+            <CrmSegmentImporter target="newsletter" targetId={newsletter.id} onImported={fetchNewsletter} />
           )}
 
           <NewsletterSubscribersTable

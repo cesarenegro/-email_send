@@ -9,6 +9,7 @@ import {
 } from '@/lib/email/transporter';
 import { DateTime } from 'luxon';
 import type { Campaign, CampaignLead } from '@/types/database';
+import { checkConsent } from '@/lib/konta/consent';
 
 export interface DispatchResult {
   status: 'sent' | 'error_handled' | 'no_leads' | 'completed' | 'waiting' | 'error_configuration' | 'error_transient';
@@ -108,6 +109,34 @@ export async function dispatchNextEmailForCampaign(
   }
 
   const lead: CampaignLead = claimedRows[0];
+
+  // 2-bis. Consenso K-CRM: chi ha revocato il marketing non riceve nulla (fail-closed se non verificabile).
+  const consent = await checkConsent(supabase, campaign.organization_id, lead.email, ['marketing']);
+  if (consent !== 'allowed') {
+    const suppressed = consent === 'suppressed';
+    const reason = suppressed ? 'Consenso marketing revocato in K-CRM' : 'Consenso non verificabile: invio rinviato';
+    await supabase
+      .from('mail_campaign_leads')
+      .update(
+        suppressed
+          ? { status: 'failed', retry_at: null, last_error: reason }
+          : { status: 'retry', retry_at: DateTime.utc().plus({ minutes: 15 }).toISO(), last_error: reason }
+      )
+      .eq('id', lead.id);
+    await supabase.from('mail_email_logs').insert({
+      organization_id: campaign.organization_id,
+      campaign_id: campaign.id,
+      campaign_lead_id: lead.id,
+      event_type: 'error',
+      error_message: reason,
+    });
+    return {
+      status: 'error_handled',
+      lead: { id: lead.id, email: lead.email, company_name: lead.company_name },
+      error: reason,
+      next_send_at: campaign.next_send_at,
+    };
+  }
 
   // 3. Rendering dei segnaposto
   const renderedSubject = renderTemplate(campaign.subject_template || '', {

@@ -8,6 +8,7 @@ import { CampaignInput } from '@/lib/validations/campaign';
 import StatusBadge from '@/components/StatusBadge';
 import CampaignForm from '@/components/CampaignForm';
 import CsvImporter from '@/components/CsvImporter';
+import CrmSegmentImporter from '@/components/konta/CrmSegmentImporter';
 import EmailPreview from '@/components/EmailPreview';
 import LeadTable from '@/components/LeadTable';
 import { DateTime } from 'luxon';
@@ -576,6 +577,10 @@ export default function CampaignDetailPage() {
                 }}
               />
             </div>
+          )}
+
+          {showImporter && !isActive && (
+            <CrmSegmentImporter target="campaign" targetId={id} onImported={fetchCampaignData} />
           )}
 
           <LeadTable
