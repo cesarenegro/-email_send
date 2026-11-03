@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 18:30 +08:00
+**Last modified:** 2026-11-03 18:55 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Repository:** `cesarenegro/-email_send`
@@ -122,7 +122,21 @@ Dati creati tramite l'API di K-CRM nell'organizzazione locale "Alfa Impianti Srl
 
 Campagna, newsletter, log e registro cron di prova di Mail-K cancellati; K-CRM avviato su 3110 solo per la prova e poi fermato, nessun suo file modificato.
 
-**Osservazioni:** una pressione di Invia/Ricevi richiede circa 20–30 secondi quando la casella IMAP è grande (oggi legge gli ultimi 100 messaggi a ogni pressione). Una newsletter i cui iscritti sono tutti bloccati finisce in stato "sent" (stato "completata" ereditato da prima).
+**Osservazioni:** la lentezza di Invia/Ricevi è stata risolta (vedi 5-septies). Una newsletter i cui iscritti sono tutti bloccati finisce in stato "sent" (stato "completata" ereditato da prima).
+
+## 5-septies. Invia/Ricevi veloce: lettura IMAP incrementale (2026-11-03)
+
+- **Migrazione 04** `supabase/migrations/20261103160000_mailk_konta_04_imap_cursor.sql` (applicata solo in locale): `imap_uid_validity`, `imap_last_uid`, `imap_synced_at` su `mail_sender_settings`, scritte solo dal server.
+- `lib/email/imap-bounce-client.ts`: con UIDVALIDITY invariata legge solo i messaggi con UID oltre il segnalibro (massimo 500 per lettura); la prima lettura, o dopo un cambio di casella, esamina gli ultimi 100 e salva il segnalibro. La lettura limitata a una campagna non usa né sposta il segnalibro. Cambiare host o utente IMAP in Impostazioni azzera il segnalibro.
+
+| Misura (casella reale `info@arkai.dev`, nulla da inviare) | Tempo |
+|---|---|
+| Prima della modifica | 23,7 s (100 messaggi, 67 avvisi rianalizzati) |
+| Prima pressione dopo la modifica (salva il segnalibro) | 24,2 s |
+| Pressioni successive senza posta nuova | 3,8 s |
+| Segnalibro arretrato di 3 in locale (simula 3 messaggi nuovi) | 4,8 s, 3 messaggi esaminati, 3 avvisi riconosciuti |
+
+I 3,8 s residui sono connessione e accesso IMAP più le query di invio.
 
 ## 6. Istruzioni per riprendere
 

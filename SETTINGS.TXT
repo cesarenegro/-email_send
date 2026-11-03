@@ -1,7 +1,7 @@
 ================================================================================
 MAIL-K (ecosistema KONTA) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-11-03 18:05 +08:00
+Last updated: 2026-11-03 18:55 +08:00
 Branch: konta-ecosystem (tappe M0 + M1; NON deployato, solo commit locali)
 Produzione attuale: main @ fbfe022 su https://mailk.arkai.dev con il progetto Supabase
   di Mail-K (cayceyagmorwlbmmvyoc) — NON toccato da questo branch.
@@ -45,6 +45,7 @@ Migrazioni Mail-K per KONTA (supabase/migrations/):
     fissato, RPC mail_claim_next_campaign_lead / mail_claim_next_newsletter_subscriber (solo
     service_role), helper mail_can_write / mail_can_manage_settings, trigger mail_tg_touch_row /
     mail_tg_guard_tenant.
+  - 20261103160000_mailk_konta_04_imap_cursor.sql: segnalibro IMAP per organizzazione (lettura incrementale).
   - 20261103140000_mailk_konta_03_crm_bridge.sql: crm_segment_id, crm_person_id, source (ponte K-CRM, M3).
   - 20261103120100_mailk_konta_02_storage.sql: bucket pubblico `mail-images` con cartelle
     {organization_id}/… e policy sui membri (helper mail_storage_org_of).
@@ -85,6 +86,8 @@ Rate limiting: lib/security/rate-limit.ts (in memoria, per organizzazione)
 --------------------------------------------------------------------------------
 IMAP per organizzazione (mail_sender_settings.imap_*; se vuoto ripiego sulle credenziali SMTP
   della stessa organizzazione), modalità read-only (EXAMINE + BODY.PEEK[]).
+Lettura incrementale: segnalibro UIDVALIDITY + ultimo UID per organizzazione; solo messaggi nuovi
+  (max 500 per lettura); prima lettura sugli ultimi 100.
 Library: ImapFlow ^2.2.11, Mailparser ^3.9.37
 Endpoints: POST /api/bounces/sync, POST /api/campaigns/[id]/sync-bounces,
   POST /api/cron/bounces (itera le organizzazioni con IMAP configurato; non pianificato in vercel.json)

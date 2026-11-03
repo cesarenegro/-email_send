@@ -24,7 +24,14 @@ export interface BounceSyncResult {
     reason: string;
   }>;
   errors: string[];
+  /** 'incremental' = solo messaggi nuovi dopo il segnalibro; 'window' = ultimi N messaggi. */
+  mode: 'incremental' | 'window';
+  /** Messaggi esaminati (intestazioni) in questa lettura. */
+  messagesScanned: number;
 }
+
+/** Massimo di messaggi nuovi esaminati in una sola lettura incrementale. */
+const MAX_NEW_MESSAGES = 500;
 
 export interface OrganizationImapConfig {
   /** Nome host configurato dall'organizzazione (usato per SNI e verifica del certificato). */
@@ -162,6 +169,8 @@ export async function syncBouncesFromImap(
     leadsUpdated: 0,
     updatedLeads: [],
     errors: [],
+    mode: 'window',
+    messagesScanned: 0,
   };
 
   const client = createOrganizationImapClient(imapConfig, 15000);
@@ -180,45 +189,66 @@ export async function syncBouncesFromImap(
         throw new Error('Accesso IMAP non confermato in modalità read-only: sincronizzazione interrotta per sicurezza.');
       }
 
-      const status = await client.status('INBOX', { messages: true });
-      const totalMessages = (status && typeof status === 'object' && typeof status.messages === 'number')
-        ? status.messages
-        : 0;
+      // Segnalibro: con UIDVALIDITY invariata si leggono solo i messaggi con UID > ultimo esaminato.
+      // La lettura limitata a una campagna non usa né sposta il segnalibro.
+      const mailbox = client.mailbox;
+      const uidValidity = mailbox && mailbox.uidValidity != null ? Number(mailbox.uidValidity) : null;
+      const highestUid = mailbox && typeof mailbox.uidNext === 'number' ? mailbox.uidNext - 1 : null;
+      const useCursor = !options.campaignId && uidValidity !== null && highestUid !== null;
+      const cursorValid =
+        useCursor &&
+        settings?.imap_uid_validity != null &&
+        Number(settings.imap_uid_validity) === uidValidity &&
+        settings?.imap_last_uid != null;
 
-      if (totalMessages === 0) {
-        return result;
+      let range: string | null = null;
+      let rangeIsUid = false;
+      if (cursorValid) {
+        result.mode = 'incremental';
+        const last = Number(settings!.imap_last_uid);
+        if (highestUid! > last) {
+          const from = Math.max(last + 1, highestUid! - MAX_NEW_MESSAGES + 1);
+          range = `${from}:${highestUid}`;
+          rangeIsUid = true;
+          if (highestUid! - last > MAX_NEW_MESSAGES) {
+            result.errors.push(`Più di ${MAX_NEW_MESSAGES} messaggi nuovi: esaminati solo i più recenti.`);
+          }
+        }
+      } else {
+        const status = await client.status('INBOX', { messages: true });
+        const totalMessages = status && typeof status.messages === 'number' ? status.messages : 0;
+        if (totalMessages > 0) {
+          const windowSize = options.limitMessages || 100;
+          range = `${Math.max(1, totalMessages - windowSize + 1)}:${totalMessages}`;
+        }
       }
 
-      // Check the most recent messages (default last 100 messages)
-      const windowSize = options.limitMessages || 100;
-      const fromSeq = Math.max(1, totalMessages - windowSize + 1);
-      const toSeq = totalMessages;
-
-      // 1. Fetch envelopes FIRST to find potential bounces
+      // 1. Intestazioni dei soli messaggi da esaminare, per trovare i possibili rimbalzi
       const candidateUids: number[] = [];
-      for await (const msg of client.fetch(`${fromSeq}:${toSeq}`, {
-        uid: true,
-        envelope: true,
-      })) {
-        const fromAddr = (msg.envelope?.from?.[0]?.address || '').toLowerCase();
-        const fromName = (msg.envelope?.from?.[0]?.name || '').toLowerCase();
-        const subject = (msg.envelope?.subject || '').toLowerCase();
+      if (range) {
+        for await (const msg of client.fetch(range, { uid: true, envelope: true }, { uid: rangeIsUid })) {
+          result.messagesScanned++;
+          if (rangeIsUid && settings?.imap_last_uid != null && msg.uid <= Number(settings.imap_last_uid)) continue;
+          const fromAddr = (msg.envelope?.from?.[0]?.address || '').toLowerCase();
+          const fromName = (msg.envelope?.from?.[0]?.name || '').toLowerCase();
+          const subject = (msg.envelope?.subject || '').toLowerCase();
 
-        const isBounceSender =
-          fromAddr.includes('mailer-daemon') ||
-          fromAddr.includes('postmaster') ||
-          fromName.includes('mail delivery');
+          const isBounceSender =
+            fromAddr.includes('mailer-daemon') ||
+            fromAddr.includes('postmaster') ||
+            fromName.includes('mail delivery');
 
-        const isBounceSubject =
-          subject.includes('undelivered') ||
-          subject.includes('undeliverable') ||
-          subject.includes('delivery status') ||
-          subject.includes('mail delivery failed') ||
-          subject.includes('failure notice') ||
-          subject.includes('returned to sender');
+          const isBounceSubject =
+            subject.includes('undelivered') ||
+            subject.includes('undeliverable') ||
+            subject.includes('delivery status') ||
+            subject.includes('mail delivery failed') ||
+            subject.includes('failure notice') ||
+            subject.includes('returned to sender');
 
-        if (isBounceSender || isBounceSubject) {
-          candidateUids.push(msg.uid);
+          if (isBounceSender || isBounceSubject) {
+            candidateUids.push(msg.uid);
+          }
         }
       }
 
@@ -336,6 +366,21 @@ export async function syncBouncesFromImap(
           }
         } catch (msgErr) {
           result.errors.push(`Errore parsing messaggio UID ${uid}: ${errorMessage(msgErr)}`);
+        }
+      }
+
+      // 5. Sposta il segnalibro (anche se singoli messaggi hanno dato errore, per non rileggerli all'infinito)
+      if (useCursor) {
+        const { error: cursorErr } = await adminClient
+          .from('mail_sender_settings')
+          .update({
+            imap_uid_validity: uidValidity,
+            imap_last_uid: highestUid,
+            imap_synced_at: new Date().toISOString(),
+          })
+          .eq('organization_id', organizationId);
+        if (cursorErr) {
+          result.errors.push(`Segnalibro IMAP non salvato: ${cursorErr.message}`);
         }
       }
     } finally {

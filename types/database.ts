@@ -41,6 +41,10 @@ export interface SenderSettings {
   imap_port: number;
   imap_user: string;
   imap_pass_ciphertext: string | null;
+  /** Segnalibro IMAP (solo server): UIDVALIDITY e ultimo UID già esaminato. */
+  imap_uid_validity: number | null;
+  imap_last_uid: number | null;
+  imap_synced_at: string | null;
   key_version: number;
   is_verified: boolean;
   verified_at: string | null;

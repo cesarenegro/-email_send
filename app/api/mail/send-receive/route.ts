@@ -57,6 +57,8 @@ export async function POST() {
         const result = await syncBouncesFromImap(admin, tenant.organizationId, { limitMessages: 100 });
         receive = {
           status: result.success ? 'ok' : 'error',
+          mode: result.mode,
+          scanned: result.messagesScanned,
           bounces: result.bouncesDetected,
           updated: result.leadsUpdated,
           errors: result.errors.slice(0, 3),

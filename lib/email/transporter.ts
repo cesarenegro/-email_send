@@ -34,7 +34,8 @@ export class SmtpDatabaseError extends Error {
 export const SENDER_SETTINGS_SECRET_COLUMNS =
   'id, organization_id, from_name, from_email, reply_to, preferred_timezone, send_window_start, send_window_end, ' +
   'smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass_ciphertext, imap_host, imap_port, imap_user, ' +
-  'imap_pass_ciphertext, key_version, is_verified, verified_at, updated_by, created_at, updated_at';
+  'imap_pass_ciphertext, imap_uid_validity, imap_last_uid, imap_synced_at, key_version, is_verified, verified_at, ' +
+  'updated_by, created_at, updated_at';
 
 /**
  * Legge le impostazioni mittente di un'organizzazione con la chiave segreta

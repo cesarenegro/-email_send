@@ -152,6 +152,10 @@ export async function PUT(request: NextRequest) {
       imap_port: input.imap_port,
       imap_user: input.imap_user,
       imap_pass_ciphertext: imapPassCiphertext,
+      // Casella IMAP diversa: il segnalibro della vecchia casella non vale più.
+      ...(existing && (existing.imap_host !== input.imap_host || existing.imap_user !== input.imap_user)
+        ? { imap_uid_validity: null, imap_last_uid: null, imap_synced_at: null }
+        : {}),
       key_version: box.keyVersion,
       is_verified: isVerified,
       verified_at: verifiedAt,
