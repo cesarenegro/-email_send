@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { MAILK_ORG_COOKIE, isUuid } from '@/lib/konta/workspace';
 
 const PUBLIC_PATHS = new Set(['/login', '/login/pro', '/landing', '/faq', '/guida']);
+/** Pagine dell'account KONTA: richiedono la sessione ma non un'organizzazione scelta. */
+const ACCOUNT_PATHS = new Set(['/login/reset', '/account/password']);
 
 /**
  * Guardia di sessione KONTA.
@@ -70,6 +72,8 @@ export async function middleware(request: NextRequest) {
   const isApi = pathname.startsWith('/api/');
 
   if (!user) {
+    // /login/reset senza sessione mostra da sé lo stato "link non valido".
+    if (pathname === '/login/reset') return response;
     if (isApi) {
       return NextResponse.json({ error: 'Accesso richiesto.', code: 'SESSION_REQUIRED' }, { status: 401 });
     }
@@ -93,7 +97,8 @@ export async function middleware(request: NextRequest) {
   }
 
   const hasOrg = isUuid(request.cookies.get(MAILK_ORG_COOKIE)?.value);
-  const needsOrg = !isPublicRoute && pathname !== '/workspace' && !pathname.startsWith('/api/workspace');
+  const needsOrg =
+    !isPublicRoute && !ACCOUNT_PATHS.has(pathname) && pathname !== '/workspace' && !pathname.startsWith('/api/workspace');
   if (!hasOrg && needsOrg) {
     if (isApi) {
       return NextResponse.json(

@@ -179,9 +179,13 @@ export default function AppSidebar() {
             <div className="w-8 h-8 rounded-full bg-[#036e13] flex items-center justify-center text-[#ffffff] font-semibold text-xs shadow-xs shrink-0">
               <span className="material-symbols-outlined text-[#ffffff] text-[18px]">person</span>
             </div>
-            <span className="font-label-sm text-label-sm text-[#5c5e63] truncate max-w-[150px]" title={userEmail}>
+            <Link
+              href="/account/password"
+              className="font-label-sm text-label-sm text-[#5c5e63] truncate max-w-[150px] hover:text-[#1b1c1a] underline-offset-4 hover:underline"
+              title={locale === 'en' ? 'KONTA account · change password' : 'Account KONTA · cambia password'}
+            >
               {userEmail}
-            </span>
+            </Link>
           </div>
           <button
             onClick={handleLogout}

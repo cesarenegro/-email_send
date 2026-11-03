@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 22:20 +08:00
+**Last modified:** 2026-11-03 23:45 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Cartella di lavoro:** `E:\Projects\KONTA MASTER\KONTA MAIL-K` (spostata il 2026-11-03 da `E:\Projects\@EMAIL BULK`; repo git, remoto e progetto Vercel invariati)
@@ -158,7 +158,7 @@ Il proprietario ha chiesto di procedere con la migrazione al cloud (`yyzqtaqpbud
 
 - **Riordino cartelle deciso dal proprietario (ESEGUITO il 2026-11-03):** `E:\Projects\KONTA K-CRM` → `E:\Projects\KONTA MASTER\KONTA K-CRM` e `E:\Projects\@EMAIL BULK` → `E:\Projects\KONTA MASTER\KONTA MAIL-K` (prima rinominata `MAIL-K`, poi `KONTA MAIL-K` il 2026-11-03 sera, come previsto in origine). Ogni app resta una repo git separata con il suo remote GitHub e il suo progetto Vercel; nessuna fusione di repository. Percorsi assoluti aggiornati in questo file, in `SETTINGS.TXT`, `.env.example`, `README.md`, `docs/KONTA_AUDIT_M0.md` e nei documenti di K-CRM; gli script `scripts/konta/` usano solo percorsi relativi a `process.cwd()` e non hanno richiesto modifiche (vedi 5-decies).
 - **Convenzioni comuni concordate con K-CRM (2026-11-03):** `/auth/callback?next=<percorso>` (PKCE `code` o `token_hash`; per `type=recovery` atterra su `/login/reset`), `/login` con accesso, registrazione e "password dimenticata", `/login/reset` per scegliere la nuova password, cambio password con verifica della password attuale nelle impostazioni dell'account, nuovo utente senza azienda → `https://kcrm.arkai.dev/onboarding`. Redirect URL da avere in Supabase Auth: `https://kcrm.arkai.dev/**`, `https://mailk.arkai.dev/**`, `https://kontapro.arkai.dev/**` (runbook K-CRM §8). Mail-K deve usare gli stessi percorsi: `/login/reset` al posto di `/account/password`.
-- **Da fare in Mail-K (NON ancora scritto):** account KONTA unico in ogni app, richiesto dal proprietario come bug importante. In `components/konta/LoginForm.tsx`: registrazione email+password con conferma (`signUp`, `emailRedirectTo` → `/auth/callback?next=/workspace`) e "password dimenticata" (`resetPasswordForEmail`, `redirectTo` → `/auth/callback?next=/account/password`); nuova pagina `/account/password` (`updateUser({ password })`), raggiungibile dal menu, esclusa dall'obbligo di organizzazione nel middleware; `/workspace` vuoto → link per creare l'azienda in K-CRM. Provare in locale con Mailpit (porta 54344).
+- **Account KONTA unico in Mail-K: FATTO** la sera del 2026-11-03 (vedi 5-undecies).
 - **Inoltrati alla sessione K-CRM "Continua da AG":** (1) cambio password, password dimenticata e registrazione mancanti anche in K-CRM; (2) creazione azienda con soli 5 paesi: servono tutti i paesi con la valuta (almeno UE, Hong Kong, Emirati/Dubai, Indonesia, Cina, USA). KONTA PRO: `kontapro.arkai.dev/login` risponde 404, da verificare nel repo `E:\Projects\KONTA MASTER\KONTA PRO`.
 - **Passaggio di `mailk.arkai.dev` a KONTA:** in sospeso. Variabili nuove già su Vercel; restano `NEXT_PUBLIC_SUPABASE_URL`, rimozione variabili vecchie e merge in `main` (vedi 5-octies).
 
@@ -173,7 +173,32 @@ Eseguita dalla nuova posizione `E:\Projects\KONTA MASTER\KONTA MAIL-K`:
 | `npx supabase start` da `E:\Projects\KONTA MASTER\KONTA K-CRM` | avviato ("Starting database from backup"), stesse porte 54341–54344; nel DB locale restano 9 tabelle `mail_*`, 68 tabelle `crm_*`, le organizzazioni di prova (Alfa Impianti Srl ecc.) e il bucket `mail-images` |
 | `npm run build` (Mail-K) | primo tentativo fermato dall'avviso di sicurezza di Next.js (comportamento già noto, aggiornamento rimandato per decisione n. 7); secondo tentativo exit 0 |
 
-`.claude/launch.json` (`mailk-dev-konta-local-3200`) e gli script `scripts/konta/*.mjs` non contengono percorsi assoluti: nessuna modifica necessaria. I file `PROVENANCE*.json` dei manuali del 2026-10-11 citano ancora `E:\Projects\@EMAIL BULK`: sono registri storici della generazione dei manuali e sono stati lasciati invariati.
+`.claude/launch.json` (`mailk-dev-konta-local-3200`) e gli script `scripts/konta/*.mjs` non contengono percorsi assoluti: nessuna modifica necessaria. **Chiave di cifratura (2026-11-03 sera):** la `KCRM_SECRET_ENCRYPTION_KEY` generata in precedenza su Vercel non era stata salvata da nessuna parte (Vercel non restituisce le variabili Sensitive). Sostituita con una chiave nuova, identica su Vercel Mail-K (sostituita) e K-CRM (aggiunta), Production e Preview, annotata in `E:\Projects\KONTA MASTER\.env.master` (file unico delle variabili, fuori da ogni repo). Nessun dato cloud era cifrato con la vecchia chiave. Non va messa nei `.env.local`: in locale i segreti sono cifrati con la chiave di sviluppo derivata.
+
+I file `PROVENANCE*.json` dei manuali del 2026-10-11 citano ancora `E:\Projects\@EMAIL BULK`: sono registri storici della generazione dei manuali e sono stati lasciati invariati.
+
+## 5-undecies. Account KONTA unico in Mail-K (2026-11-03 sera)
+
+Stesse convenzioni di K-CRM (commit `d3e33ed`): `lib/konta/auth-paths.ts` (percorsi, `safeNextPath`, messaggi IT/EN, regola password ≥ 8).
+
+- **`/login`** (`components/konta/LoginForm.tsx`): oltre a password e link via email, **Registrati** (`signUp` con `emailRedirectTo` → `/auth/callback?next=/workspace`; indirizzo già registrato riconosciuto anche dalla risposta "utente senza identità" di Supabase) e **Password dimenticata?** (`resetPasswordForEmail` con `redirectTo` → `/auth/callback?next=/login/reset`). Legge `auth_error` e `auth_notice` dalla callback. Il testo "Gli account si creano in KONTA PRO" è sostituito da "Non hai un account? Registrati".
+- **`/auth/callback`**: classifica gli errori (`link_invalid`, `link_expired`, `exchange_failed`, `auth_unavailable`) → `/login?auth_error=…`; `type=recovery` atterra su `/login/reset`; `type=signup|email` aggiunge `auth_notice=email_confirmed`.
+- **`/login/reset`** (nuova): scelta della nuova password con la sessione di recupero; senza sessione mostra "richiedi un nuovo link".
+- **`/account/password`** (nuova): cambio password con verifica della password attuale (nuovo `signInWithPassword` poi `updateUser`); raggiungibile dall'email nella sidebar e da `/workspace`. Fuori dall'app shell (`components/AppShell.tsx`) e dall'obbligo di organizzazione (`middleware.ts`, `ACCOUNT_PATHS`).
+- **`/workspace` vuoto**: tasto "Crea la tua azienda in K-CRM" → `https://kcrm.arkai.dev/onboarding` (`NEXT_PUBLIC_KCRM_URL` per cambiarlo); email in basso → `/account/password`.
+
+| Verifica (locale, stack Docker K-CRM, Mailpit 54344) | Esito |
+|---|---|
+| `npx tsc --noEmit`, `eslint` sui file toccati | 0 errori (solo avvisi `<img>` pre-esistenti) |
+| Registrazione `prova.account@example.com` (conferme email spente in locale) | sessione immediata → `/workspace` con stato vuoto e tasto K-CRM |
+| `/account/password` con password attuale errata / corretta | rifiutata con messaggio / aggiornata |
+| Password dimenticata → email Mailpit → link `verify?type=recovery` | atterra su `/login/reset` con sessione; nuova password salvata → `/workspace`; la vecchia password viene rifiutata, la nuova accede |
+| `/auth/callback` senza parametri / con `otp_expired` | 303 → `/login?auth_error=link_invalid` / `link_expired` |
+| `/login/reset` senza sessione; `/account/password` senza sessione | 200 (stato "nessuna sessione"); 307 → `/login` |
+| `owner-a@test.local` (seed) | accesso, scelta "Alfa Impianti Srl", hub con link account nella sidebar |
+| `npm run build` | exit 0 (secondo tentativo, dopo l’avviso di sicurezza Next) |
+
+Utente di prova cancellato da `auth.users` a fine collaudo. **NON VERIFICATO:** conferma email alla registrazione sul cloud (in locale è disattivata: in produzione l'utente riceve il link e atterra su `/workspace?auth_notice=email_confirmed`); i Redirect URL `https://mailk.arkai.dev/**` in Supabase Auth restano da impostare dal proprietario (runbook K-CRM §8).
 
 ## 6. Istruzioni per riprendere
 

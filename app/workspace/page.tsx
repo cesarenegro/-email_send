@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { KONTA_ROLE_LABELS, writeStoredOrganizationId, readStoredOrganizationId, type KontaRole } from '@/lib/konta/workspace';
+import { ACCOUNT_PASSWORD_PATH, KCRM_ONBOARDING_URL } from '@/lib/konta/auth-paths';
 
 interface MembershipItem {
   organization_id: string;
@@ -24,7 +25,9 @@ const COPY = {
     subtitle: 'Lo spazio di lavoro di MAIL-K è l’azienda KONTA.',
     loading: 'Caricamento…',
     none: 'Nessuna organizzazione KONTA attiva per questo account.',
-    noneHint: 'Chiedi al titolare dell’azienda un invito in K-CRM.',
+    noneHint: 'Crea la tua azienda in K-CRM oppure chiedi al titolare un invito: l’organizzazione vale anche per MAIL-K.',
+    createOrg: 'Crea la tua azienda in K-CRM',
+    account: 'Account',
     signOut: 'Esci',
     error: 'Impossibile leggere le organizzazioni.',
     current: 'Attuale',
@@ -34,7 +37,9 @@ const COPY = {
     subtitle: 'MAIL-K’s workspace is your KONTA company.',
     loading: 'Loading…',
     none: 'No active KONTA organization for this account.',
-    noneHint: 'Ask the company owner for an invitation in K-CRM.',
+    noneHint: 'Create your company in K-CRM or ask the owner for an invitation: the organization also works in MAIL-K.',
+    createOrg: 'Create your company in K-CRM',
+    account: 'Account',
     signOut: 'Sign out',
     error: 'Could not load organizations.',
     current: 'Current',
@@ -139,6 +144,12 @@ export default function WorkspacePage() {
           <div className="rounded-xl border border-[#e5e5e0] bg-white p-5">
             <p className="text-sm text-[#1b1c1a]">{c.none}</p>
             <p className="text-sm text-[#5c5e63] mt-1">{c.noneHint}</p>
+            <a
+              href={KCRM_ONBOARDING_URL}
+              className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-[#1b1c1a] px-4 text-sm font-semibold text-[#f2f0ed] hover:bg-[#30312f] transition"
+            >
+              {c.createOrg}
+            </a>
           </div>
         ) : null}
 
@@ -170,7 +181,9 @@ export default function WorkspacePage() {
         ) : null}
 
         <div className="mt-8 pt-6 border-t border-[#e5e5e0] flex items-center justify-between text-sm">
-          <span className="text-[#5c5e63] truncate">{data?.user.email ?? ''}</span>
+          <a href={ACCOUNT_PASSWORD_PATH} className="text-[#5c5e63] truncate hover:text-[#1b1c1a] underline-offset-4 hover:underline" title={c.account}>
+            {data?.user.email ?? ''}
+          </a>
           <button type="button" onClick={signOut} className="text-[#5c5e63] hover:text-[#1b1c1a] underline-offset-4 hover:underline">
             {c.signOut}
           </button>

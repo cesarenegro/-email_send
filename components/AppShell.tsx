@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import AppSidebar from '@/components/AppSidebar';
 import AppHeader from '@/components/AppHeader';
 
-const STANDALONE = new Set(['/login', '/login/pro', '/workspace', '/landing']);
+const STANDALONE = new Set(['/login', '/login/pro', '/login/reset', '/account/password', '/workspace', '/landing']);
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
