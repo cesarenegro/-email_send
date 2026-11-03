@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 20:00 +08:00
+**Last modified:** 2026-11-03 20:30 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Repository:** `cesarenegro/-email_send`
@@ -149,7 +149,8 @@ Il proprietario ha chiesto di procedere con la migrazione al cloud (`yyzqtaqpbud
 - **Esito:** il proprietario ha eseguito `supabase/cloud/mailk_20_apply_bundle.sql` dall'SQL Editor del progetto `yyzqtaqpbudnkgbvymrf` (nessun errore; ultimo risultato: 3 righe `mail_admin_set_policies`) e poi `supabase/cloud/mailk_30_postapply_checks.sql`: **7/7 OK** (9 tabelle `mail_*`, RLS su tutte, nessun FOR ALL, anon senza privilegi, segreti non leggibili da authenticated, search_path fissato, bucket `mail-images` pubblico).
 - **Non verificato dal cloud:** impronta delle policy non Mail-K prima/dopo (controllo disponibile solo nello script `cloud-apply-mailk.mjs`, non usato) e advisor Supabase.
 - **Registro migrazioni (facoltativo, da fare solo insieme):** se il database KONTA deve essere gestito da un'unica repo (KONTA PRO), copiare i 4 file in `supabase/migrations/` di quella repo e poi, dalla stessa repo collegata, `supabase migration repair --status applied 20261103120000 20261103120100 20261103140000 20261103160000`. Lanciare il comando SENZA i file nella repo crea un disallineamento che blocca il successivo `db push` di KONTA PRO. Finché i file restano solo nella repo Mail-K non serve nulla. Allineare con il passo analogo ancora aperto di K-CRM.
-- **Al passaggio di Mail-K:**
+- **Variabili Vercel `mail_k` già impostate dal proprietario (2026-11-03, verificate per nome):** `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Config, chiave `mailk_public`), `SUPABASE_SECRET_KEY` (Secret, chiave `mailk`), `KCRM_SECRET_ENCRYPTION_KEY` (Secret, generata nuova: K-CRM non ne aveva una in produzione), `KCRM_API_URL` (Config), tutte su Production e Preview. Il codice in produzione (`main`) le ignora.
+- **Al passaggio di Mail-K:** cambiare `NEXT_PUBLIC_SUPABASE_URL` (oggi solo Production, aggiungere anche Preview), rimuovere `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` e le `SMTP_*`, verificare il Redirect URL `https://mailk.arkai.dev/auth/callback` in Supabase Auth, poi merge in `main`. Restano da fare in origine:
   impostare `KCRM_SECRET_ENCRYPTION_KEY` (stessa di K-CRM), `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` e `KCRM_API_URL` nel progetto Vercel di Mail-K al momento del passaggio. Fino ad allora `mailk.arkai.dev` resta sul vecchio progetto.
 
 ## 6. Istruzioni per riprendere
