@@ -1,218 +1,149 @@
 ================================================================================
-MAIL-K (PRECISION OUTBOUND) - OPERATIONAL INVENTORY & PROJECT SETTINGS
+MAIL-K (ecosistema KONTA) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-10-14 19:22 +08:00
-Deployment: Production live at https://mailk.arkai.dev
-Application commit: 0d0a635 (origin/main)
-Database: cayceyagmorwlbmmvyoc.supabase.co (Migrations 001-011 active and verified)
-Live Verification: Full suite against production endpoint https://mailk.arkai.dev
-- GET /api/smtp/connections returns 200
-- Tenant isolation: User B cannot list or use User A SMTP (400, 0 records)
-- Two-tab auth switch during verify: zero save POSTs, draft and password clean
-- Self-send Cesare->Cesare delivered and confirmed via read-only IMAP (UID 2132)
-- Gmail blocked by provider credential rejection (EAUTH); no bypass applied
-- Supabase Storage: bucket newsletter-images created, RLS verified, public HTTPS image serving verified for both Newsletters and Massive Campaigns
-Project / Application: MAIL-K (Precision Outbound)
+Last updated: 2026-11-03 15:40 +08:00
+Branch: konta-ecosystem (tappe M0 + M1; NON deployato, solo commit locali)
+Produzione attuale: main @ fbfe022 su https://mailk.arkai.dev con il progetto Supabase
+  di Mail-K (cayceyagmorwlbmmvyoc) — NON toccato da questo branch.
+Ambiente locale di sviluppo: stack Docker Supabase di K-CRM (E:\Projects\KONTA K-CRM)
+  API http://127.0.0.1:54341 · DB postgresql://127.0.0.1:54342 · Studio 54343 · Mailpit 54344
+Project / Application: MAIL-K
 Repository: cesarenegro/-email_send
-Target URL / Deployment: https://mailk.arkai.dev (Vercel Project: mail-k)
 
 1. SYSTEM ARCHITECTURE & RUNTIME
 --------------------------------------------------------------------------------
-Programming Language: TypeScript (^5.0.0) / JavaScript
-Framework: Next.js 16.4.0 (App Router, Turbopack)
+Programming Language: TypeScript (^5) / JavaScript (script .mjs)
+Framework: Next.js 16.4.0 (App Router, Turbopack), React 19.3.0
 Runtime: Node.js v24.14.0 (Vercel Serverless)
-Styling & Design System: Stitch 'Architectural Precision & Editorial Luxury' (Google Fonts Playfair Display & Plus Jakarta Sans, Material Symbols Outlined, Tailwind CSS v4, #FBF9F6 parchment canvas, #FFFFFF cards, #1B1C1A obsidian charcoal, #5CB855 botanical emerald, #036E13 primary)
-Package Manager: npm (11.9.0)
-Archive Utilities: JSZip (^3.10.1) for server/client ZIP archive decompression and asset extraction
-Brand Assets & Favicon: Official MAIL-K icon (public/icon.png, public/logo.png, public/favicon.png, public/favicon.ico, app/icon.png, app/favicon.ico)
-Internationalization (i18n): 100% Full Bilingual System (Italian it-IT & English en-US) with typed dictionaries (lib/i18n/types.ts, lib/i18n/locales/it.ts, lib/i18n/locales/en.ts), LanguageProvider, LanguageSwitcher, and reactive cookie/localStorage persistence.
-Public Routes: /landing (Editorial Outbound Landing Page), /login (Desktop Split-Screen Welcome & Supabase Auth Console), /faq (Domande Frequenti Reattive), /guida (Guida Utente Interattiva con TOC e Download TXT)
-Documentation Package: DOCUMENTATION_SOURCE_PACKAGE/ (MANUALE_UTENTE.txt, MANUALE_UTENTE.md, inventari CSV, sorgenti Mermaid .mmd, screenshot live)
-Interactive Modals: LoginModal (Stitch Login Pop-up with backdrop blur, Google / Facebook / LinkedIn SSO, and Supabase authentication)
+Styling: Tailwind CSS v4, Google Fonts (Playfair Display, Plus Jakarta Sans), Material Symbols
+Package Manager: npm
+Internationalization: IT/EN (lib/i18n); le schermate KONTA (login, workspace, impostazioni)
+  usano dizionari locali minimi nel componente.
+Public Routes: /landing, /login, /login/pro, /faq, /guida, /downloads/* (file statici)
+Authenticated Routes: /workspace (scelta organizzazione), /, /campaigns/**, /newsletters/**,
+  /settings, /lead-research (solo se LEAD_RESEARCH_ENABLED=true)
 
-2. DATABASE & BACKEND SERVICES
+2. IDENTITY, TENANT & DATABASE (PROGETTO SUPABASE KONTA, CONDIVISO)
 --------------------------------------------------------------------------------
-Database Provider: Supabase (PostgreSQL)
-Authentication: Supabase Auth (Email / Password, Sign Up with emailRedirectTo, Deep Link Auth Callback /auth/callback, Password Reset, Multi-Tenant User Metadata, OAuth SSO: Google, Facebook, LinkedIn OIDC)
-Access Library: @supabase/supabase-js (^2.49.0), @supabase/ssr (^0.6.0)
-Storage Service: Supabase Storage
-  - Bucket: newsletter-images (Public read access, max file size 3 MB / 3145728 bytes)
-  - Allowed MIME Types: image/jpeg, image/png, image/webp, image/gif (SVG and HTML explicitly rejected)
-  - Object Path Structure:
-    * Newsletters: {user_id}/{newsletter_id-or-draft}/{uuid}.{extension}
-    * Campaigns: {user_id}/campaigns/{campaign_id-or-draft}/{filename}
-    * Imported Emails (.eml / .zip): {user_id}/imports/{timestamp}-{index}-{filename}
-  - Security & RLS Policies on storage.objects:
-    * SELECT: Public read access for all objects in bucket newsletter-images
-    * INSERT: Authenticated users only, restricted to own user directory (storage.foldername(name))[1] = auth.uid()::text
-    * UPDATE/DELETE: Authenticated users only, restricted to own user directory (storage.foldername(name))[1] = auth.uid()::text
-    * Frontend Security: No service_role key exposed to browser; operations performed via user session token
-  - Campaign Editor Modes:
-    * STANDARD (Base): Essential fast visual/HTML source editor without asset manager overhead.
-    * ESTESA (Con Immagini): Full media asset manager, template slots detection, multi-file upload, Base64 conversion to HTTPS, placeholders sub-toolbar, and real-time live preview.
-  - Pre-Made Email Import:
-    * EML / MSG (Outlook, Apple Mail, Thunderbird): Automatic MIME parser extracts subject, HTML body, and all inline/attached images; uploads to Supabase Storage and swaps CID/filename tags into public HTTPS URLs.
-    * ZIP Archive: Decompressed with JSZip; extracts HTML template and all images in root or subfolders, uploads images to Supabase Storage, and remaps relative paths into public HTTPS URLs.
-Database Migrations: supabase/migrations/ (001_campaigns.sql, 002_campaign_leads.sql, 003_email_logs.sql, 004_claim_lead_rpc.sql, 005_app_settings.sql, 006_multi_tenant.sql, 007_newsletters.sql, 008_lead_research.sql, 009_security_hardening.sql, 010_user_smtp_connections.sql, 011_newsletter_images_storage.sql, all_migrations.sql)
-Tables:
-  - public.campaigns (includes user_id uuid FK, smtp_connection_id uuid FK, RLS protected)
-  - public.campaign_leads (RLS protected per campaign ownership; statuses: pending, sending, sent, retry, failed)
-  - public.newsletters (dedicated scheduled newsletters table, includes user_id FK, smtp_connection_id FK, status: draft, scheduled, sending, sent, paused, RLS protected)
-  - public.newsletter_subscribers (dedicated subscribers per newsletter; statuses: pending, sending, sent, failed, RLS protected)
-  - public.email_logs (events: sent, error; RLS protected per campaign ownership; read-only for authenticated, write restricted to service_role)
-  - public.app_settings (global fallback key-value config; read-only for authenticated users, write restricted to service_role)
-  - public.user_settings (per-user sender identity: from_name, from_email, reply_to, preferred_timezone, onboarding_completed, RLS protected)
-  - public.smtp_connections (per-user verified SMTP credentials with server-side AES-256-GCM encryption, RLS protected)
-Stored Procedures / RPCs:
-  - public.claim_next_campaign_lead (atomic row lock via FOR UPDATE SKIP LOCKED; SECURITY DEFINER with SET search_path = public, pg_temp; execute restricted to service_role)
-  - public.claim_next_newsletter_subscriber (atomic subscriber lock via FOR UPDATE SKIP LOCKED; SECURITY DEFINER with SET search_path = public, pg_temp; execute restricted to service_role)
-  - public.set_updated_at (trigger function with SET search_path = public, pg_temp)
+Database Provider: Supabase (PostgreSQL) — progetto KONTA condiviso con KONTA PRO e K-CRM
+  (cloud: yyzqtaqpbudnkgbvymrf; locale: stack Docker di K-CRM). Nessuna migrazione applicata
+  al cloud da questo branch.
+Authentication: Supabase Auth del progetto KONTA (stesso account di KONTA PRO / K-CRM).
+  Login email+password, OTP via email (opzionale), nessuna registrazione self-service,
+  nessun OAuth (Google/Facebook/LinkedIn rimossi). Verifica sessione lato server con
+  @supabase/ssr + auth.getUser() (lib/konta/session.ts, imitato da K-CRM).
+Access Library: @supabase/supabase-js ^2.117.2, @supabase/ssr ^0.12.7
+Tenant model: spazio di lavoro = organizzazione KONTA (public.crm_organizations.id).
+  - cookie httpOnly `mailk_org` (scritto da POST /api/workspace dopo verifica membership)
+  - localStorage `konta_mailk_active_org_id` (come K-CRM) per il browser
+  - membership letta sotto RLS da crm_memberships + crm_organizations (solo lettura, mai scrittura)
+  - ruoli KONTA: O/A/M/S/K scrivono campagne/newsletter/template; O/A gestiscono impostazioni
+    mittente; R sola lettura (helper DB: crm_is_active_member, crm_member_role)
+Migrazioni Mail-K per KONTA (supabase/migrations/):
+  - 20261103120000_mailk_konta_01_tenant.sql: tabelle mail_* con organization_id NOT NULL,
+    RLS attiva, una policy per verbo (mai FOR ALL), nessuna FK verso crm_*/pro_*, search_path
+    fissato, RPC mail_claim_next_campaign_lead / mail_claim_next_newsletter_subscriber (solo
+    service_role), helper mail_can_write / mail_can_manage_settings, trigger mail_tg_touch_row /
+    mail_tg_guard_tenant.
+  - 20261103120100_mailk_konta_02_storage.sql: bucket pubblico `mail-images` con cartelle
+    {organization_id}/… e policy sui membri (helper mail_storage_org_of).
+  Applicate SOLO al DB locale con scripts/konta/apply-mailk-migration.mjs (pg); verificate con
+  scripts/konta/verify-mailk-rls.mjs e scripts/konta/test-tenant-isolation.mjs.
+Tabelle mail_*:
+  - mail_sender_settings (1 riga per organizzazione: identità mittente, SMTP cifrato, IMAP cifrato,
+    fuso, finestra; smtp_pass_ciphertext / imap_pass_ciphertext NON leggibili da authenticated)
+  - mail_campaigns, mail_campaign_leads, mail_newsletters, mail_newsletter_subscribers
+  - mail_email_logs, mail_bounces, mail_cron_runs (sola lettura per i membri; scrittura server)
+  - mail_templates (vuota, pronta per M2)
+Legacy (progetto Supabase di Mail-K, solo per main): supabase/migrations/001…011 e
+  supabase/all_migrations.sql restano nel repo come storia; non vanno applicate al DB KONTA.
+Storage: bucket `mail-images` (3 MB, image/jpeg|png|webp|gif), oggetti {organization_id}/…
 
-3. EMAIL DELIVERY (SMTP) & SECURITY HARDENING
+3. EMAIL DELIVERY (SMTP) & SECURITY
 --------------------------------------------------------------------------------
-SMTP Isolation: Rigorously Per-User with Zero Fallback to Admin Identity or Hostinger Credentials for Standard Accounts
-Transporter Engine: lib/email/transporter.ts, lib/email/send-email.ts (strictly requires user verified connection; hard failure if missing or unauthorized)
-Server-Side Credential Encryption: lib/crypto/encryption.ts (AES-256-GCM authenticated encryption, random 96-bit IV, 128-bit auth tag)
-SSRF & DNS Rebinding Protection: lib/security/ssrf.ts
-  - Port Allowlist: Strictly 25, 465, 587, 2525 (all arbitrary ports rejected)
-  - IP Filtering: IPv4/IPv6 loopback, RFC1918 private, link-local, cloud metadata (169.254.169.254), multicast, documentation
-  - Rebinding Defense: DNS pre-lookup inspection with Nodemailer socket IP pinning while preserving TLS SNI
+SMTP: una casella per organizzazione in mail_sender_settings; nessun ripiego su credenziali
+  d'ambiente (le variabili SMTP_*/IMAP_* NON sono più lette dal codice).
+Cifratura a riposo: lib/crypto/secret-box.ts (copia adattata da K-CRM, AES-256-GCM,
+  formato v1.<iv>.<tag>.<ct> base64url, key_version=1), chiave KCRM_SECRET_ENCRYPTION_KEY
+  (obbligatoria in produzione; in locale ripiego di sviluppo segnalato a console).
+Transport: lib/email/transporter.ts (resolveOrganizationTransport: decifratura server-side,
+  SSRF numerico, IP pinning con SNI), lib/email/send-email.ts
+SSRF & DNS Rebinding Protection: lib/security/ssrf.ts (porte 25/465/587/2525)
+HTML Sanitization: lib/security/sanitize-html.ts (invariata)
 Endpoints:
-  - POST /api/smtp/verify: Session-authenticated, SSRF-protected transient SMTP handshake tester
-  - GET/POST /api/smtp/connections: Per-user verified SMTP connection manager (zero plaintext password exposure)
-  - DELETE /api/smtp/connections/[id]: Secure deletion of user-owned SMTP connection with strict tenant isolation
-  - POST /api/settings/send-test: Account-isolated test email dispatcher
-Master Admin SMTP: Configured via environment variables (SMTP_HOST, SMTP_USER, SMTP_PASS), explicitly reserved for admin operations
-HTML Sanitization & XSS Defense: lib/security/sanitize-html.ts
-  - Dual-engine architecture: Browser-native DOMParser for client DOM rendering + htmlparser2 for server-side HTML5 tokenization (strictly adhering to browser HTML5 parsing rules)
-  - Neutralization of malformed tag slashes and attribute obfuscation vectors (e.g. <img/src=data:, onerror=window.__auditXss=1>)
-  - Strict allowlist for email-safe tags; recursive removal of scripts, styles, iframes, embeds, svg, forms, and templates
-  - Complete stripping of all inline event handlers (on*)
-  - URL protocol restriction (strictly http:, https:, mailto:, tel:; defanging javascript:, data:, vbscript: to # or removal)
-  - CSS inline style filtering: strictly safe properties without expressions, behaviors, or url() tracking beacons
-Guided Campaign Creation (SETUP-DUMMIES):
-  - Lime green (#84cc16) quick-access button in /campaigns and /campaigns/new
-  - 8-Step wizard modal (components/dummies/SetupDummiesModal.tsx, Step1Smtp.tsx to Step8SummaryLaunch.tsx)
-  - React preview subject rendering: direct JSX string interpolation without redundant entity escaping, eliminating double-escaping (&amp;)
-  - Zero password storage: password never saved in localStorage, sessionStorage, or client draft state
-  - Multi-tab and logout state isolation via supabase.auth.onAuthStateChange with per-user scoped draft keys
-  - POST /api/email-import/parse (EML, HTML, TXT parser with dual-engine sanitization)
-  - POST /api/email-import/parse-pdf (FlateDecode zlib decompression & text extraction via lib/email-import/pdf-parser.ts):
-    * Single-pass sequential operator tokenizer preserving exact reading order ("Primo Secondo Terzo") across mixed Tj/TJ
-    * Typographic kerning awareness in TJ arrays: preserves words like "MARKETING" without internal spacing (threshold <= -180 for word separation)
-    * Robust encoding support: Octal escapes (\ddd), WinAnsi / Latin-1 bytes (accents é, à, symbols €, °, dashes, quotes), and /ToUnicode CMap tables (beginbfchar / beginbfrange)
-    * Decompression resource protection: MAX_SINGLE_STREAM_BYTES (4MB) enforced during inflate via maxOutputLength, and MAX_CUMULATIVE_DECOMPRESSED_BYTES (12MB) document budget with explicit abort errors
-    * Clear distinction between unsupported/encrypted formats (400) and scanned image/bitmap documents (200 with isScanned: true)
-  - POST /api/leads/parse-file (dual CSV and Excel .xlsx parser via PapaParse & ExcelJS)
+  - GET /api/workspace (membership + organizzazione attiva), POST (scelta, cookie), DELETE
+  - GET /api/settings (impostazioni mittente senza segreti), PUT (solo O/A: verifica SMTP live
+    prima del salvataggio, cifratura password)
+  - POST /api/settings/test-smtp (handshake reale con la casella salvata; aggiorna is_verified)
+  - POST /api/settings/send-test (email di prova, solo O/A)
+  - POST /api/settings/test-imap (IMAP dell'organizzazione, sola lettura)
+  - POST /api/smtp/verify, POST /api/smtp/detect (verifica ad hoc e rilevamento provider)
+Rate limiting: lib/security/rate-limit.ts (in memoria, per organizzazione)
 
-4. BOUNCE MONITORING & DELIVERY STATUS NOTIFICATIONS (IMAP)
+4. BOUNCE MONITORING (IMAP)
 --------------------------------------------------------------------------------
-IMAP Provider: Gestor Mail
-Host: imap.hostinger.com (IMAP_HOST)
-Port: 993 (SSL/TLS, IMAP_PORT)
-Mode: Strictly Read-Only (apertura casella con comando IMAP EXAMINE e download contenuti con BODY.PEEK[], con guardia a runtime su mailbox.readOnly; non imposta il flag \Seen)
-Search Scope: Targets only MAILER-DAEMON / postmaster / DSN reports
-Parser: RFC 3464, MailChannels, Postfix, Exim, and Microsoft 365 bounce detection
-Library: ImapFlow (^2.2.11), Mailparser (^3.9.37)
-Endpoints:
-  - POST /api/campaigns/[id]/sync-bounces (UI on-demand button in LeadTable)
-  - POST /api/bounces/sync (Global sync)
-  - POST /api/cron/bounces (Automated cron check - endpoint disponibile nel codice, non pianificato in vercel.json)
-  - POST /api/settings/test-imap (Connection test in Settings)
+IMAP per organizzazione (mail_sender_settings.imap_*; se vuoto ripiego sulle credenziali SMTP
+  della stessa organizzazione), modalità read-only (EXAMINE + BODY.PEEK[]).
+Library: ImapFlow ^2.2.11, Mailparser ^3.9.37
+Endpoints: POST /api/bounces/sync, POST /api/campaigns/[id]/sync-bounces,
+  POST /api/cron/bounces (itera le organizzazioni con IMAP configurato; non pianificato in vercel.json)
+Registro: mail_bounces + mail_email_logs (event_type=error)
 
 5. SCHEDULER & CRON
 --------------------------------------------------------------------------------
-Scheduler Provider: Vercel Cron
-Schedule: * * * * * (every minute)
-Endpoint: /api/cron/send (spedizione sequenziale messaggi)
-Note: /api/cron/bounces è implementato nel codice ma non è pianificato in vercel.json
-Authentication: Bearer Token (CRON_SECRET)
-Timezone Engine: Luxon (^3.7.2) (Multi-timezone calculations supporting Europe/Rome [Roma], America/New_York [USA EST], America/Los_Angeles [USA WEST], Asia/Dubai [DUBAI], Asia/Makassar [ASIA WITA])
-Allowed Days: Monday through Friday (sending window evaluated in campaign local timezone, default 09:00 - 18:00)
+Scheduler Provider: Vercel Cron (vercel.json: /api/cron/send ogni minuto), Bearer CRON_SECRET
+Politica multi-tenant: UNA email per organizzazione per esecuzione; al massimo 10 organizzazioni
+  per esecuzione, in ordine di scadenza, entro 45 s; newsletter dovuta prima della campagna.
+  Le esecuzioni con lavoro sono registrate in mail_cron_runs.
+Timezone Engine: Luxon ^3.7.2 (finestra di invio e giorni feriali per campagna)
 
 6. LIBRARIES & UTILITIES
 --------------------------------------------------------------------------------
-Excel Spreadsheet: ExcelJS (^4.4.0) (server-side XLSX generator, custom column widths, formula injection protection)
-CSV Parsing: PapaParse (^5.5.0) (header mapping, BOM/semicolon support, deduplication)
-IMAP Client: ImapFlow (^2.2.11) (TLS stream, mailbox locking, peek fetching)
-Mail Parser: Mailparser (^3.9.37) (RFC MIME multipart and DSN attachment extraction)
-Validation: Zod (^3.24.0) (runtime validation for schemas & payloads)
-Icons: Lucide React (^0.479.0) (lightweight clean icons)
+ExcelJS ^4.4.0, PapaParse ^5.7.0, pdfjs-dist 6.4.299, htmlparser2 10.1.0, JSZip ^3.10.2,
+Zod ^4.6.5, Lucide React ^1.52.0, nodemailer ^10.0.15, pg ^8.23.1 (solo script locali)
 
-7. B2B LEAD RESEARCH ENGINE (NEW MODULE)
+7. B2B LEAD RESEARCH (MODULO OPZIONALE, FUORI DALLA TAPPA M1)
 --------------------------------------------------------------------------------
-Services / SKU:
-  - Ricerca M: $19 USD (Automated, Combined API Limit: $5.00 USD / 5,000,000 µUSD)
-  - Ricerca XL: $49 USD (Automated, Combined API Limit: $15.00 USD / 15,000,000 µUSD)
-  - Ricerca AD-HOC: $89 USD (Human staff research, 24h SLA from accepted_at, 100% human verification gate)
-Search Provider: Tavily API (Search & Extract endpoints, server-only)
-Extractor Model: OpenAI API (Structured data extraction with source URLs, server-only)
-Atomic Budget Engine: reserve_lead_research_budget and reconcile_lead_research_budget RPCs in micro-USD
-Worker Endpoint: POST /api/cron/lead-research (isolated step worker, Bearer authenticated)
+Stato: disattivato (tutte le route rispondono 503 FEATURE_DISABLED se LEAD_RESEARCH_ENABLED ≠ true;
+  voce di menu e card nascoste). Le tabelle lead_research_* NON sono state migrate su KONTA.
+Provider (quando attivo): Tavily API, OpenAI API (server-only). Decisione in M4 (commerciale).
 
 8. REQUIRED ENVIRONMENT VARIABLE NAMES (NO SECRETS STORED HERE)
 --------------------------------------------------------------------------------
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
-SMTP_HOST
-SMTP_PORT
-SMTP_SECURE
-SMTP_USER
-SMTP_PASS
-SMTP_FROM_NAME
-SMTP_FROM_EMAIL
-SMTP_REPLY_TO
-IMAP_HOST
-IMAP_PORT
-IMAP_SECURE
-IMAP_USER
-IMAP_PASS
+NEXT_PUBLIC_SUPABASE_URL                 progetto KONTA (locale: API_URL di `npx supabase status`)
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY     (ripiego legacy: NEXT_PUBLIC_SUPABASE_ANON_KEY)
+SUPABASE_SECRET_KEY                      cron e lettura credenziali cifrate (ripiego: SUPABASE_SERVICE_ROLE_KEY)
+KCRM_SECRET_ENCRYPTION_KEY               cifratura segreti a riposo (stessa chiave dell'ecosistema)
 CRON_SECRET
 NEXT_PUBLIC_APP_NAME
 NEXT_PUBLIC_APP_URL
 NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
 NEXT_PUBLIC_BING_SITE_VERIFICATION
-OPENAI_API_KEY
-TAVILY_API_KEY
-LEAD_RESEARCH_ENABLED
-LEAD_RESEARCH_OPENAI_MODEL
-LEAD_RESEARCH_PRICING_VERSION
-ENCRYPTION_MASTER_KEY
+LEAD_RESEARCH_ENABLED                    (opzionale; default disattivo)
+OPENAI_API_KEY, TAVILY_API_KEY, LEAD_RESEARCH_OPENAI_MODEL   (solo con Lead Research attivo)
+MAILK_TEST_EMAIL_TO                      (solo collaudo invio di prova; facoltativa)
+MAILK_LOCAL_DB_URL                       (solo script locali; default DB Docker K-CRM)
+Rimosse dal codice: SMTP_HOST/PORT/SECURE/USER/PASS/FROM_NAME/FROM_EMAIL/REPLY_TO, IMAP_*,
+  SMTP_ENCRYPTION_KEY, ADMIN_EMAIL/ADMIN_PASSWORD (restano solo negli script legacy in scripts/).
 
-9. SEARCH ENGINE INDEXING & SEO (GOOGLE & BING)
+9. SEO
 --------------------------------------------------------------------------------
-Primary Canonical Domain: https://mailk.arkai.dev
-Crawler Policy: app/robots.ts (Allow: /, /landing, /faq, /guida, /login, /downloads/, /icon.png, /favicon.ico, /google553873ac7a4cf4f1.html; Disallow: /api/, /campaigns/, /newsletters/, /lead-research/, /settings/, /auth/)
-Dynamic Sitemap: app/sitemap.ts (Served dynamically at https://mailk.arkai.dev/sitemap.xml)
-Structured Data: Schema.org JSON-LD (WebApplication & Organization) in app/layout.tsx
-Google Search Console Verification:
-  - Meta Tag: <meta name="google-site-verification" content="UfDvYGqTqwxgoCTr6og8gFZhvJ9kwW9XUD4h0gtNBeI" />
-  - Static HTML verification file: public/google553873ac7a4cf4f1.html (served at /google553873ac7a4cf4f1.html)
-  - Environment variable fallback: NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
-Bing Webmaster Tools Verification:
-  - 1-Click Import directly from Google Search Console (Recommended, syncs sitemaps and verification instantly)
-  - Meta Tag support: msvalidate.01 via NEXT_PUBLIC_BING_SITE_VERIFICATION in app/layout.tsx
-  - Static XML verification: public/BingSiteAuth.xml (token: FFA8F28CC8F933190405508FC822C30C)
-  - IndexNow Protocol: Instant real-time URL push to Bing & Yandex
-  - IndexNow Key Files: public/91c39ba1a4cd4472be1973df35f46759.txt & public/01be68e154644f7fa501e9d99ec924a0.txt
+Invariato: app/robots.ts, app/sitemap.ts, JSON-LD in app/layout.tsx, verifiche Google/Bing.
+
+10. SCRIPT LOCALI (scripts/konta/)
+--------------------------------------------------------------------------------
+apply-mailk-migration.mjs   applica una migrazione mail_* al DB locale (rifiuta host non locali)
+verify-mailk-rls.mjs        RLS, policy, grant, anon, search_path, isolamento (SET ROLE)
+test-tenant-isolation.mjs   login owner-a/owner-b (seed K-CRM), campagne di prova create e cancellate
+Script legacy (progetto Supabase di Mail-K): scripts/*.mjs|ts restanti, da rimuovere dopo la
+  decisione del proprietario su dominio e migrazione dati (vedi SESSION_HANDOVER.md).
 
 ===============================================================================
 CRITICAL OPERATIONAL RULES & SCOPE LOCK:
-- NO CRM, NO lead scoring, NO tracking pixels, NO redirect tracking
-- NO AI in campaigns, newsletters, SMTP, or IMAP bounce monitoring (AI is strictly isolated to /lead-research)
-- NO mass-send / batch send endpoint
-- Atomic lead claiming via PostgreSQL to prevent duplicate sends
-- Read-only IMAP bounce detection: protezione \Seen basata su EXAMINE e BODY.PEEK[], con guardia difensiva se read-only non confermato
-- Plain text / HTML template personalization: {{companyName}}, {{azienda}}, {{NOME_AZIENDA}}, {{email}}
-- Zero invented data in Lead Research: null returned if field is not supported by source evidence
+- Nessuna scrittura su crm_* o pro_*; nessuna FK verso quelle tabelle
+- Nessun dato finto nel sorgente; segreti solo cifrati, mai in chat né in file versionati
+- Nessun push, nessun deploy, nessuna operazione sul cloud da questo branch senza autorizzazione
+- Atomic lead claiming via PostgreSQL (FOR UPDATE SKIP LOCKED), solo service_role
+- Read-only IMAP bounce detection (EXAMINE + BODY.PEEK[])
+- Template placeholders: {{companyName}}, {{azienda}}, {{NOME_AZIENDA}}, {{email}}
 ===============================================================================
-
-RELEASE UPDATE — 2026-10-13 20:55 Asia/Makassar (UTC+08:00)
-PDF extraction: pdfjs-dist 6.4.299 (Mozilla PDF.js), Node 24; replaces handwritten text/CMap parser.
-Resource preflight: 10MB upload, 4MB decoded stream, 12MB total, maximum 50 pages. Unsupported filter chains rejected explicitly. No OCR.
-Direct HTML parser dependency: htmlparser2 10.1.0. Browser sanitization remains DOMParser-based.
-Packaging: pdfjs-dist external server dependency; worker/fonts/CMaps included in parse-pdf route trace.
-Local app/downloads/phase3-browser-audit excluded from Vercel upload; it is not an end-to-end test.
-Live release verified: actual eight-step wizard, PDF upload, confirmation, CSV deduplication, campaign persistence and activation, scheduled UTC conversion, HTML sanitizer. Future 2099 campaign and temporary SMTP removed; no email dispatched by this release test. Sandbox URL returns 404. Evidence: output/audit-local-20261013/wizard-release-production.json. Earlier SMTP delivery/isolation evidence above belongs to the previous verification phase.
-

@@ -1,93 +1,72 @@
-# SESSION HANDOVER — MAIL-K (PRECISION OUTBOUND)
+# SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
-**Created:** 2026-10-11 13:38 +08:00  
-**Last modified:** 2026-10-11 13:41 +08:00  
-**Local timezone:** Asia/Makassar (+08:00)  
-**Agent:** Antigravity  
-**Repository:** `cesarenegro/-email_send`  
-**Current Git Branch:** `main`  
-**Latest Git Commit:** `6838b53` (`style(landing): stack case studies in horizontal rectangular cards and update revenue metrics`)  
-**Working Tree Status:** Clean (All changes committed locally)  
-
----
-
-## 1. Stato Attuale del Codebase
-
-Il repository è pulito, sincronizzato con `origin/main` e pronto per la produzione Vercel. Tutte le modifiche relative all'autenticazione OAuth (LinkedIn, Google, Facebook), al modulo di documentazione (`DOCUMENTATION_SOURCE_PACKAGE`), alle nuove pagine applicative (`/faq`, `/guida`), alla navigazione bilingue e al download del manuale utente sono state testate, validate e committate.
+**Created:** 2026-10-11 13:38 +08:00
+**Last modified:** 2026-11-03 16:05 +08:00
+**Local timezone:** Asia/Makassar (+08:00)
+**Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
+**Repository:** `cesarenegro/-email_send`
+**Branch di lavoro:** `konta-ecosystem` (creato da `main` @ `fbfe022`; SOLO commit locali, NESSUN push)
+**Produzione:** `main` resta in produzione su https://mailk.arkai.dev con il progetto Supabase di Mail-K: non toccato.
 
 ---
 
-## 2. Lavoro Completato nella Sessione
+## 1. Stato attuale del codebase (branch `konta-ecosystem`)
 
-### A. Autenticazione e Social SSO 1-Click
-- Integrato il provider **LinkedIn OIDC** (`linkedin_oidc`) affiancato a **Google OAuth** e **Facebook Login**.
-- Collaudati con successo tutti gli endpoint di autorizzazione Supabase (restituiscono `HTTP 302 Found` verso le rispettive console di consenso).
-- Aggiornati i componenti di autenticazione:
-  - `components/LoginModal.tsx` (pulsante LinkedIn `#0A66C2` con icona ufficiale e callback origin).
-  - `app/login/page.tsx` (griglia social a 3 colonne reattive: Google, Facebook, LinkedIn).
-  - `app/landing/page.tsx` (trio di pulsanti social nella sezione CTA `#richiedi-invito`).
-- Aggiunte le stringhe bilingue in `lib/i18n/locales/it.ts`, `lib/i18n/locales/en.ts` e `lib/i18n/types.ts`.
+Mail-K usa l'account KONTA (progetto Supabase condiviso con KONTA PRO e K-CRM) e uno spazio di lavoro per organizzazione:
 
-### B. Esecuzione Protocollo "CODER DOCUMENTATION EXTRACTION OS"
-In conformità con la direttiva `E:\###ISTRUZIONI_CODER_MANUALE_UTENTE per ag.md`, è stato generato l'intero pacchetto normativo:
-- **`DOCUMENTATION_SOURCE_PACKAGE/`**:
-  - `MANUALE_UTENTE.txt`: deliverable principale integrale strutturato in 10 capitoli esaustivi (architettura, principi anti-spam, autenticazione, campagne outbound, newsletter, B2B lead intelligence con pacchetti M/XL/AD-HOC, IMAP bounce read-only, scheduler Luxon, troubleshooting).
-  - `MANUALE_UTENTE.md`: versione Markdown per lettura ricca e navigazione ad ancore.
-  - `00_PROJECT/`: `PROJECT_FACTS.yml`, `EVIDENCE_LEDGER.csv` (evidenze `EVD-0001` .. `EVD-0012`), `EXCLUSIONS.md` (esclusioni deliberate da V1: no pixel, no CRM, no burst sending).
-  - `01_PRODUCT_DISCOVERY/`: `ROUTE_INVENTORY.csv` (rotte `ROU-001` .. `ROU-015`), `SCREEN_INVENTORY.csv` (superfici `SCR-001` .. `SCR-014`).
-  - `04_MERMAID/`: `SYSTEM_NAVIGATION.mmd`, `PIPE-001-invio-scaglionato.mmd`, `PIPE-002-sync-bounce-imap.mmd`.
-  - `05_SCREENSHOTS/`: `SCREENSHOT_MANIFEST.csv`, screenshot live di collaudo desktop `SCR-013-faq-page.png` e `SCR-014-guida-page.png`.
-  - `07_SUPPORT_AND_REFERENCE/`: `FAQ.md` con domande e risposte operative dettagliate.
-  - `README_HANDOFF.md`: relazione tecnica di consegna per il technical writer.
-- **Download Pubblico**:
-  - Copiato `MANUALE_UTENTE.txt` in `public/downloads/MANUALE_UTENTE.txt` per il download istantaneo degli utenti da browser.
+- **Schema:** `supabase/migrations/20261103120000_mailk_konta_01_tenant.sql` (9 tabelle `mail_*`, RLS, policy per verbo, RPC di claim, helper) e `20261103120100_mailk_konta_02_storage.sql` (bucket `mail-images` per organizzazione). Applicate **solo al DB Docker locale di K-CRM** con `node scripts/konta/apply-mailk-migration.mjs <file>`.
+- **Auth:** `lib/konta/session.ts` (`requireTenant`, verifica sessione come K-CRM), `lib/konta/workspace.ts` (cookie `mailk_org`, localStorage `konta_mailk_active_org_id`), `app/api/workspace` (lista membership, scelta, reset), `middleware.ts` (sessione → `/workspace` se manca l'organizzazione), `app/login` + `app/login/pro` (email+password, OTP via email opzionale, link "Accedi con account KONTA PRO"), `app/workspace` (scelta organizzazione; auto-selezione se una sola).
+- **Impostazioni mittente per organizzazione:** `app/settings` + `app/api/settings` (PUT solo O/A, verifica SMTP reale prima del salvataggio), `test-smtp`, `send-test`, `test-imap`; segreti cifrati con `lib/crypto/secret-box.ts` (copia da K-CRM, chiave `KCRM_SECRET_ENCRYPTION_KEY`, `key_version` 1).
+- **Invio:** `lib/email/transporter.ts` (`resolveOrganizationTransport`, nessun ripiego su variabili d'ambiente), dispatcher campagne/newsletter su `mail_*`, cron `app/api/cron/send` **una email per organizzazione per esecuzione** (max 10 organizzazioni, 45 s, newsletter prima della campagna; registro in `mail_cron_runs`).
+- **Bounce:** IMAP per organizzazione (`mail_sender_settings.imap_*`, ripiego sulle credenziali SMTP), registro `mail_bounces`, `cron/bounces` itera le organizzazioni con IMAP (non pianificato in `vercel.json`).
+- **Lead Research:** NON migrato (tabelle `lead_research_*` assenti su KONTA); route in 503 `FEATURE_DISABLED` salvo `LEAD_RESEARCH_ENABLED=true`; voce di menu e card nascoste.
+- **Rimossi:** OAuth Google/Facebook/LinkedIn, registrazione e reset password (gli account nascono in KONTA PRO), `LoginModal`, `Navbar`, onboarding self-service (`OnboardingController`, `AccountSetupWalkthrough`, `api/settings/onboarding`), `api/smtp/connections*`, `lib/crypto/encryption.ts`, pagina di collaudo `app/downloads/phase3-browser-audit` (dati finti nel sorgente).
+- **Documenti:** `docs/KONTA_AUDIT_M0.md` (audit + esito dei due bug), `SETTINGS.TXT` aggiornato, `.env.example` con i nuovi nomi.
 
-### C. Nuove Pagine Web Implementate nell'Applicazione
-1. **`/faq` (Domande Frequenti - `app/faq/page.tsx`)**:
-   - Layout Stitch Luxury Editorial con filtro per categorie (Tutte, Campagne, Newsletter, Lead Intelligence, Hostinger, Deliverability, Accesso).
-   - Ricerca live istantanea su testo e titoli.
-   - Fisarmoniche interattive animate.
-   - 100% Bilingue (IT/EN).
-2. **`/guida` (Guida Utente Interattiva - `app/guida/page.tsx`)**:
-   - Struttura a 2 colonne con Table of Contents (TOC) sticky laterale per saltare con scroll fluido tra i capitoli.
-   - Sezioni operative dettagliate con box di avviso (*Zero Tracking Pixels*, *Read-Only IMAP*, *Tabella Prezzi Lead M/XL/AD-HOC*).
-   - Pulsante di download diretto del manuale completo `.txt`.
-   - 100% Bilingue (IT/EN).
-3. **Integrazione della Navigazione**:
-   - `components/AppSidebar.tsx`: aggiunte voci `FAQ & Assistenza` e `Guida Utente`.
-   - `app/landing/page.tsx`: link `FAQ` e `Guida Utente` inseriti nell'header e nel footer.
-   - `app/login/page.tsx`: link `FAQ` e `Guida Utente` inseriti nel footer di autenticazione.
-   - `middleware.ts`: configurate `/faq`, `/guida` e `/downloads/*` come rotte pubbliche senza blocco di sessione.
+## 2. Verifiche eseguite (2026-11-03)
 
----
+| Verifica | Comando | Esito |
+|---|---|---|
+| Typecheck base `main` | `npx tsc --noEmit` | exit 0 |
+| Migrazione 01 sul DB locale | `node scripts/konta/apply-mailk-migration.mjs` | exit 0, 9 tabelle |
+| Migrazione 02 (storage) | `node scripts/konta/apply-mailk-migration.mjs supabase/migrations/20261103120100_mailk_konta_02_storage.sql` | exit 0, bucket + 4 policy |
+| RLS/policy/grant/anon/search_path/isolamento | `node scripts/konta/verify-mailk-rls.mjs` | exit 0, tutti i controlli superati (anon 42501 su ogni tabella, nessun FOR ALL, ciphertext non leggibile da authenticated) |
+| Isolamento con utenti reali (seed K-CRM) | `node scripts/konta/test-tenant-isolation.mjs` | exit 0: owner-a → org `4c914aba…`, owner-b → org `d4346bee…`, due campagne di prova con `organization_id` diversi, scritture cross-tenant rifiutate (42501), pulizia completa |
+| Typecheck branch | `npx tsc --noEmit` | exit 0 |
+| Build | `npm run build` | exit 0 (al primo tentativo Next si è fermato con l'avviso di sicurezza "upgrade Next.js"; il secondo tentativo ha completato la build) |
+| Browser locale (porta 3200) | login `owner-a@test.local` → `/workspace` (2 organizzazioni) → hub con sidebar "Alfa Impianti Srl / Titolare"; `/settings` salva identità (200), SMTP fittizio rifiutato dalla verifica reale (400); campagna creata (201, `organization_id` di Alfa) e cancellata (200); logout; login `owner-b@test.local` → "Beta Consulting Sas" → campagna creata/cancellata nella sua org; GET della campagna di A da B → 404 | OK |
+| Cron e accessi anonimi | `GET /api/cron/send` con Bearer → 200 idle; senza → 401; `/api/campaigns` senza sessione → 401; `/campaigns` → 307 `/login` | OK |
+| Stato DB locale a fine collaudo | query `pg` su tutte le `mail_*` e sul bucket | 0 righe, 0 oggetti |
 
-## 3. Verifiche e Collaudi Eseguiti
+**NON VERIFICATE:** invio SMTP reale (`MAILK_TEST_EMAIL_TO` assente in `.env.local` e nessuna casella reale per le organizzazioni di prova: `send-test` e dispatcher esercitati solo nel ramo di errore "casella non configurata"); IMAP reale; OTP via email nel browser (Mailpit disponibile ma non provato); caricamento immagini nel bucket `mail-images` dalle form; `npm run lint` globale (gli errori restanti sono pre-esistenti in `components/CampaignForm.tsx` e nel modulo Lead Research, non toccati).
 
-1. **TypeScript Typecheck**:
-   - Comando: `npx tsc --noEmit`
-   - Esito: **Exit Code 0** (zero errori).
-2. **Collaudo Live in Browser (Subagent su `http://localhost:3000`)**:
-   - Rotta `/faq`: verificata visualizzazione, filtro ricerca parola chiave "bounce" ed espansione accordion.
-   - Rotta `/guida`: verificata navigazione capitoli, layout a due colonne e link di download del file `.txt`.
-3. **Inventario Operativo**:
-   - `SETTINGS.TXT` aggiornato alla versione 2026-10-11 13:18 +08:00 con le nuove rotte e il pacchetto documentale.
+## 3. Ambiente locale
 
----
+- `.env.local` riscritto con i valori dello stack Docker di K-CRM (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`); il file precedente è salvato in `.env.local.mailk-legacy-backup` (entrambi ignorati da git). Le vecchie variabili `SMTP_*` restano nel file ma non sono più lette.
+- `KCRM_SECRET_ENCRYPTION_KEY` non impostata in locale: il secret-box usa la chiave di sviluppo derivata (avviso a console). In produzione è obbligatoria.
+- `.claude/launch.json` (non committato): `mailk-dev-konta-local-3200` → `npm run dev -- --port 3200`.
 
-## 4. Stato Git e Commit
+## 4. Cosa resta
 
-- **Tutto committato e sincronizzato**:
-  - `5c31f71`: `feat(auth): add LinkedIn OAuth login across modal, login page, and landing CTA`
-  - `0fc5560`: `feat: add interactive Guida, FAQ, downloadable manual, and DOCUMENTATION_SOURCE_PACKAGE`
-- **Working Tree**: `nothing to commit, working tree clean`.
-- Nessun file riservato o credenziale (`SECRETS.TXT`, `PASSWORD.TXT`, `.env.local`) è stato committato (tutti ignorati in `.gitignore`).
+- **M2 — brand/UI:** restyling completo secondo la regola del proprietario (le schermate nuove login/workspace/impostazioni sono già nello stile "pulito, poche informazioni"); hub e sidebar conservano testi legacy (quota 80/giorno fissa, "GESTOR MAIL", badge DKIM) da rivedere.
+- **M3 — ponte K-CRM:** segmenti in uscita, consensi e bounce in entrata, esiti nella scheda cliente. Richieste verso K-CRM: (1) endpoint o RPC di lettura segmento `GET /api/v1/organizations/{orgId}/segments/{id}/members` con `{ email, company_name, person_id, company_id, consent_marketing }`; (2) formato del segmento = lista di destinatari con id CRM e flag consenso; (3) webhook K-CRM → Mail-K per revoca consenso (`consent.revoked`) e Mail-K → K-CRM per esiti (`mail.sent`, `mail.bounced`, `mail.failed`) firmati con il secret in `crm_webhook_subscriptions`; (4) capacità `crm.mailk` in `crm_capability_grants` per mostrare Mail-K nel CRM.
+- **M4 — commerciale:** decidere il destino di Lead Research (tabelle non migrate), prezzi e `crm_product_access` per Mail-K.
+- **Pulizia tecnica:** rimuovere gli script legacy `scripts/*.mjs|ts` legati al vecchio progetto; `CampaignSchema.partial()` in PATCH reimposta i default dei campi omessi (comportamento pre-esistente, oggi innocuo perché il form invia tutto); convenzione `middleware` → `proxy` (Next 16 lo segnala come deprecato); aggiornamento di sicurezza Next.js segnalato dalla build.
 
----
+## 5. Decisioni che spettano al proprietario
 
-## 5. Prossimi Passi Consigliati
+1. **Dominio al passaggio:** mantenere `mailk.arkai.dev` (progetto Vercel `mail-k`) con le nuove variabili KONTA, oppure un sottodominio KONTA. Fino alla decisione `main` resta sul vecchio progetto.
+2. **Migrazione dei dati storici:** sì/no. Oggi le tabelle `mail_*` nascono vuote; le password SMTP del vecchio progetto non sono trasportabili (chiave derivata dalla service-role key). Se sì: creare in K-CRM un'organizzazione per ARKITECNA e importare campagne/newsletter/log con `organization_id` di quella organizzazione.
+3. **Cron Vercel:** confermare `/api/cron/send` ogni minuto con la politica "una email per organizzazione per esecuzione" (max 10 org/run); decidere se pianificare `/api/cron/bounces`.
+4. **Applicazione delle migrazioni al cloud KONTA (`yyzqtaqpbudnkgbvymrf`)** e `KCRM_SECRET_ENCRYPTION_KEY` condivisa in produzione: operazioni sul cloud, non eseguite.
+5. **Bucket immagini:** `mail-images` pubblico (necessario per le email); confermare la quota di 3 MB.
 
-1. **Verifica Deployment Vercel**:
-   - I commit sono già presenti su `origin/main`; verificare nella dashboard di Vercel che la build di produzione per `mail-k` sia completata con successo su `https://mailk.arkai.dev`.
-2. **Test End-to-End da Produzione**:
-   - Testare l'accesso con LinkedIn / Google / Facebook direttamente dall'URL di produzione.
-   - Visitare `https://mailk.arkai.dev/faq` e `https://mailk.arkai.dev/guida` per confermare la corretta visibilità pubblica su CDN Vercel.
+## 6. Istruzioni per riprendere
+
+```bash
+git checkout konta-ecosystem
+node scripts/konta/verify-mailk-rls.mjs
+node scripts/konta/test-tenant-isolation.mjs
+npm run dev -- --port 3200
+```
+Login locale: `owner-a@test.local` / `owner-b@test.local` (seed K-CRM, password nel seed di K-CRM). Per l'invio reale impostare in `/settings` una casella SMTP vera di un'organizzazione e `MAILK_TEST_EMAIL_TO` in `.env.local`.
