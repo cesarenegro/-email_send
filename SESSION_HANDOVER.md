@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 18:55 +08:00
+**Last modified:** 2026-11-03 19:20 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Repository:** `cesarenegro/-email_send`
@@ -137,6 +137,16 @@ Campagna, newsletter, log e registro cron di prova di Mail-K cancellati; K-CRM a
 | Segnalibro arretrato di 3 in locale (simula 3 messaggi nuovi) | 4,8 s, 3 messaggi esaminati, 3 avvisi riconosciuti |
 
 I 3,8 s residui sono connessione e accesso IMAP più le query di invio.
+
+## 5-octies. Migrazioni sul cloud KONTA: pronte, NON applicate (2026-11-03)
+
+Il proprietario ha chiesto di procedere con la migrazione al cloud (`yyzqtaqpbudnkgbvymrf`). Stato:
+- Prerequisiti verificati dal runbook K-CRM: le migrazioni K-CRM sono state applicate al cloud il 2026-11-02 (helper `crm_is_active_member` / `crm_member_role` presenti).
+- Il connettore Supabase di questa sessione non vede il progetto KONTA. La password `SUPABASE_DB_PASSWORD` nel `.env.local` di K-CRM è rifiutata dal pooler (probabilmente quella precedente alla rotazione del 2026-11-02). **Nessuna istruzione eseguita sul cloud.**
+- Due percorsi pronti, stesso contenuto:
+  1. `node scripts/konta/cloud-apply-mailk.mjs --env-file .env.local --check` poi `--apply`, dopo che il proprietario inserisce `MAILK_CLOUD_DB_PASSWORD` (password attuale del database) nel `.env.local` di Mail-K. Controlli in lettura, 4 migrazioni in una sola transazione, controlli successivi (RLS, anon, segreti, search_path, bucket, impronta delle policy non Mail-K invariata) e ROLLBACK automatico se un controllo fallisce.
+  2. SQL Editor del progetto: `supabase/cloud/mailk_20_apply_bundle.sql` (manifest SHA256 in `mailk_20_apply_bundle.manifest.json`), poi `supabase/cloud/mailk_30_postapply_checks.sql` (ogni riga OK). Pacchetto rieseguibile: riapplicato in locale senza errori, controlli 7/7 OK.
+- Dopo l'applicazione: registrare le 4 versioni nel registro migrazioni della repo KONTA PRO (`supabase migration repair --status applied …`), come per K-CRM.
 
 ## 6. Istruzioni per riprendere
 

@@ -1,0 +1,21 @@
+{
+  "generated": "2026-11-03",
+  "files": [
+    {
+      "file": "20261103120000_mailk_konta_01_tenant.sql",
+      "sha256": "c9e4b9a930d9d77a553e2cae2ee98dc65f14fee6b9a78b2243a4077dd8542fef"
+    },
+    {
+      "file": "20261103120100_mailk_konta_02_storage.sql",
+      "sha256": "a856e763ddef07afb2d62895ea0cfb65f03d501e148636aa8a6cf75ada11017e"
+    },
+    {
+      "file": "20261103140000_mailk_konta_03_crm_bridge.sql",
+      "sha256": "c0c1509ad250872475ac8872e26fb833f79634d09aa4c4c94a8b404ed350c60a"
+    },
+    {
+      "file": "20261103160000_mailk_konta_04_imap_cursor.sql",
+      "sha256": "abc3f90da8eb5721df593152642f197395bc46b01a7d29dd202d3b10b7f3b666"
+    }
+  ]
+}
