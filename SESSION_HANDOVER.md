@@ -105,7 +105,7 @@ Casella inserita dal proprietario in Impostazioni sull'organizzazione locale "Al
 | `POST /api/settings/test-imap` | 200, casella in sola lettura, 140 messaggi |
 | Campagna di prova (1 destinatario `cesare@arkitecna.com`) avviata + tasto Invia/Ricevi | inviata (`status: sent`, Message-ID); IMAP: 65 avvisi di rimbalzo riconosciuti, 0 destinatari aggiornati (nessuno di questa organizzazione) |
 
-Campagna, log e registro cron di prova cancellati; la casella resta configurata in locale. Ricezione effettiva nella casella di `cesare@arkitecna.com`: da confermare dal proprietario.
+Campagna, log e registro cron di prova cancellati; la casella resta configurata in locale. Ricezione nella casella di `cesare@arkitecna.com` confermata dal proprietario il 2026-11-03.
 
 ## 6. Istruzioni per riprendere
 
