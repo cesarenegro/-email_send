@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 18:40 +08:00
+**Last modified:** 2026-11-03 18:20 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Repository:** `cesarenegro/-email_send`
@@ -76,7 +76,7 @@ Mail-K usa l'account KONTA (progetto Supabase condiviso con KONTA PRO e K-CRM) e
 - **Accesso con link via email:** l'email arriva (Mailpit locale), il link porta a `/workspace` in un solo passaggio. Il modello d'email locale non contiene il codice a 6 cifre: la schermata ora dice "apri il link oppure inserisci il codice".
 - **Bucket immagini:** `node scripts/konta/test-storage-isolation.mjs` exit 0 (upload solo nella propria organizzazione, URL pubblico 200, SVG rifiutato, pulizia completa).
 - **Test logici rimasti:** `npx tsx scripts/verify-logic.ts` exit 0 (28 controlli), `node scripts/test-phase3-release.mjs` exit 0.
-- **Invio reale:** ancora NON VERIFICATO, in attesa che il proprietario inserisca una casella SMTP vera.
+- **Invio reale:** verificato più tardi (vedi 5-quinquies).
 
 ## 5-ter. M3 — ponte K-CRM, lato Mail-K (2026-11-03)
 
@@ -93,6 +93,19 @@ Mail-K usa l'account KONTA (progetto Supabase condiviso con KONTA PRO e K-CRM) e
 - **Sidebar**: tolti il riquadro SMTP con quota fissa 80/giorno e il selettore lingua duplicato. **Intestazione**: titolo della sezione, Invia/Ricevi, lingua; tolte le icone di ricerca e notifiche che portavano ad altre pagine.
 - Provato in locale con una campagna di prova (2 destinatari, in pausa) poi cancellata.
 - **Resta per M2:** pagine elenco e dettaglio di campagne e newsletter, wizard guidato, FAQ e guida, landing pubblica, testi i18n legacy ("Atelier", "Operating Console", "Precision Outbound").
+
+## 5-quinquies. Invio reale verificato (2026-11-03)
+
+Casella inserita dal proprietario in Impostazioni sull'organizzazione locale "Alfa Impianti Srl": `info@arkai.dev` su `mail.arkai.dev:465`, IMAP sullo stesso host. Password SMTP e IMAP salvate cifrate (`v1.`, `key_version` 1).
+
+| Prova | Esito |
+|---|---|
+| `POST /api/settings/test-smtp` | 200, connessione verificata |
+| `POST /api/settings/send-test` → `cesare@arkitecna.com` | 200, inviata da `info@arkai.dev`, Message-ID assegnato |
+| `POST /api/settings/test-imap` | 200, casella in sola lettura, 140 messaggi |
+| Campagna di prova (1 destinatario `cesare@arkitecna.com`) avviata + tasto Invia/Ricevi | inviata (`status: sent`, Message-ID); IMAP: 65 avvisi di rimbalzo riconosciuti, 0 destinatari aggiornati (nessuno di questa organizzazione) |
+
+Campagna, log e registro cron di prova cancellati; la casella resta configurata in locale. Ricezione effettiva nella casella di `cesare@arkitecna.com`: da confermare dal proprietario.
 
 ## 6. Istruzioni per riprendere
 
