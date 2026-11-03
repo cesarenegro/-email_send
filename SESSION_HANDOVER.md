@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 18:05 +08:00
+**Last modified:** 2026-11-03 18:40 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Repository:** `cesarenegro/-email_send`
@@ -86,6 +86,13 @@ Mail-K usa l'account KONTA (progetto Supabase condiviso con KONTA PRO e K-CRM) e
 - **Verificato in locale** (K-CRM avviato su 3110 senza modificarne i file): lista segmenti 200 (vuota), segmento inesistente 404 da K-CRM, campagna inesistente 404, pannello visibile; `checkConsent` su indirizzo senza eventi → `allowed`; RLS 0; tsc 0.
 - **NON VERIFICATO:** import con un segmento reale e blocco di un consenso revocato. Le organizzazioni di prova non hanno segmenti, persone né consensi, e creare dati `crm_*` (consensi append-only, non cancellabili) richiede l'autorizzazione del proprietario.
 - **Richieste a K-CRM (ancora aperte):** (1) endpoint per ricevere gli esiti Mail-K nella scheda cliente (`mail.sent`, `mail.bounced`, `mail.failed` con `crm_person_id`), oppure una RPC dedicata; (2) evento di disiscrizione dal link nelle email → `record_consent` revoked (Mail-K oggi non ha un link di disiscrizione); (3) capacità `crm.mailk` per mostrare Mail-K nel CRM.
+
+## 5-quater. M2 — primo passaggio di pulizia (2026-11-03)
+
+- **Hub** riscritto (`app/page.tsx` + `components/konta/Hub.tsx`): solo dati letti dal database dell'organizzazione (inviate ed errori di oggi, in coda, rimbalzi 30 giorni, prossimo invio, campagne e newsletter in corso con avanzamento). Rimossi `HubLiveView` e `DashboardLiveView`, che mostravano indicatori non sostenuti da dati (allineamento SPF/DKIM/DMARC "100%", placement "100%", quota fissa 80).
+- **Sidebar**: tolti il riquadro SMTP con quota fissa 80/giorno e il selettore lingua duplicato. **Intestazione**: titolo della sezione, Invia/Ricevi, lingua; tolte le icone di ricerca e notifiche che portavano ad altre pagine.
+- Provato in locale con una campagna di prova (2 destinatari, in pausa) poi cancellata.
+- **Resta per M2:** pagine elenco e dettaglio di campagne e newsletter, wizard guidato, FAQ e guida, landing pubblica, testi i18n legacy ("Atelier", "Operating Console", "Precision Outbound").
 
 ## 6. Istruzioni per riprendere
 
