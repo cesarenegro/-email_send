@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 16:05 +08:00
+**Last modified:** 2026-11-03 17:10 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Repository:** `cesarenegro/-email_send`
@@ -53,13 +53,30 @@ Mail-K usa l'account KONTA (progetto Supabase condiviso con KONTA PRO e K-CRM) e
 - **M4 — commerciale:** decidere il destino di Lead Research (tabelle non migrate), prezzi e `crm_product_access` per Mail-K.
 - **Pulizia tecnica:** rimuovere gli script legacy `scripts/*.mjs|ts` legati al vecchio progetto; `CampaignSchema.partial()` in PATCH reimposta i default dei campi omessi (comportamento pre-esistente, oggi innocuo perché il form invia tutto); convenzione `middleware` → `proxy` (Next 16 lo segnala come deprecato); aggiornamento di sicurezza Next.js segnalato dalla build.
 
-## 5. Decisioni che spettano al proprietario
+## 5. Decisioni del proprietario (risposte del 2026-11-03)
 
-1. **Dominio al passaggio:** mantenere `mailk.arkai.dev` (progetto Vercel `mail-k`) con le nuove variabili KONTA, oppure un sottodominio KONTA. Fino alla decisione `main` resta sul vecchio progetto.
-2. **Migrazione dei dati storici:** sì/no. Oggi le tabelle `mail_*` nascono vuote; le password SMTP del vecchio progetto non sono trasportabili (chiave derivata dalla service-role key). Se sì: creare in K-CRM un'organizzazione per ARKITECNA e importare campagne/newsletter/log con `organization_id` di quella organizzazione.
-3. **Cron Vercel:** confermare `/api/cron/send` ogni minuto con la politica "una email per organizzazione per esecuzione" (max 10 org/run); decidere se pianificare `/api/cron/bounces`.
-4. **Applicazione delle migrazioni al cloud KONTA (`yyzqtaqpbudnkgbvymrf`)** e `KCRM_SECRET_ENCRYPTION_KEY` condivisa in produzione: operazioni sul cloud, non eseguite.
-5. **Bucket immagini:** `mail-images` pubblico (necessario per le email); confermare la quota di 3 MB.
+| # | Tema | Decisione |
+|---|---|---|
+| 1 | Dominio | Resta `mailk.arkai.dev`, con le variabili del progetto KONTA al passaggio |
+| 2 | Dati storici | Nessuna migrazione: le tabelle `mail_*` nascono vuote |
+| 3 | Cron invio | Ogni minuto, una email per organizzazione per esecuzione. Richiede il piano Vercel Pro (Hobby: un cron al giorno, deploy rifiutato se più frequente). Più il tasto **Invia/Ricevi** manuale |
+| 4 | Cron rimbalzi | Non pianificato: lettura manuale col tasto **Invia/Ricevi** |
+| 5 | Migrazioni cloud | Le applica chi fa il go-live di K-CRM, insieme al bundle cloud |
+| 6 | Chiave di cifratura | Stessa `KCRM_SECRET_ENCRYPTION_KEY` di K-CRM |
+| 7 | Aggiornamento Next.js | Rimandato |
+| 8 | Lead Research | Spento fino a M4 |
+| 9 | Script legacy | Eliminati (restano solo `verify-logic.ts`, `test-phase3-release.mjs`, `test-import-security.mjs` e `scripts/konta/`) |
+| 10 | Collaudo invio reale | Destinatario `cesare@arkitecna.com` (`MAILK_TEST_EMAIL_TO`); la casella SMTP reale la inserisce il proprietario in Impostazioni |
+| 11 | Push | Autorizzato: solo il branch `konta-ecosystem`, nessun merge su `main` |
+| 12 | Ordine delle tappe | Prima le verifiche mancanti, poi M3 (ponte K-CRM), poi M2 (restyling) |
+
+## 5-bis. Aggiornamento 2026-11-03 pomeriggio
+
+- **Tasto Invia/Ricevi** nell'intestazione (`components/konta/SendReceiveButton.tsx`, `POST /api/mail/send-receive`): invia l'email dovuta dell'organizzazione con le stesse regole del cron (`lib/email/org-runner.ts`, condiviso con `/api/cron/send`) e legge i rimbalzi IMAP. Provato in locale: "Niente da inviare".
+- **Accesso con link via email:** l'email arriva (Mailpit locale), il link porta a `/workspace` in un solo passaggio. Il modello d'email locale non contiene il codice a 6 cifre: la schermata ora dice "apri il link oppure inserisci il codice".
+- **Bucket immagini:** `node scripts/konta/test-storage-isolation.mjs` exit 0 (upload solo nella propria organizzazione, URL pubblico 200, SVG rifiutato, pulizia completa).
+- **Test logici rimasti:** `npx tsx scripts/verify-logic.ts` exit 0 (28 controlli), `node scripts/test-phase3-release.mjs` exit 0.
+- **Invio reale:** ancora NON VERIFICATO, in attesa che il proprietario inserisca una casella SMTP vera.
 
 ## 6. Istruzioni per riprendere
 

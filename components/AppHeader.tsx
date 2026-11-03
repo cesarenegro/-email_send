@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import SendReceiveButton from '@/components/konta/SendReceiveButton';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 export default function AppHeader() {
@@ -68,9 +69,8 @@ export default function AppHeader() {
       <div className="flex items-center gap-3">
         <LanguageSwitcher variant="light" />
 
-        <div className="hidden sm:flex items-center gap-1.5 font-label-sm text-xs text-[#5c5e63] pl-2 border-l border-[#e5e5e0]">
-          <span className="material-symbols-outlined text-[15px] text-[#036e13] animate-spin-slow">sync</span>
-          <span>{t.common.liveSync}</span>
+        <div className="pl-2 border-l border-[#e5e5e0]">
+          <SendReceiveButton />
         </div>
 
         <div className="flex items-center gap-space-xs">

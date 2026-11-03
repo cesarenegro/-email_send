@@ -1,7 +1,7 @@
 ================================================================================
 MAIL-K (ecosistema KONTA) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-11-03 15:40 +08:00
+Last updated: 2026-11-03 17:10 +08:00
 Branch: konta-ecosystem (tappe M0 + M1; NON deployato, solo commit locali)
 Produzione attuale: main @ fbfe022 su https://mailk.arkai.dev con il progetto Supabase
   di Mail-K (cayceyagmorwlbmmvyoc) — NON toccato da questo branch.
@@ -91,7 +91,11 @@ Registro: mail_bounces + mail_email_logs (event_type=error)
 
 5. SCHEDULER & CRON
 --------------------------------------------------------------------------------
-Scheduler Provider: Vercel Cron (vercel.json: /api/cron/send ogni minuto), Bearer CRON_SECRET
+Scheduler Provider: Vercel Cron (vercel.json: /api/cron/send ogni minuto), Bearer CRON_SECRET.
+  Nota costi: i cron sono inclusi in tutti i piani, ma la frequenza al minuto richiede Vercel Pro
+  (Hobby: un'esecuzione al giorno). Le invocazioni contano come normale uso delle Functions.
+Invio/lettura manuale: POST /api/mail/send-receive (tasto "Invia/Ricevi"), stesse regole del cron
+  (lib/email/org-runner.ts); i rimbalzi si leggono solo da qui (cron/bounces non pianificato).
 Politica multi-tenant: UNA email per organizzazione per esecuzione; al massimo 10 organizzazioni
   per esecuzione, in ordine di scadenza, entro 45 s; newsletter dovuta prima della campagna.
   Le esecuzioni con lavoro sono registrate in mail_cron_runs.
@@ -135,8 +139,9 @@ Invariato: app/robots.ts, app/sitemap.ts, JSON-LD in app/layout.tsx, verifiche G
 apply-mailk-migration.mjs   applica una migrazione mail_* al DB locale (rifiuta host non locali)
 verify-mailk-rls.mjs        RLS, policy, grant, anon, search_path, isolamento (SET ROLE)
 test-tenant-isolation.mjs   login owner-a/owner-b (seed K-CRM), campagne di prova create e cancellate
-Script legacy (progetto Supabase di Mail-K): scripts/*.mjs|ts restanti, da rimuovere dopo la
-  decisione del proprietario su dominio e migrazione dati (vedi SESSION_HANDOVER.md).
+test-storage-isolation.mjs  bucket mail-images: upload solo nella propria organizzazione
+Test logici: scripts/verify-logic.ts (npx tsx), scripts/test-phase3-release.mjs (PDF e sanitizzazione).
+Script legacy del vecchio progetto: eliminati (2026-11-03).
 
 ===============================================================================
 CRITICAL OPERATIONAL RULES & SCOPE LOCK:

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DateTime } from 'luxon';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { computeNextSendTime } from '@/lib/scheduling/next-send-time';
-import { hasReachedDailyLimit } from '@/lib/scheduling/daily-limit';
-import { dispatchNextEmailForCampaign } from '@/lib/email/dispatcher';
-import { dispatchNextEmailForNewsletter } from '@/lib/email/newsletter-dispatcher';
+import { runUnit, logRun, type WorkUnit } from '@/lib/email/org-runner';
 import type { Campaign, Newsletter } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
@@ -31,10 +28,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return handleCron(request);
 }
-
-type Unit =
-  | { kind: 'newsletter'; organization_id: string; due_at: string; newsletter: Newsletter }
-  | { kind: 'campaign'; organization_id: string; due_at: string; campaign: Campaign };
 
 async function handleCron(request: NextRequest) {
   const expectedSecret = process.env.CRON_SECRET?.trim();
@@ -77,7 +70,7 @@ async function handleCron(request: NextRequest) {
   }
 
   // Una unità di lavoro per organizzazione: newsletter dovuta ha precedenza sulla campagna.
-  const perOrg = new Map<string, Unit>();
+  const perOrg = new Map<string, WorkUnit>();
   for (const nl of (dueNewsletters || []) as Newsletter[]) {
     if (!perOrg.has(nl.organization_id)) {
       perOrg.set(nl.organization_id, {
@@ -114,31 +107,14 @@ async function handleCron(request: NextRequest) {
     const runStarted = new Date().toISOString();
     let outcome: Record<string, unknown>;
     try {
-      outcome = unit.kind === 'newsletter'
-        ? { type: 'newsletter', newsletter_id: unit.newsletter.id, ...(await dispatchNextEmailForNewsletter(supabase, unit.newsletter)) }
-        : { type: 'campaign', campaign_id: unit.campaign.id, ...(await processCampaign(supabase, unit.campaign)) };
+      outcome = await runUnit(supabase, unit);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`[cron/send] org ${unit.organization_id}:`, message);
       outcome = { type: unit.kind, status: 'error', error: message };
     }
 
-    const { lead, subscriber, ...safeOutcome } = outcome as Record<string, unknown> & {
-      lead?: unknown;
-      subscriber?: unknown;
-    };
-    void lead;
-    void subscriber;
-    await supabase.from('mail_cron_runs').insert({
-      organization_id: unit.organization_id,
-      job_kind: 'send',
-      entity_type: unit.kind,
-      entity_id: unit.kind === 'newsletter' ? unit.newsletter.id : unit.campaign.id,
-      outcome: String(outcome.status || 'unknown'),
-      details: safeOutcome,
-      started_at: runStarted,
-      finished_at: new Date().toISOString(),
-    });
+    await logRun(supabase, unit, outcome, runStarted);
 
     results.push({ organization_id: unit.organization_id, ...outcome });
   }
@@ -151,32 +127,3 @@ async function handleCron(request: NextRequest) {
   });
 }
 
-async function processCampaign(supabase: ReturnType<typeof createAdminClient>, campaign: Campaign) {
-  const currentSlot = computeNextSendTime(DateTime.now(), {
-    timezone: campaign.timezone,
-    send_window_start: campaign.send_window_start,
-    send_window_end: campaign.send_window_end,
-  });
-  const nowLuxon = DateTime.now().setZone(campaign.timezone);
-
-  if (currentSlot.diff(nowLuxon, 'minutes').minutes > 1) {
-    const postponedUtc = currentSlot.toUTC().toISO();
-    await supabase.from('mail_campaigns').update({ next_send_at: postponedUtc }).eq('id', campaign.id);
-    return { status: 'postponed', reason: 'Outside sending window or weekday', next_send_at: postponedUtc };
-  }
-
-  const limitReached = await hasReachedDailyLimit(supabase, campaign.id, campaign.daily_limit, campaign.timezone);
-  if (limitReached) {
-    const tomorrow = nowLuxon.plus({ days: 1 }).startOf('day');
-    const nextSlot = computeNextSendTime(tomorrow, {
-      timezone: campaign.timezone,
-      send_window_start: campaign.send_window_start,
-      send_window_end: campaign.send_window_end,
-    });
-    const postponedUtc = nextSlot.toUTC().toISO();
-    await supabase.from('mail_campaigns').update({ next_send_at: postponedUtc }).eq('id', campaign.id);
-    return { status: 'daily_limit_reached', limit: campaign.daily_limit, next_send_at: postponedUtc };
-  }
-
-  return dispatchNextEmailForCampaign(supabase, campaign);
-}
