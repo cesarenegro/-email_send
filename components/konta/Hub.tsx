@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import MailkPlanModal from '@/components/konta/MailkPlanModal';
+import { isKontaStateOperational, type KontaAccessState } from '@/lib/konta/entitlements';
 
 interface Item {
   id: string;
@@ -16,6 +18,8 @@ interface Item {
 export interface HubData {
   organizationName: string;
   canWrite: boolean;
+  /** Stato `mailk` dell'organizzazione (null se la RPC non è disponibile). */
+  mailkState: KontaAccessState | null;
   sender: { configured: boolean; verified: boolean; fromEmail: string };
   sentToday: number;
   errorsToday: number;
@@ -91,6 +95,7 @@ function formatWhen(iso: string | null, locale: string): string | null {
 export default function Hub({ data }: { data: HubData | null }) {
   const { locale } = useTranslation();
   const c = COPY[locale === 'en' ? 'en' : 'it'];
+  const [planModalClosed, setPlanModalClosed] = useState(false);
 
   if (!data) {
     return (
@@ -113,8 +118,18 @@ export default function Hub({ data }: { data: HubData | null }) {
   const senderLabel = data.sender.verified ? c.senderOk : data.sender.configured ? c.senderUnverified : c.senderTodo;
   const nextWhen = formatWhen(data.nextDue, locale);
 
+  const readOnlyState = data.mailkState && !isKontaStateOperational(data.mailkState) ? data.mailkState : null;
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-8">
+      {readOnlyState && !planModalClosed ? (
+        <MailkPlanModal
+          lang={locale === 'en' ? 'en' : 'it'}
+          organizationName={data.organizationName}
+          state={readOnlyState}
+          onClose={() => setPlanModalClosed(true)}
+        />
+      ) : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-headline-md text-3xl text-[#1b1c1a]">{data.organizationName}</h1>

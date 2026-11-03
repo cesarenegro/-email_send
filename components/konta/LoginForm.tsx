@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import OAuthButtons from '@/components/konta/OAuthButtons';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import {
   AUTH_CALLBACK_ERROR_MESSAGES,
@@ -36,8 +37,8 @@ const COPY = {
     password: 'Password',
     signIn: 'Accedi',
     signingIn: 'Accesso…',
-    otpLink: 'Accedi con un link via email',
-    otpSend: 'Invia link',
+    otpLink: 'Ricevi un codice via email',
+    otpSend: 'Invia codice',
     otpSending: 'Invio…',
     otpSent: 'Email inviata: apri il link oppure inserisci il codice.',
     otpCode: 'Codice (se presente)',
@@ -60,7 +61,9 @@ const COPY = {
     noAccount: 'Non hai un account?',
     signUp: 'Registrati',
     signUpTitle: 'Crea il tuo account KONTA',
-    signUpHint: 'Un solo account per tutto l’ecosistema KONTA: le stesse credenziali valgono per Mail-K, K-CRM e KONTA PRO.',
+    signUpHint: 'Un solo account per tutto l’ecosistema KONTA: le stesse credenziali valgono per Light, PRO, K-CRM e Mail-K.',
+    ecoTitle: 'Hai già un account KONTA PRO o K-CRM?',
+    ecoBody: 'Entra con le stesse credenziali: se la tua azienda è abilitata a Mail-K la trovi subito.',
     newPassword: 'Password',
     newPasswordHint: `Almeno ${PASSWORD_MIN_LENGTH} caratteri.`,
     confirmPassword: 'Conferma password',
@@ -77,8 +80,8 @@ const COPY = {
     password: 'Password',
     signIn: 'Sign in',
     signingIn: 'Signing in…',
-    otpLink: 'Sign in with an email link',
-    otpSend: 'Send link',
+    otpLink: 'Get a code by email',
+    otpSend: 'Send code',
     otpSending: 'Sending…',
     otpSent: 'Email sent: open the link or enter the code.',
     otpCode: 'Code (if any)',
@@ -101,7 +104,9 @@ const COPY = {
     noAccount: 'No account yet?',
     signUp: 'Sign up',
     signUpTitle: 'Create your KONTA account',
-    signUpHint: 'One account for the whole KONTA ecosystem: the same credentials work in Mail-K, K-CRM and KONTA PRO.',
+    signUpHint: 'One account for the whole KONTA ecosystem: the same credentials work in Light, PRO, K-CRM and Mail-K.',
+    ecoTitle: 'Already have a KONTA PRO or K-CRM account?',
+    ecoBody: 'Sign in with the same credentials: if your company is enabled for Mail-K you will find it right away.',
     newPassword: 'Password',
     newPasswordHint: `At least ${PASSWORD_MIN_LENGTH} characters.`,
     confirmPassword: 'Confirm password',
@@ -347,6 +352,8 @@ export default function LoginForm({ title, subtitle, showProLink = true }: Login
         {sub ? <p className="mt-1 text-sm text-[#5c5e63]">{sub}</p> : null}
       </div>
 
+      {(mode === 'password' || mode === 'signup') && <OAuthButtons lang={lang} disabled={busy} />}
+
       {mode === 'password' && (
         <form onSubmit={handlePassword} className="space-y-4" noValidate>
           {notice ? <p role="status" className="text-sm text-[#036e13]">{notice}</p> : null}
@@ -484,6 +491,12 @@ export default function LoginForm({ title, subtitle, showProLink = true }: Login
           </button>
         </form>
       )}
+
+      {mode === 'password' ? (
+        <div className="mt-6 rounded-lg border border-[#e5e5e0] bg-[#fbf9f6] px-3 py-2.5 text-xs text-[#5c5e63] leading-snug">
+          <b className="text-[#1b1c1a]">{c.ecoTitle}</b> {c.ecoBody}
+        </div>
+      ) : null}
 
       <div className="mt-8 pt-6 border-t border-[#e5e5e0] space-y-2 text-sm">
         {showProLink && mode === 'password' ? (

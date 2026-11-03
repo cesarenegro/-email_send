@@ -73,6 +73,7 @@ export default async function HomePage() {
   const data: HubData = {
     organizationName: tenant.organizationName,
     canWrite: tenant.canWrite,
+    mailkState: tenant.mailkState,
     sender: {
       configured: Boolean(settings?.smtp_host),
       verified: Boolean(settings?.is_verified),

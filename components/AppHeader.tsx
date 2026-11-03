@@ -4,12 +4,13 @@ import React from 'react';
 import { usePathname } from 'next/navigation';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import SendReceiveButton from '@/components/konta/SendReceiveButton';
+import KontaAppsMenu from '@/components/konta/KontaAppsMenu';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 
 /** Intestazione essenziale: titolo della sezione, Invia/Ricevi, lingua. */
 export default function AppHeader() {
   const pathname = usePathname();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   if (pathname === '/login') {
     return null;
@@ -29,6 +30,7 @@ export default function AppHeader() {
     <header className="fixed top-0 left-72 right-0 h-14 bg-[#fbf9f6]/95 backdrop-blur border-b border-[#e5e5e0] z-40 flex items-center justify-between px-gutter">
       <span className="text-sm font-semibold text-[#1b1c1a]">{title}</span>
       <div className="flex items-center gap-3">
+        <KontaAppsMenu lang={locale === 'en' ? 'en' : 'it'} />
         <SendReceiveButton />
         <LanguageSwitcher variant="light" />
       </div>

@@ -1,7 +1,7 @@
 ================================================================================
 MAIL-K (ecosistema KONTA) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-11-04 06:29 +08:00
+Last updated: 2026-11-04 07:10 +08:00
 Branch: konta-ecosystem = main, IN PRODUZIONE dal 2026-11-03 sera (commit 4324e07)
 Produzione attuale: main @ 4324e07 su https://mailk.arkai.dev con il progetto Supabase KONTA
   (yyzqtaqpbudnkgbvymrf). Il vecchio progetto cayceyagmorwlbmmvyoc non è più usato.
@@ -46,8 +46,8 @@ Authentication: Supabase Auth del progetto KONTA (stesso account di KONTA PRO / 
     cancel_scheduled; altrimenti 403 PRODUCT_READ_ONLY; funzione assente = solo controllo di ruolo).
     Fonte: crm_product_access con product_key = 'mailk' (sola lettura da Mail-K).
   - OAuth Google / Facebook (scope email) / LinkedIn OIDC: lib/konta/account-client.ts
-    signInWithProvider → /auth/callback?next=… Componenti PREPARATI, NON MONTATI (attesa approvazione
-    mock): components/konta/OAuthButtons.tsx, KontaAppsMenu.tsx, MailkPlanModal.tsx (link
+    signInWithProvider → /auth/callback?next=… Componenti MONTATI dopo approvazione del mock (4/11/2026):
+    OAuthButtons.tsx in LoginForm, KontaAppsMenu.tsx in AppHeader, MailkPlanModal.tsx in Hub (link
     https://konta.arkai.dev/prezzi, nessun prezzo). Provider LinkedIn OIDC da attivare in Supabase dal proprietario.
 Access Library: @supabase/supabase-js ^2.117.2, @supabase/ssr ^0.12.7
 Tenant model: spazio di lavoro = organizzazione KONTA (public.crm_organizations.id).
