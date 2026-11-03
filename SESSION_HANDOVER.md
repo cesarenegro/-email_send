@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 21:05 +08:00
+**Last modified:** 2026-11-03 21:30 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Repository:** `cesarenegro/-email_send`
@@ -156,6 +156,7 @@ Il proprietario ha chiesto di procedere con la migrazione al cloud (`yyzqtaqpbud
 ## 5-nonies. Lavori aperti al momento del riordino delle cartelle (2026-11-03 sera)
 
 - **Riordino cartelle deciso dal proprietario:** `E:ProjectsKONTA K-CRM` → `E:ProjectsKONTA MASTERKONTA K-CRM` e `E:Projects@EMAIL BULK` → `E:ProjectsKONTA MASTERKONTA MAIL-K`. Ogni app resta una repo git separata con il suo remote GitHub e il suo progetto Vercel; nessuna fusione di repository. Dopo lo spostamento aggiornare i percorsi assoluti citati in questo file, in `SETTINGS.TXT` e negli script `scripts/konta/` (uso con `--env-file`).
+- **Convenzioni comuni concordate con K-CRM (2026-11-03):** `/auth/callback?next=<percorso>` (PKCE `code` o `token_hash`; per `type=recovery` atterra su `/login/reset`), `/login` con accesso, registrazione e "password dimenticata", `/login/reset` per scegliere la nuova password, cambio password con verifica della password attuale nelle impostazioni dell'account, nuovo utente senza azienda → `https://kcrm.arkai.dev/onboarding`. Redirect URL da avere in Supabase Auth: `https://kcrm.arkai.dev/**`, `https://mailk.arkai.dev/**`, `https://kontapro.arkai.dev/**` (runbook K-CRM §8). Mail-K deve usare gli stessi percorsi: `/login/reset` al posto di `/account/password`.
 - **Da fare in Mail-K (NON ancora scritto):** account KONTA unico in ogni app, richiesto dal proprietario come bug importante. In `components/konta/LoginForm.tsx`: registrazione email+password con conferma (`signUp`, `emailRedirectTo` → `/auth/callback?next=/workspace`) e "password dimenticata" (`resetPasswordForEmail`, `redirectTo` → `/auth/callback?next=/account/password`); nuova pagina `/account/password` (`updateUser({ password })`), raggiungibile dal menu, esclusa dall'obbligo di organizzazione nel middleware; `/workspace` vuoto → link per creare l'azienda in K-CRM. Provare in locale con Mailpit (porta 54344).
 - **Inoltrati alla sessione K-CRM "Continua da AG":** (1) cambio password, password dimenticata e registrazione mancanti anche in K-CRM; (2) creazione azienda con soli 5 paesi: servono tutti i paesi con la valuta (almeno UE, Hong Kong, Emirati/Dubai, Indonesia, Cina, USA). KONTA PRO: `kontapro.arkai.dev/login` risponde 404, da verificare nel repo `KONTA MASTERKONTA PRO`.
 - **Passaggio di `mailk.arkai.dev` a KONTA:** in sospeso. Variabili nuove già su Vercel; restano `NEXT_PUBLIC_SUPABASE_URL`, rimozione variabili vecchie e merge in `main` (vedi 5-octies).
