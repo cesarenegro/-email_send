@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 19:20 +08:00
+**Last modified:** 2026-11-03 19:45 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Repository:** `cesarenegro/-email_send`
@@ -138,7 +138,7 @@ Campagna, newsletter, log e registro cron di prova di Mail-K cancellati; K-CRM a
 
 I 3,8 s residui sono connessione e accesso IMAP più le query di invio.
 
-## 5-octies. Migrazioni sul cloud KONTA: pronte, NON applicate (2026-11-03)
+## 5-octies. Migrazioni sul cloud KONTA: APPLICATE (2026-11-03)
 
 Il proprietario ha chiesto di procedere con la migrazione al cloud (`yyzqtaqpbudnkgbvymrf`). Stato:
 - Prerequisiti verificati dal runbook K-CRM: le migrazioni K-CRM sono state applicate al cloud il 2026-11-02 (helper `crm_is_active_member` / `crm_member_role` presenti).
@@ -146,7 +146,11 @@ Il proprietario ha chiesto di procedere con la migrazione al cloud (`yyzqtaqpbud
 - Due percorsi pronti, stesso contenuto:
   1. `node scripts/konta/cloud-apply-mailk.mjs --env-file .env.local --check` poi `--apply`, dopo che il proprietario inserisce `MAILK_CLOUD_DB_PASSWORD` (password attuale del database) nel `.env.local` di Mail-K. Controlli in lettura, 4 migrazioni in una sola transazione, controlli successivi (RLS, anon, segreti, search_path, bucket, impronta delle policy non Mail-K invariata) e ROLLBACK automatico se un controllo fallisce.
   2. SQL Editor del progetto: `supabase/cloud/mailk_20_apply_bundle.sql` (manifest SHA256 in `mailk_20_apply_bundle.manifest.json`), poi `supabase/cloud/mailk_30_postapply_checks.sql` (ogni riga OK). Pacchetto rieseguibile: riapplicato in locale senza errori, controlli 7/7 OK.
-- Dopo l'applicazione: registrare le 4 versioni nel registro migrazioni della repo KONTA PRO (`supabase migration repair --status applied …`), come per K-CRM.
+- **Esito:** il proprietario ha eseguito `supabase/cloud/mailk_20_apply_bundle.sql` dall'SQL Editor del progetto `yyzqtaqpbudnkgbvymrf` (nessun errore; ultimo risultato: 3 righe `mail_admin_set_policies`) e poi `supabase/cloud/mailk_30_postapply_checks.sql`: **7/7 OK** (9 tabelle `mail_*`, RLS su tutte, nessun FOR ALL, anon senza privilegi, segreti non leggibili da authenticated, search_path fissato, bucket `mail-images` pubblico).
+- **Non verificato dal cloud:** impronta delle policy non Mail-K prima/dopo (controllo disponibile solo nello script `cloud-apply-mailk.mjs`, non usato) e advisor Supabase.
+- **Da fare:** registrare le 4 versioni nel registro migrazioni dalla repo KONTA PRO collegata:
+  `supabase migration repair --status applied 20261103120000 20261103120100 20261103140000 20261103160000`;
+  impostare `KCRM_SECRET_ENCRYPTION_KEY` (stessa di K-CRM), `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` e `KCRM_API_URL` nel progetto Vercel di Mail-K al momento del passaggio. Fino ad allora `mailk.arkai.dev` resta sul vecchio progetto.
 
 ## 6. Istruzioni per riprendere
 

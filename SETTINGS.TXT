@@ -1,7 +1,7 @@
 ================================================================================
 MAIL-K (ecosistema KONTA) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-11-03 18:55 +08:00
+Last updated: 2026-11-03 19:45 +08:00
 Branch: konta-ecosystem (tappe M0 + M1; NON deployato, solo commit locali)
 Produzione attuale: main @ fbfe022 su https://mailk.arkai.dev con il progetto Supabase
   di Mail-K (cayceyagmorwlbmmvyoc) — NON toccato da questo branch.
@@ -26,8 +26,9 @@ Authenticated Routes: /workspace (scelta organizzazione), /, /campaigns/**, /new
 2. IDENTITY, TENANT & DATABASE (PROGETTO SUPABASE KONTA, CONDIVISO)
 --------------------------------------------------------------------------------
 Database Provider: Supabase (PostgreSQL) — progetto KONTA condiviso con KONTA PRO e K-CRM
-  (cloud: yyzqtaqpbudnkgbvymrf; locale: stack Docker di K-CRM). Nessuna migrazione applicata
-  al cloud da questo branch.
+  (cloud: yyzqtaqpbudnkgbvymrf; locale: stack Docker di K-CRM). Migrazioni Mail-K 01–04 APPLICATE
+  al cloud il 2026-11-03 dal proprietario (SQL Editor, supabase/cloud/mailk_20_apply_bundle.sql),
+  controlli supabase/cloud/mailk_30_postapply_checks.sql 7/7 OK. Registro migrazioni PRO: da aggiornare.
 Authentication: Supabase Auth del progetto KONTA (stesso account di KONTA PRO / K-CRM).
   Login email+password, OTP via email (opzionale), nessuna registrazione self-service,
   nessun OAuth (Google/Facebook/LinkedIn rimossi). Verifica sessione lato server con
