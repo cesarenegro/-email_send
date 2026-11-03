@@ -5,7 +5,7 @@ Last updated: 2026-11-03 20:00 +08:00
 Branch: konta-ecosystem (tappe M0 + M1; NON deployato, solo commit locali)
 Produzione attuale: main @ fbfe022 su https://mailk.arkai.dev con il progetto Supabase
   di Mail-K (cayceyagmorwlbmmvyoc) — NON toccato da questo branch.
-Ambiente locale di sviluppo: stack Docker Supabase di K-CRM (E:\Projects\KONTA K-CRM)
+Ambiente locale di sviluppo: stack Docker Supabase di K-CRM (E:\Projects\KONTA MASTER\KONTA K-CRM)
   API http://127.0.0.1:54341 · DB postgresql://127.0.0.1:54342 · Studio 54343 · Mailpit 54344
 Project / Application: MAIL-K
 Repository: cesarenegro/-email_send

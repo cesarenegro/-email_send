@@ -3,7 +3,7 @@
 **Created:** 2026-11-03 14:10 +08:00
 **Last modified:** 2026-11-03 14:10 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
-**Riferimento:** `E:\Projects\KONTA K-CRM\ANALISI CONCORRENZA\K-CRM_03_PROPOSTA_GAP_MAILK_AI_DASHBOARD.md` §1 (tappe M0–M4)
+**Riferimento:** `E:\Projects\KONTA MASTER\KONTA K-CRM\ANALISI CONCORRENZA\K-CRM_03_PROPOSTA_GAP_MAILK_AI_DASHBOARD.md` §1 (tappe M0–M4)
 **Stato del repo auditato:** branch `main`, commit `fbfe022` (in produzione su https://mailk.arkai.dev)
 
 ---

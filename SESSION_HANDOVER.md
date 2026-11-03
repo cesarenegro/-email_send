@@ -1,11 +1,12 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 21:30 +08:00
+**Last modified:** 2026-11-03 22:20 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
+**Cartella di lavoro:** `E:\Projects\KONTA MASTER\KONTA MAIL-K` (spostata il 2026-11-03 da `E:\Projects\@EMAIL BULK`; repo git, remoto e progetto Vercel invariati)
 **Repository:** `cesarenegro/-email_send`
-**Branch di lavoro:** `konta-ecosystem` (creato da `main` @ `fbfe022`; SOLO commit locali, NESSUN push)
+**Branch di lavoro:** `konta-ecosystem` (creato da `main` @ `fbfe022`; pushato su `origin/konta-ecosystem` come autorizzato in §5 n. 11, nessun merge su `main`)
 **Produzione:** `main` resta in produzione su https://mailk.arkai.dev con il progetto Supabase di Mail-K: non toccato.
 
 ---
@@ -155,11 +156,24 @@ Il proprietario ha chiesto di procedere con la migrazione al cloud (`yyzqtaqpbud
 
 ## 5-nonies. Lavori aperti al momento del riordino delle cartelle (2026-11-03 sera)
 
-- **Riordino cartelle deciso dal proprietario:** `E:ProjectsKONTA K-CRM` → `E:ProjectsKONTA MASTERKONTA K-CRM` e `E:Projects@EMAIL BULK` → `E:ProjectsKONTA MASTERKONTA MAIL-K`. Ogni app resta una repo git separata con il suo remote GitHub e il suo progetto Vercel; nessuna fusione di repository. Dopo lo spostamento aggiornare i percorsi assoluti citati in questo file, in `SETTINGS.TXT` e negli script `scripts/konta/` (uso con `--env-file`).
+- **Riordino cartelle deciso dal proprietario (ESEGUITO il 2026-11-03):** `E:\Projects\KONTA K-CRM` → `E:\Projects\KONTA MASTER\KONTA K-CRM` e `E:\Projects\@EMAIL BULK` → `E:\Projects\KONTA MASTER\KONTA MAIL-K` (prima rinominata `MAIL-K`, poi `KONTA MAIL-K` il 2026-11-03 sera, come previsto in origine). Ogni app resta una repo git separata con il suo remote GitHub e il suo progetto Vercel; nessuna fusione di repository. Percorsi assoluti aggiornati in questo file, in `SETTINGS.TXT`, `.env.example`, `README.md`, `docs/KONTA_AUDIT_M0.md` e nei documenti di K-CRM; gli script `scripts/konta/` usano solo percorsi relativi a `process.cwd()` e non hanno richiesto modifiche (vedi 5-decies).
 - **Convenzioni comuni concordate con K-CRM (2026-11-03):** `/auth/callback?next=<percorso>` (PKCE `code` o `token_hash`; per `type=recovery` atterra su `/login/reset`), `/login` con accesso, registrazione e "password dimenticata", `/login/reset` per scegliere la nuova password, cambio password con verifica della password attuale nelle impostazioni dell'account, nuovo utente senza azienda → `https://kcrm.arkai.dev/onboarding`. Redirect URL da avere in Supabase Auth: `https://kcrm.arkai.dev/**`, `https://mailk.arkai.dev/**`, `https://kontapro.arkai.dev/**` (runbook K-CRM §8). Mail-K deve usare gli stessi percorsi: `/login/reset` al posto di `/account/password`.
 - **Da fare in Mail-K (NON ancora scritto):** account KONTA unico in ogni app, richiesto dal proprietario come bug importante. In `components/konta/LoginForm.tsx`: registrazione email+password con conferma (`signUp`, `emailRedirectTo` → `/auth/callback?next=/workspace`) e "password dimenticata" (`resetPasswordForEmail`, `redirectTo` → `/auth/callback?next=/account/password`); nuova pagina `/account/password` (`updateUser({ password })`), raggiungibile dal menu, esclusa dall'obbligo di organizzazione nel middleware; `/workspace` vuoto → link per creare l'azienda in K-CRM. Provare in locale con Mailpit (porta 54344).
-- **Inoltrati alla sessione K-CRM "Continua da AG":** (1) cambio password, password dimenticata e registrazione mancanti anche in K-CRM; (2) creazione azienda con soli 5 paesi: servono tutti i paesi con la valuta (almeno UE, Hong Kong, Emirati/Dubai, Indonesia, Cina, USA). KONTA PRO: `kontapro.arkai.dev/login` risponde 404, da verificare nel repo `KONTA MASTERKONTA PRO`.
+- **Inoltrati alla sessione K-CRM "Continua da AG":** (1) cambio password, password dimenticata e registrazione mancanti anche in K-CRM; (2) creazione azienda con soli 5 paesi: servono tutti i paesi con la valuta (almeno UE, Hong Kong, Emirati/Dubai, Indonesia, Cina, USA). KONTA PRO: `kontapro.arkai.dev/login` risponde 404, da verificare nel repo `E:\Projects\KONTA MASTER\KONTA PRO`.
 - **Passaggio di `mailk.arkai.dev` a KONTA:** in sospeso. Variabili nuove già su Vercel; restano `NEXT_PUBLIC_SUPABASE_URL`, rimozione variabili vecchie e merge in `main` (vedi 5-octies).
+
+## 5-decies. Verifica dopo lo spostamento delle cartelle (2026-11-03 sera)
+
+Eseguita dalla nuova posizione `E:\Projects\KONTA MASTER\KONTA MAIL-K`:
+
+| Verifica | Esito |
+|---|---|
+| `git status` / `git fsck` (Mail-K) | repo integra, `konta-ecosystem` allineato a `origin/konta-ecosystem`; unica modifica non committata `next-env.d.ts` (rigenerato dalla build) |
+| `git status` / `git fsck` (K-CRM) | repo integra, `main` avanti di 3 commit rispetto a `origin/main` (non pushati) |
+| `npx supabase start` da `E:\Projects\KONTA MASTER\KONTA K-CRM` | avviato ("Starting database from backup"), stesse porte 54341–54344; nel DB locale restano 9 tabelle `mail_*`, 68 tabelle `crm_*`, le organizzazioni di prova (Alfa Impianti Srl ecc.) e il bucket `mail-images` |
+| `npm run build` (Mail-K) | primo tentativo fermato dall'avviso di sicurezza di Next.js (comportamento già noto, aggiornamento rimandato per decisione n. 7); secondo tentativo exit 0 |
+
+`.claude/launch.json` (`mailk-dev-konta-local-3200`) e gli script `scripts/konta/*.mjs` non contengono percorsi assoluti: nessuna modifica necessaria. I file `PROVENANCE*.json` dei manuali del 2026-10-11 citano ancora `E:\Projects\@EMAIL BULK`: sono registri storici della generazione dei manuali e sono stati lasciati invariati.
 
 ## 6. Istruzioni per riprendere
 

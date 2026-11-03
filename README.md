@@ -59,7 +59,7 @@ NEXT_PUBLIC_APP_NAME=ARKITECNA MAILER
 
 1. Accedi alla dashboard del tuo progetto su [Supabase](https://supabase.com).
 2. Apri il **SQL Editor**.
-3. Apri il file [`supabase/all_migrations.sql`](file:///e:/Projects/@EMAIL%20BULK/supabase/all_migrations.sql), incolla l'intero script ed eseguilo (*Run*).
+3. Apri il file [`supabase/all_migrations.sql`](supabase/all_migrations.sql), incolla l'intero script ed eseguilo (*Run*).
 4. Lo script creerà:
    - Tabella `public.campaigns`
    - Tabella `public.campaign_leads` (con vincolo `UNIQUE(campaign_id, email)`)
