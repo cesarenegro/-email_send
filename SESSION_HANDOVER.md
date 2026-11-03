@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 18:20 +08:00
+**Last modified:** 2026-11-03 18:30 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Repository:** `cesarenegro/-email_send`
@@ -84,7 +84,7 @@ Mail-K usa l'account KONTA (progetto Supabase condiviso con KONTA PRO e K-CRM) e
 - **Segmenti in uscita:** `lib/konta/kcrm-client.ts` chiama l'API di K-CRM (`KCRM_API_URL`) inoltrando solo i cookie di sessione `sb-*` dell'utente: K-CRM verifica sessione e membership e calcola i destinatari (consensi, revoche, duplicati). Route `GET /api/crm/segments`, `POST /api/crm/import-segment`; pannello "Importa da segmento K-CRM" accanto all'import CSV di campagne e newsletter.
 - **Consensi in entrata:** prima di ogni invio i dispatcher leggono `crm_consents` (sola lettura). Revocato → destinatario "failed" con motivo; lettura impossibile → nessun invio, nuovo tentativo dopo 15 minuti.
 - **Verificato in locale** (K-CRM avviato su 3110 senza modificarne i file): lista segmenti 200 (vuota), segmento inesistente 404 da K-CRM, campagna inesistente 404, pannello visibile; `checkConsent` su indirizzo senza eventi → `allowed`; RLS 0; tsc 0.
-- **NON VERIFICATO:** import con un segmento reale e blocco di un consenso revocato. Le organizzazioni di prova non hanno segmenti, persone né consensi, e creare dati `crm_*` (consensi append-only, non cancellabili) richiede l'autorizzazione del proprietario.
+- **Verificato con dati K-CRM reali** (creazione autorizzata dal proprietario il 2026-11-03), vedi 5-sexies.
 - **Richieste a K-CRM (ancora aperte):** (1) endpoint per ricevere gli esiti Mail-K nella scheda cliente (`mail.sent`, `mail.bounced`, `mail.failed` con `crm_person_id`), oppure una RPC dedicata; (2) evento di disiscrizione dal link nelle email → `record_consent` revoked (Mail-K oggi non ha un link di disiscrizione); (3) capacità `crm.mailk` per mostrare Mail-K nel CRM.
 
 ## 5-quater. M2 — primo passaggio di pulizia (2026-11-03)
@@ -106,6 +106,23 @@ Casella inserita dal proprietario in Impostazioni sull'organizzazione locale "Al
 | Campagna di prova (1 destinatario `cesare@arkitecna.com`) avviata + tasto Invia/Ricevi | inviata (`status: sent`, Message-ID); IMAP: 65 avvisi di rimbalzo riconosciuti, 0 destinatari aggiornati (nessuno di questa organizzazione) |
 
 Campagna, log e registro cron di prova cancellati; la casella resta configurata in locale. Ricezione nella casella di `cesare@arkitecna.com` confermata dal proprietario il 2026-11-03.
+
+## 5-sexies. Ponte K-CRM verificato con dati reali (2026-11-03)
+
+Dati creati tramite l'API di K-CRM nell'organizzazione locale "Alfa Impianti Srl" (`4c914aba…`), con indirizzi non recapitabili `@example.invalid` e provenienza `mailk-bridge-test`: persone "Prova Ponte Uno" e "Prova Ponte Due", segmento "Prova ponte Mail-K" (consenso marketing obbligatorio). **Restano nel DB locale** (2 persone, 4 eventi di consenso append-only, 1 segmento) come base per le prove future di M3.
+
+| Prova | Esito |
+|---|---|
+| Valutazione del segmento in K-CRM | Persona 1 destinataria; Persona 2 esclusa ("Consenso marketing revocato") |
+| `GET /api/crm/segments` da Mail-K | 200, "Prova ponte Mail-K" |
+| Import nella campagna | 200: 1 importato, 1 escluso da K-CRM; riga con `crm_person_id` e `source = crm_segment` |
+| Secondo import nella stessa campagna | 0 importati, 1 già presente (nessun duplicato) |
+| Import nella newsletter | 200: 1 importato con nome dalla persona K-CRM |
+| Revoca del consenso di Persona 1 in K-CRM, poi Invia/Ricevi | newsletter: iscritto "failed", "Consenso revocato in K-CRM", nessun Message-ID; campagna: destinatario "failed", "Consenso marketing revocato in K-CRM", nessun Message-ID |
+
+Campagna, newsletter, log e registro cron di prova di Mail-K cancellati; K-CRM avviato su 3110 solo per la prova e poi fermato, nessun suo file modificato.
+
+**Osservazioni:** una pressione di Invia/Ricevi richiede circa 20–30 secondi quando la casella IMAP è grande (oggi legge gli ultimi 100 messaggi a ogni pressione). Una newsletter i cui iscritti sono tutti bloccati finisce in stato "sent" (stato "completata" ereditato da prima).
 
 ## 6. Istruzioni per riprendere
 
