@@ -2,9 +2,9 @@
 MAIL-K (ecosistema KONTA) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
 Last updated: 2026-11-03 23:45 +08:00
-Branch: konta-ecosystem (tappe M0 + M1; NON deployato, solo commit locali)
-Produzione attuale: main @ fbfe022 su https://mailk.arkai.dev con il progetto Supabase
-  di Mail-K (cayceyagmorwlbmmvyoc) — NON toccato da questo branch.
+Branch: konta-ecosystem = main, IN PRODUZIONE dal 2026-11-03 sera (commit 4324e07)
+Produzione attuale: main @ 4324e07 su https://mailk.arkai.dev con il progetto Supabase KONTA
+  (yyzqtaqpbudnkgbvymrf). Il vecchio progetto cayceyagmorwlbmmvyoc non è più usato.
 Rotte account KONTA (convenzioni condivise con K-CRM): /login (accesso, registrazione, password
   dimenticata), /auth/callback?next=…, /login/reset, /account/password, /workspace → K-CRM onboarding.
 Ambiente locale di sviluppo: stack Docker Supabase di K-CRM (E:\Projects\KONTA MASTER\KONTA K-CRM)

@@ -1,13 +1,13 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-03 23:45 +08:00
+**Last modified:** 2026-11-04 00:30 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
 **Cartella di lavoro:** `E:\Projects\KONTA MASTER\KONTA MAIL-K` (spostata il 2026-11-03 da `E:\Projects\@EMAIL BULK`; repo git, remoto e progetto Vercel invariati)
 **Repository:** `cesarenegro/-email_send`
-**Branch di lavoro:** `konta-ecosystem` (creato da `main` @ `fbfe022`; pushato su `origin/konta-ecosystem` come autorizzato in §5 n. 11, nessun merge su `main`)
-**Produzione:** `main` resta in produzione su https://mailk.arkai.dev con il progetto Supabase di Mail-K: non toccato.
+**Branch di lavoro:** `konta-ecosystem`; **merge fast-forward su `main` e deploy in produzione la sera del 2026-11-03** (commit `4324e07`), su richiesta del proprietario
+**Produzione:** https://mailk.arkai.dev serve `main` = `konta-ecosystem` sul progetto Supabase KONTA `yyzqtaqpbudnkgbvymrf` dal 2026-11-03 sera (vedi 5-duodecies). Il vecchio progetto `cayceyagmorwlbmmvyoc` non è più usato.
 
 ---
 
@@ -160,7 +160,7 @@ Il proprietario ha chiesto di procedere con la migrazione al cloud (`yyzqtaqpbud
 - **Convenzioni comuni concordate con K-CRM (2026-11-03):** `/auth/callback?next=<percorso>` (PKCE `code` o `token_hash`; per `type=recovery` atterra su `/login/reset`), `/login` con accesso, registrazione e "password dimenticata", `/login/reset` per scegliere la nuova password, cambio password con verifica della password attuale nelle impostazioni dell'account, nuovo utente senza azienda → `https://kcrm.arkai.dev/onboarding`. Redirect URL da avere in Supabase Auth: `https://kcrm.arkai.dev/**`, `https://mailk.arkai.dev/**`, `https://kontapro.arkai.dev/**` (runbook K-CRM §8). Mail-K deve usare gli stessi percorsi: `/login/reset` al posto di `/account/password`.
 - **Account KONTA unico in Mail-K: FATTO** la sera del 2026-11-03 (vedi 5-undecies).
 - **Inoltrati alla sessione K-CRM "Continua da AG":** (1) cambio password, password dimenticata e registrazione mancanti anche in K-CRM; (2) creazione azienda con soli 5 paesi: servono tutti i paesi con la valuta (almeno UE, Hong Kong, Emirati/Dubai, Indonesia, Cina, USA). KONTA PRO: `kontapro.arkai.dev/login` risponde 404, da verificare nel repo `E:\Projects\KONTA MASTER\KONTA PRO`.
-- **Passaggio di `mailk.arkai.dev` a KONTA:** in sospeso. Variabili nuove già su Vercel; restano `NEXT_PUBLIC_SUPABASE_URL`, rimozione variabili vecchie e merge in `main` (vedi 5-octies).
+- **Passaggio di `mailk.arkai.dev` a KONTA:** FATTO la sera del 2026-11-03 (vedi 5-duodecies).
 
 ## 5-decies. Verifica dopo lo spostamento delle cartelle (2026-11-03 sera)
 
@@ -199,6 +199,15 @@ Stesse convenzioni di K-CRM (commit `d3e33ed`): `lib/konta/auth-paths.ts` (perco
 | `npm run build` | exit 0 (secondo tentativo, dopo l’avviso di sicurezza Next) |
 
 Utente di prova cancellato da `auth.users` a fine collaudo. **NON VERIFICATO:** conferma email alla registrazione sul cloud (in locale è disattivata: in produzione l'utente riceve il link e atterra su `/workspace?auth_notice=email_confirmed`); i Redirect URL `https://mailk.arkai.dev/**` in Supabase Auth restano da impostare dal proprietario (runbook K-CRM §8).
+
+## 5-duodecies. Passaggio di mailk.arkai.dev all'account KONTA (2026-11-03 sera)
+
+Richiesto dal proprietario ("pusha ma in produzione").
+- **Vercel `mail-k`:** `NEXT_PUBLIC_SUPABASE_URL` → `https://yyzqtaqpbudnkgbvymrf.supabase.co` su Production e Preview (via connettore Vercel; la CLI era bloccata dal classificatore). `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` e le `SMTP_*` del vecchio progetto sono rimaste: il codice non le usa (la chiave pubblica e quella segreta KONTA hanno la precedenza). Da rimuovere con calma dal dashboard.
+- **Git:** `konta-ecosystem` pushato, poi `main` avanzato fast-forward a `4324e07` e pushato → deploy di produzione.
+- **Esito deploy e verifica (2026-11-03 ~20:20 +08:00):** deploy Vercel Ready; `https://mailk.arkai.dev/login` 200, `/login/reset` 200 (rotta nuova), `/auth/callback` senza parametri → 303 `/login?auth_error=link_invalid`, `/api/campaigns` senza sessione 401; il bundle JS di produzione contiene solo `yyzqtaqpbudnkgbvymrf` (nessun riferimento al vecchio progetto). **NON VERIFICATO:** accesso reale di un utente KONTA in produzione (il proprietario non ha ancora un'organizzazione K-CRM sul cloud).
+- **Conseguenze:** le tabelle `mail_*` sul cloud partono vuote (decisione n. 2). Per usare Mail-K in produzione il proprietario deve avere un'organizzazione K-CRM sul cloud (runbook K-CRM, Passo D) e configurare la casella SMTP in Impostazioni. I link via email (OTP, conferma registrazione, recupero password) funzionano solo dopo che `https://mailk.arkai.dev/**` è nei Redirect URL di Supabase Auth (da fare dal proprietario, runbook K-CRM §8); l'accesso con password funziona comunque.
+- **Rollback:** su Vercel "Promote" del deployment precedente (codice vecchio) e `NEXT_PUBLIC_SUPABASE_URL` riportato a `https://cayceyagmorwlbmmvyoc.supabase.co`.
 
 ## 6. Istruzioni per riprendere
 
