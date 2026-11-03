@@ -56,6 +56,7 @@ const COPY = {
     forgotSend: 'Invia link di recupero',
     forgotSending: 'Invio…',
     forgotSent: 'Se l’indirizzo è registrato riceverai un link per impostare una nuova password. Il link vale per un tempo limitato e va aperto nello stesso browser.',
+    haveCode: 'Hai ricevuto un codice? Inseriscilo qui',
     noAccount: 'Non hai un account?',
     signUp: 'Registrati',
     signUpTitle: 'Crea il tuo account KONTA',
@@ -96,6 +97,7 @@ const COPY = {
     forgotSend: 'Send recovery link',
     forgotSending: 'Sending…',
     forgotSent: 'If the address is registered you will receive a link to set a new password. The link expires and must be opened in the same browser.',
+    haveCode: 'Got a code? Enter it here',
     noAccount: 'No account yet?',
     signUp: 'Sign up',
     signUpTitle: 'Create your KONTA account',
@@ -461,7 +463,17 @@ export default function LoginForm({ title, subtitle, showProLink = true }: Login
 
       {mode === 'forgot' && (
         <form onSubmit={handleForgot} className="space-y-4" noValidate data-auth-mode="forgot">
-          {notice ? <p role="status" className="text-sm text-[#036e13]">{notice}</p> : null}
+          {notice ? (
+            <div className="space-y-1">
+              <p role="status" className="text-sm text-[#036e13]">{notice}</p>
+              <Link
+                href={`${PASSWORD_RESET_PATH}?email=${encodeURIComponent(normalizedEmail)}`}
+                className="inline-block text-sm text-[#1b1c1a] font-medium underline-offset-4 hover:underline"
+              >
+                {c.haveCode}
+              </Link>
+            </div>
+          ) : null}
           {emailField('forgot-email')}
           {error ? <p role="alert" className="text-sm text-[#b3261e]">{error}</p> : null}
           <button type="submit" disabled={busy || !normalizedEmail} className={buttonClass}>

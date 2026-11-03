@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { LOGIN_PATH, PASSWORD_MIN_LENGTH, WORKSPACE_PATH, validateNewPassword } from '@/lib/konta/auth-paths';
@@ -13,7 +13,13 @@ const COPY = {
     subtitle: 'Vale per Mail-K, K-CRM e KONTA PRO.',
     checking: 'Verifica del link in corso…',
     noSession: 'Nessuna sessione di recupero attiva.',
-    noSessionHint: 'Il link va aperto nello stesso browser da cui è stato richiesto e vale per un tempo limitato. Torna all’accesso e usa «Password dimenticata?» per riceverne uno nuovo.',
+    noSessionHint: 'Il link va aperto nello stesso browser da cui è stato richiesto. Se lo stai aprendo altrove, inserisci qui l’email e il codice di sicurezza che trovi nella stessa email.',
+    codeEmail: 'Email',
+    code: 'Codice di sicurezza',
+    codeHint: 'Il codice numerico riportato nell’email di recupero.',
+    codeVerify: 'Verifica codice',
+    codeVerifying: 'Verifica…',
+    codeInvalid: 'Codice non valido o scaduto. Richiedi un nuovo link da «Password dimenticata?».',
     backToSignIn: 'Torna all’accesso',
     account: 'Account',
     password: 'Nuova password',
@@ -30,7 +36,13 @@ const COPY = {
     subtitle: 'Valid for Mail-K, K-CRM and KONTA PRO.',
     checking: 'Checking the link…',
     noSession: 'No active recovery session.',
-    noSessionHint: 'The link must be opened in the same browser you used for the request and expires after a while. Go back to sign in and use “Forgot your password?” to get a new one.',
+    noSessionHint: 'The link must be opened in the same browser you used for the request. If you are opening it elsewhere, enter here your email and the security code from the same email.',
+    codeEmail: 'Email',
+    code: 'Security code',
+    codeHint: 'The numeric code shown in the recovery email.',
+    codeVerify: 'Verify code',
+    codeVerifying: 'Verifying…',
+    codeInvalid: 'Invalid or expired code. Request a new link from “Forgot your password?”.',
     backToSignIn: 'Back to sign in',
     account: 'Account',
     password: 'New password',
@@ -50,12 +62,18 @@ const COPY = {
  */
 function ResetContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { locale } = useTranslation();
   const lang: 'it' | 'en' = locale === 'en' ? 'en' : 'it';
   const c = COPY[lang];
 
   const [status, setStatus] = useState<'loading' | 'ready' | 'none'>('loading');
   const [userEmail, setUserEmail] = useState<string>('');
+  // Senza sessione: email + codice di sicurezza dell'email di recupero (verifyOtp type=recovery).
+  const [codeEmail, setCodeEmail] = useState<string>(() => searchParams.get('email') ?? '');
+  const [code, setCode] = useState('');
+  const [codeBusy, setCodeBusy] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -85,6 +103,28 @@ function ResetContent() {
       cancelled = true;
     };
   }, []);
+
+  async function handleCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (codeBusy) return;
+    setCodeError(null);
+    setCodeBusy(true);
+    try {
+      const supabase = createClient();
+      const email = codeEmail.trim().toLowerCase();
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: 'recovery' });
+      if (verifyError || !data.session) {
+        setCodeError(c.codeInvalid);
+        return;
+      }
+      setUserEmail(data.session.user.email ?? email);
+      setStatus('ready');
+    } catch {
+      setCodeError(c.codeInvalid);
+    } finally {
+      setCodeBusy(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -132,13 +172,47 @@ function ResetContent() {
       {status === 'loading' ? <p className="text-sm text-[#5c5e63]">{c.checking}</p> : null}
 
       {status === 'none' ? (
-        <div className="rounded-xl border border-[#e5e5e0] bg-white p-5 space-y-3">
-          <p className="text-sm text-[#1b1c1a]">{c.noSession}</p>
-          <p className="text-sm text-[#5c5e63]">{c.noSessionHint}</p>
-          <Link href={LOGIN_PATH} className="inline-block text-sm text-[#036e13] font-medium hover:underline underline-offset-4">
+        <form onSubmit={handleCode} className="space-y-4" noValidate data-auth-mode="recovery-code">
+          <div className="rounded-xl border border-[#e5e5e0] bg-white p-4 space-y-1">
+            <p className="text-sm text-[#1b1c1a]">{c.noSession}</p>
+            <p className="text-sm text-[#5c5e63]">{c.noSessionHint}</p>
+          </div>
+          <div>
+            <label htmlFor="code-email" className={labelClass}>{c.codeEmail}</label>
+            <input
+              id="code-email"
+              type="email"
+              autoComplete="email"
+              required
+              value={codeEmail}
+              onChange={(e) => setCodeEmail(e.target.value)}
+              disabled={codeBusy}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="recovery-code" className={labelClass}>{c.code}</label>
+            <input
+              id="recovery-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              disabled={codeBusy}
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-[#5c5e63]">{c.codeHint}</p>
+          </div>
+          {codeError ? <p role="alert" className="text-sm text-[#b3261e]">{codeError}</p> : null}
+          <button type="submit" disabled={codeBusy || !codeEmail.trim() || code.trim().length < 6} className={buttonClass}>
+            {codeBusy ? c.codeVerifying : c.codeVerify}
+          </button>
+          <Link href={LOGIN_PATH} className="block text-center text-sm text-[#5c5e63] hover:text-[#1b1c1a] underline-offset-4 hover:underline">
             {c.backToSignIn}
           </Link>
-        </div>
+        </form>
       ) : null}
 
       {status === 'ready' ? (
