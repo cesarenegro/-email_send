@@ -1,7 +1,7 @@
 ================================================================================
 MAIL-K (ecosistema KONTA) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-11-03 23:45 +08:00
+Last updated: 2026-11-04 06:29 +08:00
 Branch: konta-ecosystem = main, IN PRODUZIONE dal 2026-11-03 sera (commit 4324e07)
 Produzione attuale: main @ 4324e07 su https://mailk.arkai.dev con il progetto Supabase KONTA
   (yyzqtaqpbudnkgbvymrf). Il vecchio progetto cayceyagmorwlbmmvyoc non è più usato.
@@ -32,9 +32,23 @@ Database Provider: Supabase (PostgreSQL) — progetto KONTA condiviso con KONTA 
   al cloud il 2026-11-03 dal proprietario (SQL Editor, supabase/cloud/mailk_20_apply_bundle.sql),
   controlli supabase/cloud/mailk_30_postapply_checks.sql 7/7 OK. Registro migrazioni PRO: non aggiornato (serve solo se i file vengono copiati nella repo KONTA PRO).
 Authentication: Supabase Auth del progetto KONTA (stesso account di KONTA PRO / K-CRM).
-  Login email+password, OTP via email (opzionale), nessuna registrazione self-service,
-  nessun OAuth (Google/Facebook/LinkedIn rimossi). Verifica sessione lato server con
-  @supabase/ssr + auth.getUser() (lib/konta/session.ts, imitato da K-CRM).
+  Login email+password, OTP/link via email, registrazione e password dimenticata su /login.
+  Verifica sessione lato server con @supabase/ssr + auth.getUser() (lib/konta/session.ts, imitato da K-CRM).
+  Account KONTA unico (E:\Projects\KONTA MASTER\CONTRATTO_ACCOUNT_UNICO.md, 2026-11-04):
+  - SSO cookie (§2): lib/supabase/cookie-options.ts (copia di K-CRM) passa `cookieOptions` a
+    createBrowserClient (lib/supabase/client.ts), createServerClient (lib/supabase/server.ts,
+    middleware.ts, app/auth/callback/route.ts). Variabile NEXT_PUBLIC_KONTA_AUTH_COOKIE_DOMAIN:
+    produzione `.arkai.dev` (da impostare su Vercel mail-k dal proprietario); assente = cookie host-only.
+  - Abilitazioni (§3, §4): RPC public.konta_my_entitlements() (repo KONTA PRO, migrazione
+    20261104120000_konta_entitlements.sql; applicata in LOCALE, NON ancora sul cloud). Usata da
+    app/workspace/page.tsx (instradamento, `revoked` → /login?auth_error=access_revoked) e da
+    lib/konta/entitlements-server.ts → requireTenant (scritture solo con `mailk` active/trial_active/
+    cancel_scheduled; altrimenti 403 PRODUCT_READ_ONLY; funzione assente = solo controllo di ruolo).
+    Fonte: crm_product_access con product_key = 'mailk' (sola lettura da Mail-K).
+  - OAuth Google / Facebook (scope email) / LinkedIn OIDC: lib/konta/account-client.ts
+    signInWithProvider → /auth/callback?next=… Componenti PREPARATI, NON MONTATI (attesa approvazione
+    mock): components/konta/OAuthButtons.tsx, KontaAppsMenu.tsx, MailkPlanModal.tsx (link
+    https://konta.arkai.dev/prezzi, nessun prezzo). Provider LinkedIn OIDC da attivare in Supabase dal proprietario.
 Access Library: @supabase/supabase-js ^2.117.2, @supabase/ssr ^0.12.7
 Tenant model: spazio di lavoro = organizzazione KONTA (public.crm_organizations.id).
   - cookie httpOnly `mailk_org` (scritto da POST /api/workspace dopo verifica membership)
@@ -142,6 +156,8 @@ LEAD_RESEARCH_ENABLED                    (opzionale; default disattivo)
 OPENAI_API_KEY, TAVILY_API_KEY, LEAD_RESEARCH_OPENAI_MODEL   (solo con Lead Research attivo)
 MAILK_TEST_EMAIL_TO                      (solo collaudo invio di prova; facoltativa)
 MAILK_LOCAL_DB_URL                       (solo script locali; default DB Docker K-CRM)
+NEXT_PUBLIC_KONTA_AUTH_COOKIE_DOMAIN     dominio del cookie di sessione condiviso (produzione `.arkai.dev`;
+                                         assente in locale e nelle preview → cookie host-only)
 Rimosse dal codice: SMTP_HOST/PORT/SECURE/USER/PASS/FROM_NAME/FROM_EMAIL/REPLY_TO, IMAP_*,
   SMTP_ENCRYPTION_KEY, ADMIN_EMAIL/ADMIN_PASSWORD (restano solo negli script legacy in scripts/).
 
@@ -155,6 +171,9 @@ apply-mailk-migration.mjs   applica una migrazione mail_* al DB locale (rifiuta 
 verify-mailk-rls.mjs        RLS, policy, grant, anon, search_path, isolamento (SET ROLE)
 test-tenant-isolation.mjs   login owner-a/owner-b (seed K-CRM), campagne di prova create e cancellate
 test-storage-isolation.mjs  bucket mail-images: upload solo nella propria organizzazione
+test-konta-entitlements.mjs node --test: abilitazioni, instradamento, menu App KONTA, cookie condiviso
+test-konta-account-local.mjs login owner-a, cookie host-only/condiviso, RPC konta_my_entitlements,
+                            con --app http://localhost:3200 scrittura bloccata 403 PRODUCT_READ_ONLY
 Test logici: scripts/verify-logic.ts (npx tsx), scripts/test-phase3-release.mjs (PDF e sanitizzazione).
 Script legacy del vecchio progetto: eliminati (2026-11-03).
 

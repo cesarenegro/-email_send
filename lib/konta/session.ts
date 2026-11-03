@@ -6,6 +6,11 @@
  * Lo spazio di lavoro è l'organizzazione KONTA scelta dall'utente (cookie MAILK_ORG_COOKIE),
  * riverificata a ogni richiesta sulla membership attiva in crm_memberships (sotto RLS).
  * Nessuna scrittura su crm_* o pro_*.
+ *
+ * Account KONTA unico (CONTRATTO_ACCOUNT_UNICO.md §4): oltre al ruolo, le scritture richiedono uno
+ * stato `mailk` operativo dell'organizzazione (`active`, `trial_active`, `cancel_scheduled`), letto da
+ * `konta_my_entitlements()`. Altri stati → sola consultazione; `revoked` → accesso negato.
+ * Finché la funzione non esiste sul progetto resta valido il solo controllo di ruolo (comportamento precedente).
  */
 
 import { cookies } from 'next/headers';
@@ -13,6 +18,8 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { MAILK_ORG_COOKIE, canManageSenderSettings, canWriteMail, isUuid, type KontaRole } from '@/lib/konta/workspace';
+import { isKontaStateOperational, type KontaAccessState } from '@/lib/konta/entitlements';
+import { readMailkOrganizationState } from '@/lib/konta/entitlements-server';
 
 export interface KontaUser {
   id: string;
@@ -32,11 +39,23 @@ export interface TenantContext {
   role: KontaRole;
   canWrite: boolean;
   canManageSettings: boolean;
+  /**
+   * Stato `mailk` dell'organizzazione da `konta_my_entitlements()`; `null` se la funzione non è
+   * disponibile sul progetto (vale il solo controllo di ruolo) o se la risposta non è valida.
+   */
+  mailkState: KontaAccessState | null;
+  /** Perché le scritture sono bloccate oltre al ruolo: `product` = stato mailk non operativo o non verificabile. */
+  writeBlockedBy: 'role' | 'product' | null;
   /** Client legato ai cookie dell'utente: ogni query passa dalla RLS. */
   supabase: SupabaseClient;
 }
 
-export type TenantErrorCode = 'SESSION_REQUIRED' | 'ORGANIZATION_REQUIRED' | 'PERMISSION_DENIED';
+export type TenantErrorCode =
+  | 'SESSION_REQUIRED'
+  | 'ORGANIZATION_REQUIRED'
+  | 'PERMISSION_DENIED'
+  | 'PRODUCT_READ_ONLY'
+  | 'PRODUCT_REVOKED';
 
 export class TenantError extends Error {
   constructor(
@@ -103,19 +122,32 @@ export async function requireTenant(): Promise<TenantContext> {
     throw new TenantError('ORGANIZATION_REQUIRED', 'Scegli un’organizzazione per continuare.', 409);
   }
 
-  const memberships = await listActiveMemberships(supabase, user.id);
+  const [memberships, product] = await Promise.all([
+    listActiveMemberships(supabase, user.id),
+    readMailkOrganizationState(supabase, organizationId),
+  ]);
   const membership = memberships.find((m) => m.organization_id === organizationId);
   if (!membership) {
     throw new TenantError('ORGANIZATION_REQUIRED', 'Non sei più membro di questa organizzazione.', 409);
   }
+
+  const mailkState = product.kind === 'ok' ? product.state : null;
+  if (mailkState === 'revoked') {
+    throw new TenantError('PRODUCT_REVOKED', 'L’accesso a Mail-K per questa organizzazione è stato revocato.', 403);
+  }
+  // `unavailable` = funzione assente sul progetto: resta il solo controllo di ruolo (comportamento precedente).
+  const productWritable = product.kind === 'unavailable' || (mailkState !== null && isKontaStateOperational(mailkState));
+  const roleWritable = canWriteMail(membership.role);
 
   return {
     user,
     organizationId,
     organizationName: membership.name,
     role: membership.role,
-    canWrite: canWriteMail(membership.role),
-    canManageSettings: canManageSenderSettings(membership.role),
+    canWrite: roleWritable && productWritable,
+    canManageSettings: canManageSenderSettings(membership.role) && productWritable,
+    mailkState,
+    writeBlockedBy: !productWritable ? 'product' : !roleWritable ? 'role' : null,
     supabase,
   };
 }
@@ -138,13 +170,22 @@ export function tenantErrorResponse(err: unknown): NextResponse {
   return NextResponse.json({ error: message }, { status: 500 });
 }
 
+const PRODUCT_READ_ONLY_MESSAGE =
+  'Mail-K non è attivo per questa organizzazione: sei in sola consultazione. I dati restano disponibili; per inviare o modificare serve un piano attivo.';
+
 export function requireWrite(tenant: TenantContext): void {
+  if (tenant.writeBlockedBy === 'product') {
+    throw new TenantError('PRODUCT_READ_ONLY', PRODUCT_READ_ONLY_MESSAGE, 403);
+  }
   if (!tenant.canWrite) {
     throw new TenantError('PERMISSION_DENIED', 'Il tuo ruolo in questa organizzazione è di sola lettura.', 403);
   }
 }
 
 export function requireSettingsManager(tenant: TenantContext): void {
+  if (tenant.writeBlockedBy === 'product') {
+    throw new TenantError('PRODUCT_READ_ONLY', PRODUCT_READ_ONLY_MESSAGE, 403);
+  }
   if (!tenant.canManageSettings) {
     throw new TenantError('PERMISSION_DENIED', 'Solo Titolare o Amministratore possono modificare le impostazioni mittente.', 403);
   }

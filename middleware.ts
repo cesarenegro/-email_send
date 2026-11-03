@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { MAILK_ORG_COOKIE, isUuid } from '@/lib/konta/workspace';
+import { sharedSessionCookieOptions } from '@/lib/supabase/cookie-options';
 
 const PUBLIC_PATHS = new Set(['/login', '/login/pro', '/landing', '/faq', '/guida']);
 /** Pagine dell'account KONTA: richiedono la sessione ma non un'organizzazione scelta. */
@@ -52,6 +53,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const supabase = createServerClient(supabaseUrl, publishableKey, {
+    cookieOptions: sharedSessionCookieOptions(),
     cookies: {
       getAll() {
         return request.cookies.getAll();

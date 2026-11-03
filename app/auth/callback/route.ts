@@ -10,6 +10,7 @@ import {
   safeNextPath,
   type AuthCallbackErrorCode,
 } from '@/lib/konta/auth-paths';
+import { sharedSessionCookieOptions } from '@/lib/supabase/cookie-options';
 
 /**
  * Callback di autenticazione KONTA: link via email (OTP/magic link, conferma registrazione,
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
   response.headers.set('Cache-Control', 'no-store');
 
   const supabase = createServerClient(supabaseUrl, publishableKey, {
+    cookieOptions: sharedSessionCookieOptions(),
     cookies: {
       getAll() {
         return request.cookies.getAll();

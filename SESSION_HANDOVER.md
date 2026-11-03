@@ -1,9 +1,9 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-04 00:30 +08:00
+**Last modified:** 2026-11-04 06:35 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
-**Agent:** Claude Fable 5.1 (sessione avviata dal coordinatore KONTA)
+**Agent:** Claude Fable 5.1; dal 2026-11-04 06:00 +08:00 Claude Opus 5.5 (sessioni avviate dal coordinatore KONTA)
 **Cartella di lavoro:** `E:\Projects\KONTA MASTER\KONTA MAIL-K` (spostata il 2026-11-03 da `E:\Projects\@EMAIL BULK`; repo git, remoto e progetto Vercel invariati)
 **Repository:** `cesarenegro/-email_send`
 **Branch di lavoro:** `konta-ecosystem`; **merge fast-forward su `main` e deploy in produzione la sera del 2026-11-03** (commit `4324e07`), su richiesta del proprietario
@@ -209,12 +209,49 @@ Richiesto dal proprietario ("pusha ma in produzione").
 - **Conseguenze:** le tabelle `mail_*` sul cloud partono vuote (decisione n. 2). Per usare Mail-K in produzione il proprietario deve avere un'organizzazione K-CRM sul cloud (runbook K-CRM, Passo D) e configurare la casella SMTP in Impostazioni. Redirect URL `https://mailk.arkai.dev/**` aggiunto dal proprietario in Supabase Auth il 2026-11-04 e **verificato**: recupero password richiesto da `mailk.arkai.dev` per `cesare@arkitecna.com`, link dell'email (`verify?type=recovery&redirect_to=…/auth/callback?next=/login/reset`) aperto nello stesso browser → `/login/reset` con sessione attiva; password NON cambiata. Il proprietario ha già l'organizzazione **ARKITECNA SRL** (Titolare) sul cloud: `/workspace` la seleziona da sola e l'hub mostra "Mittente non configurato" (manca la casella SMTP in Impostazioni). **Da fare:** il template email del progetto Supabase è firmato KONTA LIGHT ("KONTA LIGHT • Gestito su arkai.dev"): serve un template neutro KONTA; la pagina `/login/reset` ora accetta anche email + codice di sicurezza dell'email (`verifyOtp` type `recovery`; link "Hai ricevuto un codice?" dopo l'invio, `?email=` precompilato). Provato in locale solo il percorso di errore (codice errato → messaggio; l'email locale di Supabase non contiene il codice); il codice valido resta **NON VERIFICATO** fino a una prova in produzione.
 - **Rollback:** su Vercel "Promote" del deployment precedente (codice vecchio) e `NEXT_PUBLIC_SUPABASE_URL` riportato a `https://cayceyagmorwlbmmvyoc.supabase.co`.
 
+## 5-terdecies. Contratto account KONTA unico in Mail-K: SSO cookie e abilitazioni (2026-11-04)
+
+Applicato `E:\Projects\KONTA MASTER\CONTRATTO_ACCOUNT_UNICO.md` §2–§4. Solo aggiunte: password, OTP/link via email, registrazione e reset restano come prima. **Commit solo locale, nessun push, nessun deploy.**
+
+**Parte A — SSO cookie (§2).** `lib/supabase/cookie-options.ts` (copia identica di K-CRM `src/adapters/auth/cookie-options.ts`) legge `NEXT_PUBLIC_KONTA_AUTH_COOKIE_DOMAIN`; `cookieOptions` passato a `createBrowserClient` (`lib/supabase/client.ts`), `createServerClient` (`lib/supabase/server.ts`, `middleware.ts`, `app/auth/callback/route.ts`). Senza variabile: nessuna opzione, cookie host-only come prima.
+
+**Parte B — Abilitazioni (§3, §4).**
+- `lib/konta/entitlements.ts`: copia di K-CRM `src/domain/auth/konta-entitlements.ts`, corpo identico (verificato con `diff`), cambia solo l'intestazione.
+- `lib/konta/account-client.ts`: `fetchKontaEntitlements` (`supabase.rpc('konta_my_entitlements')` dal client utente), `decideMailkRoute` (`decideCrmRoute(products.mailk)`), `signInWithProvider('google'|'facebook'|'linkedin_oidc', next)` con `redirectTo = ${origin}/auth/callback?next=…`, Facebook `scopes: 'email'`.
+- `app/workspace/page.tsx` chiama la RPC dopo il login (tutti i metodi di accesso atterrano qui). Senza organizzazioni resta lo stato vuoto con "Crea la tua azienda in K-CRM" → `https://kcrm.arkai.dev/onboarding`. `revoked` → uscita e `/login?auth_error=access_revoked` (messaggio nuovo in `lib/konta/auth-paths.ts`). Gli altri stati entrano. RPC assente o risposta non valida → comportamento di prima.
+- Controllo lato server in `requireTenant` (`lib/konta/session.ts` + `lib/konta/entitlements-server.ts`): le scritture (`requireWrite`, `requireSettingsManager`, `canWrite`, `canManageSettings`) richiedono ruolo **e** stato `mailk` dell'organizzazione attiva in `active` / `trial_active` / `cancel_scheduled`; altrimenti 403 `PRODUCT_READ_ONLY`. Organizzazione `revoked` → 403 `PRODUCT_REVOKED`. Funzione SQL assente sul progetto (`PGRST202`) → solo il controllo di ruolo, come prima. Errore diverso o risposta non valida → scritture bloccate (nessuna deduzione favorevole). I controlli di ruolo e di membership esistenti non sono stati toccati.
+
+**Parte C — Interfaccia (§5): componenti PREPARATI, NON MONTATI** (attesa approvazione del mock `E:\Projects\KONTA MASTER\MOCK_modale_accesso_konta.html`): `components/konta/OAuthButtons.tsx` (Google, Facebook, LinkedIn + "oppure con l'email"), `components/konta/KontaAppsMenu.tsx` (menu "App KONTA" da `buildKontaAppLinks(ent, 'mailk')`), `components/konta/MailkPlanModal.tsx` (stato reale + link `https://konta.arkai.dev/prezzi`, nessun prezzo). `LoginForm.tsx` e `AppHeader.tsx` NON modificati. Il codice via email (`signInWithOtp` + `verifyOtp`) **esiste già** in `LoginForm.tsx` ("Accedi con un link via email" → campo codice): all'approvazione va solo rinominato "Ricevi un codice via email" e spostato secondo il mock.
+
+| Verifica (2026-11-04, locale, stack Docker K-CRM) | Comando | Esito |
+|---|---|---|
+| Typecheck | `npx tsc --noEmit` | exit 0 |
+| Lint file toccati | `npx eslint <file>` | 0 errori; 1 avviso nuovo `no-location-assign` in `app/workspace/page.tsx` (stesso schema dell'uscita già presente) |
+| Build | `npm run build` | 1° tentativo fermato dall'avviso di sicurezza Next.js (noto, decisione n. 7), 2° exit 0 |
+| Test unitari nuovi | `node --test scripts/konta/test-konta-entitlements.mjs` | 8/8 (stessi test di K-CRM + 2 Mail-K) |
+| Test esistenti | `npx tsx scripts/verify-logic.ts`, `node scripts/konta/verify-mailk-rls.mjs`, `node scripts/konta/test-tenant-isolation.mjs`, `node scripts/test-import-security.mjs` | tutti exit 0 |
+| Login owner-a, cookie, RPC | `node scripts/konta/test-konta-account-local.mjs --app http://localhost:3200` | senza variabile `sb-127-auth-token` senza `domain` (host-only); con `.arkai.dev` → `domain=.arkai.dev`, secure, lax, path `/`; RPC 200, `products.mailk.state = non_activated`, `organizations` = le 2 membership attive di owner-a (Alfa Impianti Srl, Alfa Impianti PRO stub), 0 righe `crm_product_access` mailk; instradamento `enter_read_only`; `GET /api/workspace` 200; `POST /api/campaigns` → 403 `PRODUCT_READ_ONLY`, nessuna campagna creata |
+| Login dal modulo `/login` (browser, dev server 3200) | manuale | → `/workspace`, `POST /rest/v1/rpc/konta_my_entitlements` 200 dal browser, scelta Alfa Impianti Srl → hub senza "Nuova campagna"/"Nuova newsletter" |
+| Codice errore funzione assente | RPC a una funzione inesistente | `PGRST202`, gestito come "funzione non applicata" |
+
+**NON VERIFICATO:**
+- SSO reale fra domini `*.arkai.dev`: si prova solo in produzione dopo il deploy del lotto con `NEXT_PUBLIC_KONTA_AUTH_COOKIE_DOMAIN=.arkai.dev` sul progetto Vercel `mail-k`.
+- OAuth Google/Facebook/LinkedIn: funzione pronta ma non chiamata da nessuna schermata (UI non montata); LinkedIn OIDC va attivato in Supabase dal proprietario.
+- Stato `revoked` e stati operativi con dati reali: in locale nessuna riga `mailk` (solo `non_activated` provato end-to-end); gli altri esiti sono coperti dai test unitari.
+- Percorso "funzione assente" end-to-end: verificato solo il codice d'errore, non una richiesta completa senza la funzione.
+
+**Attenzione prima del deploy (decisione del proprietario):** oggi sul cloud la funzione non c'è, quindi Mail-K in produzione resterebbe come prima. **Appena la migrazione `20261104120000_konta_entitlements.sql` viene applicata sul cloud, tutte le organizzazioni senza riga `crm_product_access` `mailk` (oggi nessuna ce l'ha, ARKITECNA SRL compresa) passano in sola consultazione**: niente nuove campagne, newsletter, Invia/Ricevi né modifica delle impostazioni mittente. Prima di applicarla serve una riga `mailk` (es. `active`) per le organizzazioni che devono continuare a scrivere. Il cron di invio (`/api/cron/send`, chiave segreta) **non** controlla lo stato `mailk`: le campagne già attive continuerebbero a partire. Da decidere se anche il cron deve fermarsi.
+
+**Interfaccia in sola consultazione (dopo l'approvazione del mock):** oggi spariscono i tasti dell'hub, ma "Nuovo invio" nella barra laterale e "Invia/Ricevi" restano visibili e ricevono 403 con il messaggio di sola consultazione. Il modale prezzi va montato dove lo stato non è operativo.
+
 ## 6. Istruzioni per riprendere
 
 ```bash
 git checkout konta-ecosystem
 node scripts/konta/verify-mailk-rls.mjs
 node scripts/konta/test-tenant-isolation.mjs
+node --test scripts/konta/test-konta-entitlements.mjs
 npm run dev -- --port 3200
+node scripts/konta/test-konta-account-local.mjs --app http://localhost:3200
 ```
 Login locale: `owner-a@test.local` / `owner-b@test.local` (seed K-CRM, password nel seed di K-CRM). Per l'invio reale impostare in `/settings` una casella SMTP vera di un'organizzazione e `MAILK_TEST_EMAIL_TO` in `.env.local`.

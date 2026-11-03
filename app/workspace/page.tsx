@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { KONTA_ROLE_LABELS, writeStoredOrganizationId, readStoredOrganizationId, type KontaRole } from '@/lib/konta/workspace';
-import { ACCOUNT_PASSWORD_PATH, KCRM_ONBOARDING_URL } from '@/lib/konta/auth-paths';
+import { ACCOUNT_PASSWORD_PATH, AUTH_ERROR_QUERY_PARAM, KCRM_ONBOARDING_URL, LOGIN_PATH } from '@/lib/konta/auth-paths';
+import { decideMailkRoute, fetchKontaEntitlements } from '@/lib/konta/account-client';
 
 interface MembershipItem {
   organization_id: string;
@@ -96,6 +97,20 @@ export default function WorkspacePage() {
         if (!res.ok) {
           setError(body.error || c.error);
           return;
+        }
+        // Account KONTA unico (CONTRATTO §4): abilitazioni dopo il login. Senza organizzazioni resta lo stato
+        // vuoto con il link all'onboarding K-CRM; `revoked` torna al login con messaggio; gli altri stati
+        // entrano (la sola consultazione è applicata dal server). Senza risposta della RPC nulla cambia.
+        if (body.memberships.length > 0) {
+          const decision = decideMailkRoute(await fetchKontaEntitlements());
+          if (cancelled) return;
+          if (decision?.kind === 'denied') {
+            await fetch('/api/workspace', { method: 'DELETE' }).catch(() => undefined);
+            writeStoredOrganizationId(null);
+            await createClient().auth.signOut().catch(() => undefined);
+            window.location.href = `${LOGIN_PATH}?${AUTH_ERROR_QUERY_PARAM}=access_revoked`;
+            return;
+          }
         }
         setData(body);
         // Una sola organizzazione: entra direttamente.

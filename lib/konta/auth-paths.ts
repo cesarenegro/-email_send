@@ -28,7 +28,8 @@ export const KCRM_ONBOARDING_URL =
 export const AUTH_ERROR_QUERY_PARAM = 'auth_error';
 export const AUTH_NOTICE_QUERY_PARAM = 'auth_notice';
 
-export type AuthCallbackErrorCode = 'link_invalid' | 'link_expired' | 'exchange_failed' | 'auth_unavailable';
+/** `access_revoked`: accesso a Mail-K revocato (abilitazione `mailk` = `revoked`, CONTRATTO §4). */
+export type AuthCallbackErrorCode = 'link_invalid' | 'link_expired' | 'exchange_failed' | 'auth_unavailable' | 'access_revoked';
 export type AuthNoticeCode = 'email_confirmed' | 'password_updated';
 
 /**
@@ -51,7 +52,13 @@ export function buildAuthCallbackUrl(origin: string, next: string): string {
 }
 
 export function isAuthCallbackErrorCode(value: string | null | undefined): value is AuthCallbackErrorCode {
-  return value === 'link_invalid' || value === 'link_expired' || value === 'exchange_failed' || value === 'auth_unavailable';
+  return (
+    value === 'link_invalid' ||
+    value === 'link_expired' ||
+    value === 'exchange_failed' ||
+    value === 'auth_unavailable' ||
+    value === 'access_revoked'
+  );
 }
 
 export function isAuthNoticeCode(value: string | null | undefined): value is AuthNoticeCode {
@@ -65,6 +72,7 @@ export const AUTH_CALLBACK_ERROR_MESSAGES: Record<'it' | 'en', Record<AuthCallba
     exchange_failed:
       'Non è stato possibile attivare la sessione da questo link. Aprilo nello stesso browser da cui hai fatto la richiesta, oppure richiedine uno nuovo.',
     auth_unavailable: 'Autenticazione non configurata.',
+    access_revoked: 'L’accesso a Mail-K per il tuo account è stato revocato. Per informazioni rivolgiti al titolare dell’azienda.',
   },
   en: {
     link_invalid: 'This link is invalid or was already used. Request a new one.',
@@ -72,6 +80,7 @@ export const AUTH_CALLBACK_ERROR_MESSAGES: Record<'it' | 'en', Record<AuthCallba
     exchange_failed:
       'The session could not be started from this link. Open it in the same browser you used for the request, or request a new one.',
     auth_unavailable: 'Authentication is not configured.',
+    access_revoked: 'Your access to Mail-K has been revoked. Contact the owner of your company for details.',
   },
 };
 
