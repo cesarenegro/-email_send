@@ -1,7 +1,12 @@
+import dns from 'node:dns';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { parseBounceContent } from './bounce-parser';
+import { loadSenderSettings } from '@/lib/email/transporter';
+import { getDefaultSecretBox } from '@/lib/crypto/secret-box';
+import { isPrivateOrReservedIp } from '@/lib/security/ssrf';
+import type { SenderSettings } from '@/types/database';
 
 export interface BounceSyncOptions {
   campaignId?: string;
@@ -21,19 +26,135 @@ export interface BounceSyncResult {
   errors: string[];
 }
 
+export interface OrganizationImapConfig {
+  /** Nome host configurato dall'organizzazione (usato per SNI e verifica del certificato). */
+  host: string;
+  /** IP pubblico verificato a cui connettere il socket (anti DNS rebinding). */
+  connectIp: string;
+  port: number;
+  user: string;
+  pass: string;
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Verifica che l'host IMAP dell'organizzazione risolva solo verso indirizzi pubblici
+ * (stessa politica SSRF del trasporto SMTP) e restituisce l'IP a cui connettersi.
+ */
+async function resolvePublicImapIp(rawHost: string): Promise<string> {
+  const host = rawHost.trim().toLowerCase();
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    host.endsWith('.localdomain') ||
+    host.includes('metadata.google')
+  ) {
+    throw new Error(`Host IMAP "${rawHost}" non consentito: destinazione locale o riservata.`);
+  }
+
+  let addresses: dns.LookupAddress[];
+  try {
+    addresses = await dns.promises.lookup(host, { all: true });
+  } catch (err) {
+    throw new Error(`Impossibile risolvere l'host IMAP "${rawHost}": ${errorMessage(err)}`);
+  }
+  if (!addresses || addresses.length === 0) {
+    throw new Error(`Nessun indirizzo IP associato all'host IMAP "${rawHost}".`);
+  }
+  for (const addr of addresses) {
+    if (isPrivateOrReservedIp(addr.address)) {
+      throw new Error(
+        `Host IMAP "${rawHost}" risolto verso un indirizzo IP non consentito (${addr.address}). Connessione bloccata per protezione SSRF.`
+      );
+    }
+  }
+  return addresses[0].address;
+}
+
+/**
+ * Ricava la configurazione IMAP di un'organizzazione dalle impostazioni mittente:
+ * host/porta IMAP; credenziali IMAP se entrambe presenti, altrimenti ripiego su quelle SMTP.
+ * Le password sono decifrate solo qui, lato server.
+ */
+export async function resolveOrganizationImapConfig(
+  settings: SenderSettings | null
+): Promise<OrganizationImapConfig> {
+  const host = settings?.imap_host?.trim() || '';
+  if (!settings || !host) {
+    throw new Error('Casella IMAP non configurata per questa organizzazione.');
+  }
+
+  let user: string;
+  let ciphertext: string;
+  if (settings.imap_user?.trim() && settings.imap_pass_ciphertext) {
+    user = settings.imap_user.trim();
+    ciphertext = settings.imap_pass_ciphertext;
+  } else if (settings.smtp_user?.trim() && settings.smtp_pass_ciphertext) {
+    user = settings.smtp_user.trim();
+    ciphertext = settings.smtp_pass_ciphertext;
+  } else {
+    throw new Error('Credenziali IMAP non configurate per questa organizzazione (utente o password mancanti).');
+  }
+
+  const box = getDefaultSecretBox();
+  if (settings.key_version !== box.keyVersion) {
+    throw new Error(
+      `Credenziali cifrate con key_version ${settings.key_version}, chiave attuale v${box.keyVersion}. Reinserisci la password in Impostazioni.`
+    );
+  }
+
+  let pass: string;
+  try {
+    pass = box.decrypt(ciphertext);
+  } catch (err) {
+    throw new Error(`Impossibile decifrare la password della casella IMAP: ${errorMessage(err)}`);
+  }
+
+  const connectIp = await resolvePublicImapIp(host);
+
+  return {
+    host,
+    connectIp,
+    port: Number(settings.imap_port) || 993,
+    user,
+    pass,
+  };
+}
+
+/** Client ImapFlow TLS verso l'IP verificato, con SNI e verifica del certificato sul nome host. */
+export function createOrganizationImapClient(
+  config: OrganizationImapConfig,
+  timeoutMs = 15000
+): ImapFlow {
+  return new ImapFlow({
+    host: config.connectIp,
+    port: config.port,
+    secure: true,
+    servername: config.host,
+    tls: {
+      servername: config.host,
+      rejectUnauthorized: true,
+      minVersion: 'TLSv1.2',
+    },
+    auth: { user: config.user, pass: config.pass },
+    logger: false,
+    connectionTimeout: timeoutMs,
+    greetingTimeout: timeoutMs,
+  });
+}
+
 export async function syncBouncesFromImap(
-  supabase: SupabaseClient,
+  adminClient: SupabaseClient,
+  organizationId: string,
   options: BounceSyncOptions = {}
 ): Promise<BounceSyncResult> {
-  const host = process.env.IMAP_HOST || 'imap.hostinger.com';
-  const port = Number(process.env.IMAP_PORT || '993');
-  const secure = process.env.IMAP_SECURE !== 'false';
-  const user = process.env.IMAP_USER || process.env.SMTP_USER;
-  const pass = process.env.IMAP_PASS || process.env.SMTP_PASS;
-
-  if (!user || !pass) {
-    throw new Error('Credenziali IMAP non configurate nelle variabili d\'ambiente (IMAP_USER / SMTP_USER).');
-  }
+  const settings = await loadSenderSettings(organizationId, adminClient);
+  const imapConfig = await resolveOrganizationImapConfig(settings);
 
   const result: BounceSyncResult = {
     success: true,
@@ -43,15 +164,7 @@ export async function syncBouncesFromImap(
     errors: [],
   };
 
-  const client = new ImapFlow({
-    host,
-    port,
-    secure,
-    auth: { user, pass },
-    logger: false,
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-  });
+  const client = createOrganizationImapClient(imapConfig, 15000);
 
   try {
     await client.connect();
@@ -138,10 +251,11 @@ export async function syncBouncesFromImap(
 
           result.bouncesDetected++;
 
-          // 3. Find matching lead in database
-          let query = supabase
-            .from('campaign_leads')
+          // 3. Find matching lead in database (only inside this organization)
+          let query = adminClient
+            .from('mail_campaign_leads')
             .select('id, campaign_id, email, status, last_error')
+            .eq('organization_id', organizationId)
             .eq('email', bounceInfo.email);
 
           if (options.campaignId) {
@@ -160,20 +274,27 @@ export async function syncBouncesFromImap(
           }
 
           // 4. Update each matched lead to 'failed' with the bounce reason
-          for (const lead of matchedLeads) {
+          for (const lead of matchedLeads as Array<{
+            id: string;
+            campaign_id: string;
+            email: string;
+            status: string;
+            last_error: string | null;
+          }>) {
             // Only update if not already marked with this bounce error
             const formattedError = `Bounce: ${bounceInfo.reason}`;
             if (lead.status === 'failed' && lead.last_error === formattedError) {
               continue;
             }
 
-            const { error: updateErr } = await supabase
-              .from('campaign_leads')
+            const { error: updateErr } = await adminClient
+              .from('mail_campaign_leads')
               .update({
                 status: 'failed',
                 last_error: formattedError,
               })
-              .eq('id', lead.id);
+              .eq('id', lead.id)
+              .eq('organization_id', organizationId);
 
             if (updateErr) {
               result.errors.push(`Errore aggiornamento lead ${lead.id}: ${updateErr.message}`);
@@ -186,17 +307,35 @@ export async function syncBouncesFromImap(
                 reason: formattedError,
               });
 
-              // Log error event in email_logs
-              await supabase.from('email_logs').insert({
+              // Log error event in mail_email_logs
+              const { error: logErr } = await adminClient.from('mail_email_logs').insert({
+                organization_id: organizationId,
                 campaign_id: lead.campaign_id,
                 campaign_lead_id: lead.id,
                 event_type: 'error',
                 error_message: formattedError,
               });
+              if (logErr) {
+                result.errors.push(`Errore registrazione log per lead ${lead.id}: ${logErr.message}`);
+              }
+
+              // Record the bounce
+              const { error: bounceErr } = await adminClient.from('mail_bounces').insert({
+                organization_id: organizationId,
+                campaign_id: lead.campaign_id,
+                campaign_lead_id: lead.id,
+                email: lead.email,
+                reason: bounceInfo.reason || '',
+                bounce_type: 'hard',
+                source: 'imap',
+              });
+              if (bounceErr) {
+                result.errors.push(`Errore registrazione bounce per lead ${lead.id}: ${bounceErr.message}`);
+              }
             }
           }
-        } catch (msgErr: any) {
-          result.errors.push(`Errore parsing messaggio UID ${uid}: ${msgErr.message}`);
+        } catch (msgErr) {
+          result.errors.push(`Errore parsing messaggio UID ${uid}: ${errorMessage(msgErr)}`);
         }
       }
     } finally {
@@ -204,9 +343,9 @@ export async function syncBouncesFromImap(
     }
 
     await client.logout();
-  } catch (connErr: any) {
+  } catch (connErr) {
     result.success = false;
-    result.errors.push(`Errore sincronizzazione IMAP: ${connErr.message}`);
+    result.errors.push(`Errore sincronizzazione IMAP: ${errorMessage(connErr)}`);
   } finally {
     try {
       if (client.usable) {

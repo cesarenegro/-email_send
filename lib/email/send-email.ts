@@ -1,36 +1,22 @@
-import { resolveAuthorizedTransportContext, ResolvedTransportContext } from './transporter';
+import { resolveOrganizationTransport, type ResolvedTransportContext } from './transporter';
 
 export interface SendEmailParams {
   to: string;
   subject: string;
   html: string;
   replyTo?: string;
-  userId?: string | null;
-  smtpConnectionId?: string | null;
-  allowAdminFallback?: boolean;
+  organizationId: string;
   transportContext?: ResolvedTransportContext;
 }
 
-export async function sendEmail({
-  to,
-  subject,
-  html,
-  replyTo,
-  userId,
-  smtpConnectionId,
-  allowAdminFallback,
-  transportContext,
-}: SendEmailParams) {
-  // 1. Obtain verified transporter and sender identity from pre-verified context or atomic resolution
-  const { transporter, senderIdentity } = transportContext || await resolveAuthorizedTransportContext({
-    userId,
-    smtpConnectionId,
-    allowAdminFallback,
-  });
-
+/**
+ * Invia una email con la casella SMTP verificata dell'organizzazione.
+ * Il From è sempre l'identità mittente salvata nelle impostazioni: mai quella dell'utente.
+ */
+export async function sendEmail({ to, subject, html, replyTo, organizationId, transportContext }: SendEmailParams) {
+  const { transporter, senderIdentity } = transportContext || (await resolveOrganizationTransport(organizationId));
   const { fromName, fromEmail, replyTo: defaultReplyTo } = senderIdentity;
 
-  // 2. Dispatch email with verified From strictly bound to the authorized transport
   const info = await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     replyTo: replyTo || defaultReplyTo || fromEmail,

@@ -16,16 +16,16 @@ export async function getCampaignStats(
 ): Promise<CampaignStats> {
   const [totalRes, sentRes, failedRes] = await Promise.all([
     supabase
-      .from('campaign_leads')
+      .from('mail_campaign_leads')
       .select('*', { count: 'exact', head: true })
       .eq('campaign_id', campaignId),
     supabase
-      .from('campaign_leads')
+      .from('mail_campaign_leads')
       .select('*', { count: 'exact', head: true })
       .eq('campaign_id', campaignId)
       .eq('status', 'sent'),
     supabase
-      .from('campaign_leads')
+      .from('mail_campaign_leads')
       .select('*', { count: 'exact', head: true })
       .eq('campaign_id', campaignId)
       .eq('status', 'failed'),

@@ -27,6 +27,7 @@ import EmailPreview from '@/components/EmailPreview';
 import VisualEmailEditor, { VisualEmailEditorHandle } from '@/components/dummies/VisualEmailEditor';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { createClient } from '@/lib/supabase/client';
+import { readStoredOrganizationId } from '@/lib/konta/workspace';
 
 const TIMEZONES = [
   { value: 'Europe/Rome', label: 'Europa / Roma (CET/CEST)' },
@@ -106,7 +107,6 @@ interface NewsletterFormProps {
     scheduled_at: string | null;
     send_interval_seconds: number;
     status: string;
-    smtp_connection_id?: string | null;
   };
 }
 
@@ -167,12 +167,13 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
         const {
           data: { user },
         } = await supabase.auth.getUser();
+        const orgId = readStoredOrganizationId();
         if (!user || !isMounted) return;
 
         const folder = draftIdRef.current;
         const { data: files, error: listError } = await supabase.storage
-          .from('newsletter-images')
-          .list(`${user.id}/${folder}`);
+          .from('mail-images')
+          .list(`${orgId}/${folder}`);
 
         if (listError || !files || !isMounted) return;
 
@@ -180,8 +181,8 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
         if (validFiles.length === 0) return;
 
         const items: UploadedImageItem[] = validFiles.map((f) => {
-          const path = `${user.id}/${folder}/${f.name}`;
-          const { data: urlData } = supabase.storage.from('newsletter-images').getPublicUrl(path);
+          const path = `${orgId}/${folder}/${f.name}`;
+          const { data: urlData } = supabase.storage.from('mail-images').getPublicUrl(path);
           return {
             name: f.name,
             path,
@@ -431,6 +432,7 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
       const {
         data: { user },
       } = await supabase.auth.getUser();
+        const orgId = readStoredOrganizationId();
 
       if (!user) {
         throw new Error(t.newsletters.form.uploadErrorUnauthenticated);
@@ -443,10 +445,10 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
       for (const file of files) {
         const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const folder = draftIdRef.current;
-        const filePath = `${user.id}/${folder}/${cleanName}`;
+        const filePath = `${orgId}/${folder}/${cleanName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('newsletter-images')
+          .from('mail-images')
           .upload(filePath, file, {
             contentType: file.type,
             cacheControl: '3600',
@@ -457,7 +459,7 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
           throw uploadError;
         }
 
-        const { data: urlData } = supabase.storage.from('newsletter-images').getPublicUrl(filePath);
+        const { data: urlData } = supabase.storage.from('mail-images').getPublicUrl(filePath);
         const publicUrl = urlData.publicUrl;
 
         newUploadedItems.push({
@@ -645,6 +647,7 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
       const {
         data: { user },
       } = await supabase.auth.getUser();
+        const orgId = readStoredOrganizationId();
 
       if (!user) {
         throw new Error(t.newsletters.form.uploadErrorUnauthenticated);
@@ -706,11 +709,11 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
         const ext = extMap[mime] || 'jpg';
         const fileId = crypto.randomUUID();
         const folder = draftIdRef.current;
-        const filePath = `${user.id}/${folder}/${fileId}.${ext}`;
+        const filePath = `${orgId}/${folder}/${fileId}.${ext}`;
         const blob = new Blob([bytes], { type: mime });
 
         const { error: uploadError } = await supabase.storage
-          .from('newsletter-images')
+          .from('mail-images')
           .upload(filePath, blob, {
             contentType: mime,
             cacheControl: '3600',
@@ -722,7 +725,7 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
           continue;
         }
 
-        const { data: urlData } = supabase.storage.from('newsletter-images').getPublicUrl(filePath);
+        const { data: urlData } = supabase.storage.from('mail-images').getPublicUrl(filePath);
         const publicUrl = urlData.publicUrl;
 
         // Replace only the base64 src, preserving alt, dimensions, style, and classes!
@@ -758,7 +761,7 @@ export default function NewsletterForm({ initialNewsletter }: NewsletterFormProp
 
     setDeletingPath(item.path);
     try {
-      const { error: delError } = await supabase.storage.from('newsletter-images').remove([item.path]);
+      const { error: delError } = await supabase.storage.from('mail-images').remove([item.path]);
       if (delError) throw delError;
 
       setUploadedImages((prev) => prev.filter((img) => img.path !== item.path));

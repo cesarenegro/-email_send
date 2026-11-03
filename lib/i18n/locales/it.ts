@@ -674,7 +674,7 @@ export const it: Translations = {
     testImapRunning: 'Test IMAP...',
     testSendSectionTitle: 'Collaudo Invio Email di Test',
     testSendSectionSub: 'Invia una trasmissione reale per verificare la conformità DKIM, SPF e formattazione HTML',
-    testSendPlaceholder: 'Inserisci un indirizzo email di prova (es. cesare@arkitecna.com)',
+    testSendPlaceholder: 'Inserisci un indirizzo email di prova (es. nome@dominio.it)',
     testSendButton: 'Invia Email di Test',
     testSendRunning: 'Invio in corso...',
     smtpHost: 'Host SMTP',

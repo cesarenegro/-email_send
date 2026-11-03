@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isLeadResearchEnabled } from '@/lib/konta/env';
 
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  if (!isLeadResearchEnabled()) return NextResponse.json({ error: 'Modulo Lead Research non disponibile in questo spazio di lavoro.', code: 'FEATURE_DISABLED' }, { status: 503 });
   const { id } = await context.params;
   const supabase = await createClient();
   const {

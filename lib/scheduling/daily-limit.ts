@@ -12,7 +12,7 @@ export async function hasReachedDailyLimit(
   const endOfDayUtc = now.endOf('day').toUTC().toISO();
 
   const { count, error } = await supabase
-    .from('email_logs')
+    .from('mail_email_logs')
     .select('id', { count: 'exact', head: true })
     .eq('campaign_id', campaignId)
     .eq('event_type', 'sent')

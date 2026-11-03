@@ -27,6 +27,7 @@ import { useTranslation } from '@/lib/i18n/useTranslation';
 import VisualEmailEditor, { VisualEmailEditorHandle } from '@/components/dummies/VisualEmailEditor';
 import EmailPreview from '@/components/EmailPreview';
 import { createClient } from '@/lib/supabase/client';
+import { readStoredOrganizationId } from '@/lib/konta/workspace';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024; // 3 MB
@@ -222,11 +223,12 @@ export default function CampaignForm({
         const {
           data: { user },
         } = await supabase.auth.getUser();
+        const orgId = readStoredOrganizationId();
         if (!user) return;
 
-        const folderPath = `${user.id}/campaigns/${draftIdRef.current}`;
+        const folderPath = `${orgId}/campaigns/${draftIdRef.current}`;
         const { data: fileList, error: listError } = await supabase.storage
-          .from('newsletter-images')
+          .from('mail-images')
           .list(folderPath, {
             sortBy: { column: 'created_at', order: 'desc' },
           });
@@ -237,7 +239,7 @@ export default function CampaignForm({
         for (const file of fileList) {
           if (!file.name || file.name.startsWith('.')) continue;
           const fullPath = `${folderPath}/${file.name}`;
-          const { data: urlData } = supabase.storage.from('newsletter-images').getPublicUrl(fullPath);
+          const { data: urlData } = supabase.storage.from('mail-images').getPublicUrl(fullPath);
           items.push({
             name: file.name,
             path: fullPath,
@@ -331,6 +333,7 @@ export default function CampaignForm({
     const {
       data: { user },
     } = await supabase.auth.getUser();
+        const orgId = readStoredOrganizationId();
 
     if (!user) {
       setUploadErrorMessage(locale === 'en' ? 'Authentication required' : 'Accesso richiesto per caricare immagini');
@@ -356,10 +359,10 @@ export default function CampaignForm({
         const safeBaseName = file.name.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 40);
         const uniqueSuffix = Date.now() + '-' + Math.random().toString(36).substring(2, 7);
         const filename = `${safeBaseName}-${uniqueSuffix}.${ext}`;
-        const filePath = `${user.id}/campaigns/${draftIdRef.current}/${filename}`;
+        const filePath = `${orgId}/campaigns/${draftIdRef.current}/${filename}`;
 
         const { error: uploadErr } = await supabase.storage
-          .from('newsletter-images')
+          .from('mail-images')
           .upload(filePath, file, {
             cacheControl: '31536000',
             contentType: file.type,
@@ -370,7 +373,7 @@ export default function CampaignForm({
           throw new Error(`Upload error: ${uploadErr.message}`);
         }
 
-        const { data: urlData } = supabase.storage.from('newsletter-images').getPublicUrl(filePath);
+        const { data: urlData } = supabase.storage.from('mail-images').getPublicUrl(filePath);
         const publicUrl = urlData.publicUrl;
 
         const item: UploadedImageItem = {
@@ -468,6 +471,7 @@ export default function CampaignForm({
     const {
       data: { user },
     } = await supabase.auth.getUser();
+        const orgId = readStoredOrganizationId();
 
     if (!user) {
       setUploadErrorMessage(locale === 'en' ? 'Authentication required' : 'Accesso richiesto per convertire immagini');
@@ -509,10 +513,10 @@ export default function CampaignForm({
 
         const ext = item.mimeType.split('/')[1] || 'jpg';
         const filename = `converted-${Date.now()}-${i + 1}.${ext}`;
-        const filePath = `${user.id}/campaigns/${draftIdRef.current}/${filename}`;
+        const filePath = `${orgId}/campaigns/${draftIdRef.current}/${filename}`;
 
         const { error: uploadErr } = await supabase.storage
-          .from('newsletter-images')
+          .from('mail-images')
           .upload(filePath, blob, {
             cacheControl: '31536000',
             contentType: item.mimeType,
@@ -523,7 +527,7 @@ export default function CampaignForm({
           throw new Error(`Upload error on image #${i + 1}: ${uploadErr.message}`);
         }
 
-        const { data: urlData } = supabase.storage.from('newsletter-images').getPublicUrl(filePath);
+        const { data: urlData } = supabase.storage.from('mail-images').getPublicUrl(filePath);
         const publicUrl = urlData.publicUrl;
 
         updatedHtml = updatedHtml.split(item.full).join(publicUrl);
@@ -551,7 +555,7 @@ export default function CampaignForm({
 
     try {
       const supabase = createClient();
-      await supabase.storage.from('newsletter-images').remove([item.path]);
+      await supabase.storage.from('mail-images').remove([item.path]);
       setUploadedImages((prev) => prev.filter((img) => img.path !== item.path));
       setUploadSuccessMessage(locale === 'en' ? 'Image deleted' : 'Immagine eliminata');
       setTimeout(() => setUploadSuccessMessage(null), 3000);

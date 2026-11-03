@@ -403,7 +403,6 @@ export default function SetupDummiesModal({
         start_at: scheduling.startMode === 'scheduled' && scheduling.scheduledDate
           ? DateTime.fromISO(scheduling.scheduledDate, { zone: scheduling.timezone }).toUTC().toISO()
           : null,
-        smtp_connection_id: smtp.smtpConnectionId || null,
       };
 
       const createRes = await fetch('/api/campaigns', {

@@ -1,152 +1,180 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
-
-const SettingsSchema = z.object({
-  from_name: z.string().min(1, 'Il nome mittente è obbligatorio'),
-  from_email: z.string().email('Indirizzo email mittente non valido'),
-  reply_to: z.string().email('Indirizzo Reply-To non valido').default('cesare@arkitecna.com'),
-  preferred_timezone: z.string().optional(),
-  send_window_start: z.string().optional(),
-  send_window_end: z.string().optional(),
-  onboarding_completed: z.boolean().optional(),
-});
+import { DateTime } from 'luxon';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { requireTenant, requireSettingsManager, tenantErrorResponse } from '@/lib/konta/session';
+import { toPublicSenderSettings } from '@/lib/konta/sender-settings';
+import { getDefaultSecretBox } from '@/lib/crypto/secret-box';
+import { loadSenderSettings, buildTransporterFromPlain, SmtpConfigurationError } from '@/lib/email/transporter';
+import { ALLOWED_SMTP_PORTS, validateSenderCompatibility } from '@/lib/security/ssrf';
+import { checkRateLimit } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
+const timeField = z
+  .string()
+  .transform((v) => (v && v.length >= 5 ? v.slice(0, 5) : v))
+  .pipe(z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Formato ora non valido (HH:mm)'));
+
+const SettingsSchema = z.object({
+  from_name: z.string().trim().min(1, 'Nome mittente obbligatorio').max(120),
+  from_email: z.string().trim().email('Email mittente non valida'),
+  reply_to: z.string().trim().email('Reply-To non valido').or(z.literal('')).default(''),
+  preferred_timezone: z
+    .string()
+    .trim()
+    .refine((tz) => DateTime.now().setZone(tz).isValid, { message: 'Fuso orario non valido' })
+    .default('Europe/Rome'),
+  send_window_start: timeField.default('09:00'),
+  send_window_end: timeField.default('18:00'),
+  smtp_host: z.string().trim().max(255).default(''),
+  smtp_port: z.coerce.number().int().default(465),
+  smtp_user: z.string().trim().max(255).default(''),
+  /** Vuota o assente = conserva la password già salvata. */
+  smtp_password: z.string().max(1024).optional(),
+  imap_host: z.string().trim().max(255).default(''),
+  imap_port: z.coerce.number().int().min(1).max(65535).default(993),
+  imap_user: z.string().trim().max(255).default(''),
+  imap_password: z.string().max(1024).optional(),
+});
+
+/** Impostazioni mittente dell'organizzazione attiva (senza segreti). */
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
-  }
-
-  const admin = createAdminClient();
-
-  // 1. Try to fetch user-specific settings
-  const { data: userSet } = await admin
-    .from('user_settings')
-    .select('*')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  // 2. Fetch global app_settings for fallback
-  const { data: rows } = await admin.from('app_settings').select('key, value');
-  const map: Record<string, string> = {};
-  if (rows) {
-    rows.forEach((r: any) => {
-      map[r.key] = r.value;
+  try {
+    const tenant = await requireTenant();
+    const row = await loadSenderSettings(tenant.organizationId);
+    return NextResponse.json({
+      ...toPublicSenderSettings(tenant.organizationId, row),
+      can_manage: tenant.canManageSettings,
+      organization_name: tenant.organizationName,
+      role: tenant.role,
     });
+  } catch (err) {
+    return tenantErrorResponse(err);
   }
-
-  const isPrimaryAdmin = user.email === 'cesare@arkitecna.com';
-  const defaultUserDisplayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Utente';
-
-  // 3. Fetch user-specific SMTP connections
-  const { data: conns } = await admin
-    .from('smtp_connections')
-    .select('id, name, host, port, secure, username, from_name, from_email, reply_to, is_verified, verified_at, created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-
-  const activeConn = conns?.find((c) => c.is_verified) || conns?.[0] || null;
-
-  return NextResponse.json({
-    from_name: userSet?.from_name || (isPrimaryAdmin ? (map.from_name || process.env.SMTP_FROM_NAME || 'Stefano Martini | ARKITECNA') : defaultUserDisplayName),
-    from_email: userSet?.from_email || (isPrimaryAdmin ? (map.from_email || process.env.SMTP_FROM_EMAIL || 'cesare@arkitecna.com') : user.email),
-    reply_to: userSet?.reply_to || (isPrimaryAdmin ? (map.reply_to || map.from_email || 'cesare@arkitecna.com') : user.email),
-    preferred_timezone: userSet?.preferred_timezone || 'Europe/Rome',
-    send_window_start: userSet?.send_window_start || '09:00',
-    send_window_end: userSet?.send_window_end || '18:00',
-    onboarding_completed: userSet?.onboarding_completed ?? isPrimaryAdmin,
-    smtp_host: activeConn?.host || (isPrimaryAdmin ? (process.env.SMTP_HOST || 'smtp.hostinger.com') : ''),
-    smtp_port: activeConn?.port ? String(activeConn.port) : (isPrimaryAdmin ? (process.env.SMTP_PORT || '465') : '465'),
-    smtp_user: activeConn?.username || (isPrimaryAdmin ? (process.env.SMTP_USER || 'cesare@arkitecna.com') : ''),
-    smtp_connections: conns || [],
-    active_connection: activeConn,
-  });
 }
 
-export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+/**
+ * Salva le impostazioni mittente dell'organizzazione (solo O/A).
+ * Se è presente una casella SMTP completa, la connessione viene verificata dal vivo
+ * prima del salvataggio e la password è cifrata (AES-256-GCM) con la chiave dell'ecosistema.
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const tenant = await requireTenant();
+    requireSettingsManager(tenant);
 
-  if (!user) {
-    return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
-  }
-
-  const body = await request.json();
-  const parsed = SettingsSchema.safeParse(body);
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message || 'Dati non validi' },
-      { status: 400 }
-    );
-  }
-
-  const {
-    from_name,
-    from_email,
-    reply_to,
-    preferred_timezone,
-    send_window_start,
-    send_window_end,
-    onboarding_completed,
-  } = parsed.data;
-
-  const admin = createAdminClient();
-
-  // 1. Save or update user_settings
-  const userPayload: Record<string, any> = {
-    user_id: user.id,
-    from_name,
-    from_email,
-    reply_to,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (preferred_timezone !== undefined) userPayload.preferred_timezone = preferred_timezone;
-  if (send_window_start !== undefined) userPayload.send_window_start = send_window_start.slice(0, 5);
-  if (send_window_end !== undefined) userPayload.send_window_end = send_window_end.slice(0, 5);
-  if (onboarding_completed !== undefined) userPayload.onboarding_completed = onboarding_completed;
-
-  const { error: userError } = await admin
-    .from('user_settings')
-    .upsert(userPayload, { onConflict: 'user_id' });
-
-  if (userError) {
-    console.error('Error saving user_settings:', userError);
-    return NextResponse.json({ error: userError.message }, { status: 500 });
-  }
-
-  // 2. If master admin, also sync global app_settings
-  if (user.email === 'cesare@arkitecna.com') {
-    const globalUpdates = [
-      { key: 'from_name', value: from_name, updated_at: new Date().toISOString() },
-      { key: 'from_email', value: from_email, updated_at: new Date().toISOString() },
-      { key: 'reply_to', value: reply_to, updated_at: new Date().toISOString() },
-    ];
-    for (const item of globalUpdates) {
-      await admin.from('app_settings').upsert(item, { onConflict: 'key' });
+    const rate = checkRateLimit(`settings_save_${tenant.organizationId}`, 10, 60_000);
+    if (!rate.allowed) {
+      return NextResponse.json({ error: `Troppi salvataggi. Riprova tra ${rate.retryAfterSeconds} secondi.` }, { status: 429 });
     }
-  }
 
-  return NextResponse.json({
-    success: true,
-    message: 'Impostazioni mittente aggiornate con successo!',
-    settings: {
-      from_name,
-      from_email,
-      reply_to,
-      preferred_timezone,
-      onboarding_completed,
-    },
-  });
+    const body = await request.json().catch(() => ({}));
+    const parsed = SettingsSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Dati non validi' }, { status: 400 });
+    }
+    const input = parsed.data;
+
+    const existing = await loadSenderSettings(tenant.organizationId);
+    const box = getDefaultSecretBox();
+
+    const smtpConfigured = Boolean(input.smtp_host && input.smtp_user);
+    let smtpPassCiphertext = existing?.smtp_pass_ciphertext ?? null;
+    let isVerified = false;
+    let verifiedAt: string | null = null;
+
+    if (smtpConfigured) {
+      if (!(ALLOWED_SMTP_PORTS as readonly number[]).includes(input.smtp_port)) {
+        return NextResponse.json({ error: `Porta ${input.smtp_port} non consentita (25, 465, 587, 2525).` }, { status: 400 });
+      }
+      try {
+        validateSenderCompatibility(input.from_email, input.smtp_user);
+      } catch (err) {
+        return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 });
+      }
+
+      let plainPassword: string | null = null;
+      if (input.smtp_password && input.smtp_password.length > 0) {
+        plainPassword = input.smtp_password;
+      } else if (existing?.smtp_pass_ciphertext && existing.key_version === box.keyVersion) {
+        plainPassword = box.decrypt(existing.smtp_pass_ciphertext);
+      }
+      if (!plainPassword) {
+        return NextResponse.json({ error: 'Password SMTP obbligatoria per la prima configurazione.' }, { status: 400 });
+      }
+
+      try {
+        const transporter = await buildTransporterFromPlain({
+          host: input.smtp_host,
+          port: input.smtp_port,
+          user: input.smtp_user,
+          pass: plainPassword,
+          connectionTimeout: 8000,
+          greetingTimeout: 8000,
+          socketTimeout: 10000,
+        });
+        await transporter.verify();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return NextResponse.json({ error: `Verifica SMTP fallita: ${message}` }, { status: 400 });
+      }
+
+      smtpPassCiphertext = box.encrypt(plainPassword);
+      isVerified = true;
+      verifiedAt = new Date().toISOString();
+    } else {
+      smtpPassCiphertext = null;
+    }
+
+    let imapPassCiphertext = existing?.imap_pass_ciphertext ?? null;
+    if (input.imap_password && input.imap_password.length > 0) {
+      imapPassCiphertext = box.encrypt(input.imap_password);
+    } else if (!input.imap_host) {
+      imapPassCiphertext = null;
+    }
+
+    const admin = createAdminClient();
+    const payload = {
+      organization_id: tenant.organizationId,
+      from_name: input.from_name,
+      from_email: input.from_email.toLowerCase(),
+      reply_to: (input.reply_to || input.from_email).toLowerCase(),
+      preferred_timezone: input.preferred_timezone,
+      send_window_start: input.send_window_start,
+      send_window_end: input.send_window_end,
+      smtp_host: smtpConfigured ? input.smtp_host : '',
+      smtp_port: input.smtp_port,
+      smtp_secure: input.smtp_port === 465,
+      smtp_user: smtpConfigured ? input.smtp_user : '',
+      smtp_pass_ciphertext: smtpPassCiphertext,
+      imap_host: input.imap_host,
+      imap_port: input.imap_port,
+      imap_user: input.imap_user,
+      imap_pass_ciphertext: imapPassCiphertext,
+      key_version: box.keyVersion,
+      is_verified: isVerified,
+      verified_at: verifiedAt,
+      updated_by: tenant.user.id,
+    };
+
+    const { error } = await admin.from('mail_sender_settings').upsert(payload, { onConflict: 'organization_id' });
+    if (error) {
+      return NextResponse.json({ error: `Salvataggio fallito: ${error.message}` }, { status: 500 });
+    }
+
+    const saved = await loadSenderSettings(tenant.organizationId);
+    return NextResponse.json({
+      ...toPublicSenderSettings(tenant.organizationId, saved),
+      can_manage: true,
+      organization_name: tenant.organizationName,
+      role: tenant.role,
+      message: smtpConfigured ? 'Impostazioni salvate: casella SMTP verificata.' : 'Impostazioni salvate.',
+    });
+  } catch (err) {
+    if (err instanceof SmtpConfigurationError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    return tenantErrorResponse(err);
+  }
 }

@@ -2,8 +2,11 @@ export type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed';
 export type LeadStatus = 'pending' | 'sending' | 'sent' | 'retry' | 'failed';
 export type EmailLogEventType = 'sent' | 'error';
 
+/** Tabella public.mail_campaigns (una riga appartiene a un'organizzazione KONTA). */
 export interface Campaign {
   id: string;
+  organization_id: string;
+  created_by: string | null;
   name: string;
   subject_template: string;
   html_template: string;
@@ -15,25 +18,59 @@ export interface Campaign {
   send_interval_seconds: number;
   daily_limit: number;
   next_send_at: string | null;
-  user_id?: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface UserSettings {
+/** Tabella public.mail_sender_settings: una riga per organizzazione. I *_ciphertext escono solo lato server. */
+export interface SenderSettings {
   id: string;
-  user_id: string;
+  organization_id: string;
   from_name: string;
   from_email: string;
   reply_to: string;
   preferred_timezone: string;
   send_window_start: string;
   send_window_end: string;
-  onboarding_completed: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_secure: boolean;
+  smtp_user: string;
+  smtp_pass_ciphertext: string | null;
+  imap_host: string;
+  imap_port: number;
+  imap_user: string;
+  imap_pass_ciphertext: string | null;
+  key_version: number;
+  is_verified: boolean;
+  verified_at: string | null;
+  updated_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
+/** Proiezione delle impostazioni restituita al client: mai i testi cifrati. */
+export interface SenderSettingsPublic {
+  organization_id: string;
+  from_name: string;
+  from_email: string;
+  reply_to: string;
+  preferred_timezone: string;
+  send_window_start: string;
+  send_window_end: string;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_secure: boolean;
+  smtp_user: string;
+  smtp_pass_set: boolean;
+  imap_host: string;
+  imap_port: number;
+  imap_user: string;
+  imap_pass_set: boolean;
+  is_verified: boolean;
+  verified_at: string | null;
+  updated_at: string | null;
+}
 
 export interface CampaignWithStats extends Campaign {
   total_leads: number;
@@ -44,6 +81,7 @@ export interface CampaignWithStats extends Campaign {
 
 export interface CampaignLead {
   id: string;
+  organization_id: string;
   campaign_id: string;
   company_name: string | null;
   email: string;
@@ -59,8 +97,11 @@ export interface CampaignLead {
 
 export interface EmailLog {
   id: string;
-  campaign_id: string;
-  campaign_lead_id: string;
+  organization_id: string;
+  campaign_id: string | null;
+  campaign_lead_id: string | null;
+  newsletter_id: string | null;
+  subscriber_id: string | null;
   event_type: EmailLogEventType;
   smtp_message_id: string | null;
   error_message: string | null;
@@ -72,7 +113,8 @@ export type SubscriberStatus = 'pending' | 'sending' | 'sent' | 'failed';
 
 export interface Newsletter {
   id: string;
-  user_id?: string | null;
+  organization_id: string;
+  created_by: string | null;
   title: string;
   subject: string;
   html_content: string;
@@ -94,6 +136,7 @@ export interface NewsletterWithStats extends Newsletter {
 
 export interface NewsletterSubscriber {
   id: string;
+  organization_id: string;
   newsletter_id: string;
   email: string;
   name?: string | null;
@@ -105,4 +148,3 @@ export interface NewsletterSubscriber {
   created_at: string;
   updated_at: string;
 }
-

@@ -1,6 +1,6 @@
-import { createClient } from '@/lib/supabase/server';
+import { getTenantOrNull } from '@/lib/konta/session';
 import NewslettersLiveView from '@/components/NewslettersLiveView';
-import { NewsletterWithStats } from '@/types/database';
+import { Newsletter, NewsletterWithStats } from '@/types/database';
 import { enrichNewslettersWithStats } from '@/lib/newsletters/stats';
 
 export const dynamic = 'force-dynamic';
@@ -9,20 +9,18 @@ export default async function NewslettersPage() {
   let newslettersWithStats: NewsletterWithStats[] = [];
 
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const tenant = await getTenantOrNull();
 
-    if (user) {
+    if (tenant) {
+      const supabase = tenant.supabase;
       const { data: newsletters } = await supabase
-        .from('newsletters')
+        .from('mail_newsletters')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('organization_id', tenant.organizationId)
         .order('created_at', { ascending: false });
 
       if (newsletters && newsletters.length > 0) {
-        newslettersWithStats = await enrichNewslettersWithStats(supabase, newsletters);
+        newslettersWithStats = await enrichNewslettersWithStats(supabase, newsletters as Newsletter[]);
       }
     }
   } catch (err) {

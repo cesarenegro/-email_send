@@ -4,10 +4,12 @@ import { reserveBudget, reconcileBudget } from '@/lib/lead-research/budget';
 import { planSearchQueries, extractStructuredLeads } from '@/lib/lead-research/providers/openai';
 import { searchTavily, extractTavily } from '@/lib/lead-research/providers/tavily';
 import { estimateMaxOpenAiCostMicro, estimateTavilySearchCostMicro, estimateTavilyExtractCostMicro } from '@/lib/lead-research/pricing';
+import { isLeadResearchEnabled } from '@/lib/konta/env';
 
 export const maxDuration = 60; // Max allowed serverless duration
 
 export async function POST(request: NextRequest) {
+  if (!isLeadResearchEnabled()) return NextResponse.json({ error: 'Modulo Lead Research non disponibile in questo spazio di lavoro.', code: 'FEATURE_DISABLED' }, { status: 503 });
   // 1. Machine Authentication via Bearer token
   const authHeader = request.headers.get('authorization') || '';
   const cronSecret = process.env.CRON_SECRET || '';

@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getTenantOrNull } from '@/lib/konta/session';
 import NewsletterDetailView from '@/components/NewsletterDetailView';
 import { getNewsletterStats } from '@/lib/newsletters/stats';
+import type { Newsletter } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,22 +12,20 @@ export default async function NewsletterDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const tenant = await getTenantOrNull();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!tenant) {
     notFound();
   }
 
+  const supabase = tenant.supabase;
+
   const { data: newsletter, error } = await supabase
-    .from('newsletters')
+    .from('mail_newsletters')
     .select('*')
     .eq('id', id)
-    .eq('user_id', user.id)
-    .single();
+    .eq('organization_id', tenant.organizationId)
+    .maybeSingle();
 
   if (error || !newsletter) {
     notFound();
@@ -37,7 +36,7 @@ export default async function NewsletterDetailPage({
   return (
     <div className="min-h-screen bg-[#F7F5F0] py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        <NewsletterDetailView initialNewsletter={{ ...newsletter, ...stats }} />
+        <NewsletterDetailView initialNewsletter={{ ...(newsletter as Newsletter), ...stats }} />
       </div>
     </div>
   );

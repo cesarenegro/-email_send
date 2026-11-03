@@ -1,938 +1,406 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { SUPPORTED_TIMEZONES as TIMEZONE_OPTIONS } from '@/lib/constants/timezones';
+import type { SenderSettingsPublic } from '@/types/database';
 
-interface SmtpConnectionItem {
-  id: string;
-  name: string;
-  host: string;
-  port: number;
-  secure: boolean;
-  username: string;
+type SettingsResponse = SenderSettingsPublic & {
+  can_manage: boolean;
+  organization_name: string;
+  role: string;
+  message?: string;
+};
+
+interface FormState {
   from_name: string;
   from_email: string;
-  reply_to?: string;
-  is_verified: boolean;
-  verified_at?: string;
-  created_at?: string;
+  reply_to: string;
+  preferred_timezone: string;
+  send_window_start: string;
+  send_window_end: string;
+  smtp_host: string;
+  smtp_port: string;
+  smtp_user: string;
+  smtp_password: string;
+  imap_host: string;
+  imap_port: string;
+  imap_user: string;
+  imap_password: string;
+}
+
+const COPY = {
+  it: {
+    title: 'Impostazioni mittente',
+    readOnly: 'Solo Titolare o Amministratore possono modificare queste impostazioni.',
+    identity: 'Identità',
+    fromName: 'Nome mittente',
+    fromEmail: 'Email mittente',
+    replyTo: 'Rispondi a',
+    timezone: 'Fuso orario',
+    window: 'Finestra di invio',
+    smtp: 'Casella SMTP',
+    host: 'Server',
+    port: 'Porta',
+    user: 'Utente',
+    password: 'Password',
+    passwordKeep: 'Lascia vuoto per conservare quella salvata',
+    verified: 'Verificata',
+    notVerified: 'Da verificare',
+    imap: 'Casella IMAP (bounce)',
+    imapHint: 'Facoltativa. Se vuota, i rimbalzi non vengono letti.',
+    save: 'Salva',
+    saving: 'Salvataggio…',
+    test: 'Verifica connessione',
+    testing: 'Verifica…',
+    testImap: 'Verifica IMAP',
+    sendTest: 'Invia prova',
+    sendTestTo: 'Indirizzo di prova',
+    sending: 'Invio…',
+    loading: 'Caricamento…',
+    loadError: 'Impossibile caricare le impostazioni.',
+    changeOrg: 'Cambia organizzazione',
+  },
+  en: {
+    title: 'Sender settings',
+    readOnly: 'Only Owner or Admin can change these settings.',
+    identity: 'Identity',
+    fromName: 'Sender name',
+    fromEmail: 'Sender email',
+    replyTo: 'Reply to',
+    timezone: 'Time zone',
+    window: 'Sending window',
+    smtp: 'SMTP mailbox',
+    host: 'Server',
+    port: 'Port',
+    user: 'User',
+    password: 'Password',
+    passwordKeep: 'Leave empty to keep the saved one',
+    verified: 'Verified',
+    notVerified: 'Not verified',
+    imap: 'IMAP mailbox (bounces)',
+    imapHint: 'Optional. If empty, bounces are not read.',
+    save: 'Save',
+    saving: 'Saving…',
+    test: 'Test connection',
+    testing: 'Testing…',
+    testImap: 'Test IMAP',
+    sendTest: 'Send test',
+    sendTestTo: 'Test address',
+    sending: 'Sending…',
+    loading: 'Loading…',
+    loadError: 'Could not load settings.',
+    changeOrg: 'Switch organization',
+  },
+} as const;
+
+function toForm(s: SenderSettingsPublic): FormState {
+  return {
+    from_name: s.from_name,
+    from_email: s.from_email,
+    reply_to: s.reply_to,
+    preferred_timezone: s.preferred_timezone,
+    send_window_start: s.send_window_start,
+    send_window_end: s.send_window_end,
+    smtp_host: s.smtp_host,
+    smtp_port: String(s.smtp_port || 465),
+    smtp_user: s.smtp_user,
+    smtp_password: '',
+    imap_host: s.imap_host,
+    imap_port: String(s.imap_port || 993),
+    imap_user: s.imap_user,
+    imap_password: '',
+  };
 }
 
 export default function SettingsPage() {
-  const { t, locale } = useTranslation();
-  const [loadingSettings, setLoadingSettings] = useState(true);
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
-  const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
+  const { locale } = useTranslation();
+  const c = COPY[locale === 'en' ? 'en' : 'it'];
 
-  // Editable sender fields (user_settings)
-  const [fromName, setFromName] = useState('');
-  const [fromEmail, setFromEmail] = useState('');
-  const [replyTo, setReplyTo] = useState('');
-
-  // SMTP Connections state
-  const [connections, setConnections] = useState<SmtpConnectionItem[]>([]);
-  const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null);
-  const [smtpTab, setSmtpTab] = useState<'list' | 'new'>('list');
-
-  // New SMTP Connection Form State
-  const [newSmtpProvider, setNewSmtpProvider] = useState<'hostinger' | 'google' | 'aruba' | 'office365' | 'custom'>('hostinger');
-  const [newSmtpName, setNewSmtpName] = useState('Casella Principale');
-  const [newSmtpEmail, setNewSmtpEmail] = useState('');
-  const [newSmtpHost, setNewSmtpHost] = useState('smtp.hostinger.com');
-  const [newSmtpPort, setNewSmtpPort] = useState('465');
-  const [newSmtpSecure, setNewSmtpSecure] = useState(true);
-  const [newSmtpUsername, setNewSmtpUsername] = useState('');
-  const [newSmtpPassword, setNewSmtpPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [newSmtpFromName, setNewSmtpFromName] = useState('');
-  const [newSmtpReplyTo, setNewSmtpReplyTo] = useState('');
-
-  // Verification & saving states for new SMTP
-  const [verifyingSmtp, setVerifyingSmtp] = useState(false);
-  const [detectingSmtp, setDetectingSmtp] = useState(false);
-  const [smtpFormMsg, setSmtpFormMsg] = useState<{ success: boolean; text: string } | null>(null);
-
-  // Testing existing connection
-  const [testingConnId, setTestingConnId] = useState<string | null>(null);
-  const [deletingConnId, setDeletingConnId] = useState<string | null>(null);
-  const [connTestResult, setConnTestResult] = useState<{ id?: string; success: boolean; text: string } | null>(null);
-
-  // Direct test email dispatch
-  const [sendingTestEmail, setSendingTestEmail] = useState(false);
-  const [testRecipient, setTestRecipient] = useState('');
-  const [sendResult, setSendResult] = useState<{ success: boolean; text: string } | null>(null);
-
-  // Apply provider presets
-  const handleSelectPreset = (provider: 'hostinger' | 'google' | 'aruba' | 'office365' | 'custom') => {
-    setNewSmtpProvider(provider);
-    setSmtpFormMsg(null);
-
-    switch (provider) {
-      case 'hostinger':
-        setNewSmtpHost('smtp.hostinger.com');
-        setNewSmtpPort('465');
-        setNewSmtpSecure(true);
-        break;
-      case 'google':
-        setNewSmtpHost('smtp.gmail.com');
-        setNewSmtpPort('465');
-        setNewSmtpSecure(true);
-        break;
-      case 'aruba':
-        setNewSmtpHost('smtps.aruba.it');
-        setNewSmtpPort('465');
-        setNewSmtpSecure(true);
-        break;
-      case 'office365':
-        setNewSmtpHost('smtp.office365.com');
-        setNewSmtpPort('587');
-        setNewSmtpSecure(false);
-        break;
-      case 'custom':
-        if (!newSmtpHost || newSmtpHost.includes('hostinger') || newSmtpHost.includes('gmail')) {
-          setNewSmtpHost('');
-        }
-        break;
-    }
-  };
-
-  // Auto-detect SMTP when user finishes entering new email
-  const handleEmailBlur = async () => {
-    const email = newSmtpEmail.trim().toLowerCase();
-    if (!email || !email.includes('@')) return;
-
-    if (!newSmtpUsername) {
-      setNewSmtpUsername(email);
-    }
-    if (!newSmtpFromName && fromName) {
-      setNewSmtpFromName(fromName);
-    }
-    if (!newSmtpReplyTo && replyTo) {
-      setNewSmtpReplyTo(replyTo);
-    }
-
-    try {
-      setDetectingSmtp(true);
-      const res = await fetch('/api/smtp/detect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      if (res.ok) {
-        const result = await res.json();
-        if (result.detected && result.config) {
-          setNewSmtpHost(result.config.host);
-          setNewSmtpPort(String(result.config.port));
-          setNewSmtpSecure(Boolean(result.config.secure));
-          if (result.config.provider === 'gmail') setNewSmtpProvider('google');
-          else if (result.config.provider === 'hostinger') setNewSmtpProvider('hostinger');
-          else if (result.config.provider === 'aruba') setNewSmtpProvider('aruba');
-          else if (result.config.provider === 'office365') setNewSmtpProvider('office365');
-          else setNewSmtpProvider('custom');
-        } else if (result.suggestedHost) {
-          setNewSmtpHost(result.suggestedHost);
-          setNewSmtpPort(String(result.suggestedPort || 465));
-          setNewSmtpSecure(result.suggestedSecure ?? true);
-        }
-      }
-    } catch (err) {
-      console.warn('Auto-detect error:', err);
-    } finally {
-      setDetectingSmtp(false);
-    }
-  };
-
-  // Fetch initial data
-  const loadSettings = async () => {
-    try {
-      setLoadingSettings(true);
-      const res = await fetch('/api/settings');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.from_name) setFromName(data.from_name);
-        if (data.from_email) setFromEmail(data.from_email);
-        if (data.reply_to) setReplyTo(data.reply_to);
-
-        const conns: SmtpConnectionItem[] = data.smtp_connections || [];
-        setConnections(conns);
-
-        if (conns.length > 0) {
-          const verified = conns.find((c) => c.is_verified) || conns[0];
-          setActiveConnectionId(verified.id);
-          setSmtpTab('list');
-        } else {
-          setSmtpTab('new');
-          if (data.from_email) {
-            setNewSmtpEmail(data.from_email);
-            setNewSmtpUsername(data.from_email);
-          }
-          if (data.from_name) {
-            setNewSmtpFromName(data.from_name);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching settings:', err);
-    } finally {
-      setLoadingSettings(false);
-    }
-  };
+  const [settings, setSettings] = useState<SettingsResponse | null>(null);
+  const [form, setForm] = useState<FormState | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'save' | 'test' | 'imap' | 'send' | null>(null);
+  const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);
+  const [testTo, setTestTo] = useState('');
 
   useEffect(() => {
-    loadSettings();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/settings', { cache: 'no-store' });
+        const body = (await res.json()) as SettingsResponse & { error?: string };
+        if (cancelled) return;
+        if (!res.ok) {
+          setLoadError(body.error || c.loadError);
+          return;
+        }
+        setSettings(body);
+        setForm(toForm(body));
+      } catch (err) {
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : c.loadError);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [c.loadError]);
 
-  // Save sender identity
-  const handleSaveSettings = async (e: React.FormEvent) => {
+  const canManage = settings?.can_manage ?? false;
+
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
+  }
+
+  async function save(e: React.FormEvent) {
     e.preventDefault();
-    setSavingSettings(true);
-    setSaveSuccessMsg(null);
-    setSaveErrorMsg(null);
-
+    if (!form) return;
+    setBusy('save');
+    setFeedback(null);
     try {
       const res = await fetch('/api/settings', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from_name: fromName,
-          from_email: fromEmail,
-          reply_to: replyTo,
+          ...form,
+          smtp_port: Number(form.smtp_port),
+          imap_port: Number(form.imap_port),
+          smtp_password: form.smtp_password || undefined,
+          imap_password: form.imap_password || undefined,
         }),
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || (locale === 'en' ? 'Error while saving settings' : 'Errore durante il salvataggio'));
-
-      setSaveSuccessMsg(data.message || t.settings.saveSenderSuccess);
-      setTimeout(() => setSaveSuccessMsg(null), 5000);
-    } catch (err: any) {
-      setSaveErrorMsg(err.message || (locale === 'en' ? 'Error while saving' : 'Errore durante il salvataggio'));
-    } finally {
-      setSavingSettings(false);
-    }
-  };
-
-  // Verify and Save new SMTP connection
-  const handleSaveNewSmtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSmtpFormMsg(null);
-
-    if (!newSmtpHost || !newSmtpPort || !newSmtpEmail || !newSmtpPassword) {
-      setSmtpFormMsg({
-        success: false,
-        text: locale === 'en' ? 'Please complete all required fields.' : 'Compila tutti i campi obbligatori per procedere.',
-      });
-      return;
-    }
-
-    setVerifyingSmtp(true);
-    try {
-      const payload = {
-        name: newSmtpName.trim() || newSmtpEmail.trim(),
-        host: newSmtpHost.trim(),
-        port: Number(newSmtpPort),
-        secure: Number(newSmtpPort) === 465 || newSmtpSecure,
-        username: newSmtpUsername.trim() || newSmtpEmail.trim(),
-        password: newSmtpPassword,
-        from_name: newSmtpFromName.trim() || fromName.trim() || newSmtpEmail.split('@')[0],
-        from_email: newSmtpEmail.trim().toLowerCase(),
-        reply_to: (newSmtpReplyTo.trim() || replyTo.trim() || newSmtpEmail.trim()).toLowerCase(),
-      };
-
-      const res = await fetch('/api/smtp/connections', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await res.json();
+      const body = (await res.json()) as SettingsResponse & { error?: string };
       if (!res.ok) {
-        throw new Error(result.error || (locale === 'en' ? 'SMTP verification failed' : 'Verifica SMTP fallita'));
+        setFeedback({ ok: false, text: body.error || c.loadError });
+        return;
       }
-
-      setSmtpFormMsg({
-        success: true,
-        text: locale === 'en'
-          ? `SMTP connection verified and secured successfully! (${result.from_email})`
-          : `Connessione SMTP verificata e cifrata con successo! (${result.from_email})`,
-      });
-
-      // Clear password from memory
-      setNewSmtpPassword('');
-      // Reload connections
-      await loadSettings();
-      setSmtpTab('list');
-      setActiveConnectionId(result.id);
-    } catch (err: any) {
-      setSmtpFormMsg({
-        success: false,
-        text: err.message || (locale === 'en' ? 'Connection error' : 'Errore durante la verifica della connessione'),
-      });
+      setSettings(body);
+      setForm(toForm(body));
+      setFeedback({ ok: true, text: body.message || c.save });
+    } catch (err) {
+      setFeedback({ ok: false, text: err instanceof Error ? err.message : c.loadError });
     } finally {
-      setVerifyingSmtp(false);
+      setBusy(null);
     }
-  };
+  }
 
-  // Test an existing connection
-  const handleTestExistingConnection = async (connId?: string) => {
-    const targetId = connId || activeConnectionId;
-    setTestingConnId(targetId || 'active');
-    setConnTestResult(null);
-
+  async function runTest(kind: 'test' | 'imap') {
+    setBusy(kind);
+    setFeedback(null);
     try {
-      const res = await fetch('/api/settings/test-smtp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ smtp_connection_id: targetId || null }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || (locale === 'en' ? 'SMTP test failed' : 'Test fallito'));
-      setConnTestResult({ id: targetId || undefined, success: true, text: data.message });
-    } catch (err: any) {
-      setConnTestResult({ id: targetId || undefined, success: false, text: err.message });
-    } finally {
-      setTestingConnId(null);
-    }
-  };
-
-  // Delete an existing connection
-  const handleDeleteConnection = async (connId: string) => {
-    const conn = connections.find((c) => c.id === connId);
-    const confirmPrompt = locale === 'en'
-      ? `Are you sure you want to remove the SMTP account ${conn?.from_email || ''}?`
-      : `Sei sicuro di voler rimuovere la casella SMTP ${conn?.from_email || ''}?`;
-
-    if (!window.confirm(confirmPrompt)) return;
-
-    setDeletingConnId(connId);
-    try {
-      const res = await fetch(`/api/smtp/connections/${connId}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Errore durante l\'eliminazione');
-
-      setConnections((prev) => prev.filter((c) => c.id !== connId));
-      if (activeConnectionId === connId) {
-        setActiveConnectionId(null);
+      const res = await fetch(kind === 'test' ? '/api/settings/test-smtp' : '/api/settings/test-imap', { method: 'POST' });
+      const body = (await res.json()) as { success?: boolean; message?: string; error?: string; verified_at?: string };
+      setFeedback({ ok: res.ok && !!body.success, text: body.message || body.error || '' });
+      if (kind === 'test' && settings) {
+        setSettings({ ...settings, is_verified: res.ok && !!body.success, verified_at: body.verified_at ?? settings.verified_at });
       }
-    } catch (err: any) {
-      alert(err.message || 'Errore eliminazione casella');
+    } catch (err) {
+      setFeedback({ ok: false, text: err instanceof Error ? err.message : c.loadError });
     } finally {
-      setDeletingConnId(null);
+      setBusy(null);
     }
-  };
+  }
 
-  // Direct test email dispatch
-  const handleSendTestEmail = async (e: React.FormEvent) => {
+  async function sendTest(e: React.FormEvent) {
     e.preventDefault();
-    if (!testRecipient) return;
-
-    setSendingTestEmail(true);
-    setSendResult(null);
-
+    setBusy('send');
+    setFeedback(null);
     try {
       const res = await fetch('/api/settings/send-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: testRecipient,
-          smtp_connection_id: activeConnectionId || null,
-        }),
+        body: JSON.stringify({ to: testTo.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || (locale === 'en' ? 'Test email delivery failed' : 'Invio email test fallito'));
-      setSendResult({ success: true, text: data.message });
-    } catch (err: any) {
-      setSendResult({ success: false, text: err.message });
+      const body = (await res.json()) as { message?: string; error?: string };
+      setFeedback({ ok: res.ok, text: body.message || body.error || '' });
+    } catch (err) {
+      setFeedback({ ok: false, text: err instanceof Error ? err.message : c.loadError });
     } finally {
-      setSendingTestEmail(false);
+      setBusy(null);
     }
-  };
+  }
+
+  const input =
+    'w-full h-10 px-3 rounded-lg border border-[#e5e5e0] bg-white text-[#1b1c1a] text-sm outline-none focus:border-[#036e13] focus:ring-2 focus:ring-[#036e13]/15 disabled:bg-[#f5f3f0] disabled:text-[#5c5e63] transition';
+  const label = 'block text-xs font-semibold uppercase tracking-wider text-[#5c5e63] mb-1.5';
+  const primary =
+    'h-10 px-4 rounded-lg bg-[#1b1c1a] text-[#f2f0ed] text-sm font-semibold hover:bg-[#30312f] disabled:opacity-50 disabled:cursor-not-allowed transition';
+  const secondary =
+    'h-10 px-4 rounded-lg border border-[#e5e5e0] bg-white text-[#1b1c1a] text-sm font-medium hover:bg-[#f5f3f0] disabled:opacity-50 disabled:cursor-not-allowed transition';
+  const section = 'rounded-xl border border-[#e5e5e0] bg-white p-5 space-y-4';
+  const heading = 'text-sm font-semibold text-[#1b1c1a]';
 
   return (
-    <div className="relative w-full overflow-hidden px-gutter pb-space-xl pt-space-md flex flex-col gap-space-lg">
-      {/* Decorative ambient glow */}
-      <div className="absolute top-0 right-1/4 -z-10 w-96 h-96 rounded-full bg-[#5cb855]/10 blur-3xl pointer-events-none"></div>
-
-      {/* Header Banner */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
-        <div className="flex flex-col max-w-2xl">
-          <div className="flex items-center gap-space-xs mb-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#5cb855]"></span>
-            <span className="font-label-sm text-label-sm uppercase tracking-widest text-[#5c5e63] font-semibold">
-              {t.settings.studioConfig}
-            </span>
-            <span className="text-[#a2a59e] text-xs">•</span>
-            <span className="font-label-sm text-label-sm text-[#5c5f59] font-medium">{t.common.appName}</span>
-          </div>
-          <h1 className="font-headline-xl text-headline-xl text-[#1b1c1a] tracking-tight">{t.settings.title}</h1>
-          <p className="font-body-lg text-body-lg text-[#3f4a3c] mt-1">
-            {t.settings.subtitle}
-          </p>
+    <div className="max-w-3xl mx-auto px-6 py-10">
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 className="font-headline-md text-2xl text-[#1b1c1a]">{c.title}</h1>
+          {settings ? (
+            <p className="mt-1 text-sm text-[#5c5e63]">
+              {settings.organization_name} ·{' '}
+              <Link href="/workspace" className="hover:text-[#1b1c1a] underline-offset-4 hover:underline">
+                {c.changeOrg}
+              </Link>
+            </p>
+          ) : null}
         </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('open-onboarding-walkthrough'));
-            }
-          }}
-          className="h-10 px-space-md rounded-lg bg-[#f5f3f0] hover:bg-[#eae8e5] text-[#1b1c1a] font-label-md text-label-md border border-[#e5e5e0] transition-colors flex items-center gap-2 self-start lg:self-auto shadow-2xs cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[16px] text-[#036e13]">help_outline</span>
-          <span>{t.settings.restartWalkthrough}</span>
-        </button>
+        {settings ? (
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+              settings.is_verified ? 'bg-[#ecf8eb] text-[#036e13]' : 'bg-[#f5f3f0] text-[#5c5e63]'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${settings.is_verified ? 'bg-[#5cb855]' : 'bg-[#a2a59e]'}`} />
+            {settings.is_verified ? c.verified : c.notVerified}
+          </span>
+        ) : null}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
-        {/* Colonna Sinistra (4 col): Identità Mittente */}
-        <div className="lg:col-span-5 bg-[#ffffff] rounded-xl border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] p-space-lg flex flex-col justify-between gap-space-md">
-          <div>
-            <div className="flex items-center justify-between pb-space-sm border-b border-[#e5e5e0]">
-              <div className="flex items-center gap-space-sm">
-                <div className="w-10 h-10 rounded-lg bg-[#f5f3f0] flex items-center justify-center text-[#1b1c1a]">
-                  <span className="material-symbols-outlined text-[20px]">badge</span>
-                </div>
-                <div>
-                  <h3 className="font-headline-md text-headline-md text-[#1b1c1a]">{t.settings.senderIdentityTitle}</h3>
-                  <span className="font-label-sm text-label-sm text-[#5c5e63]">
-                    {t.settings.senderIdentitySub}
-                  </span>
-                </div>
-              </div>
-            </div>
+      {loadError ? <p role="alert" className="text-sm text-[#b3261e]">{loadError}</p> : null}
+      {!form && !loadError ? <p className="text-sm text-[#5c5e63]">{c.loading}</p> : null}
 
-            {saveSuccessMsg && (
-              <div className="p-space-sm mt-space-sm bg-[#ecf8eb] border border-[#5cb855]/30 text-[#036e13] font-body-md text-body-md rounded-lg flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                <span>{saveSuccessMsg}</span>
-              </div>
-            )}
+      {form ? (
+        <form onSubmit={save} className="space-y-4" noValidate>
+          {!canManage ? <p className="text-sm text-[#5c5e63]">{c.readOnly}</p> : null}
 
-            {saveErrorMsg && (
-              <div className="p-space-sm mt-space-sm bg-[#ffdad6] border border-[#ffb4ab] text-[#ba1a1a] font-body-md text-body-md rounded-lg flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">error</span>
-                <span>{saveErrorMsg}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSaveSettings} className="space-y-space-md mt-space-md">
+          <section className={section}>
+            <h2 className={heading}>{c.identity}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block font-label-sm text-label-sm uppercase tracking-wider text-[#1b1c1a] font-semibold mb-1">
-                  {t.settings.senderName}
-                </label>
-                <input
-                  type="text"
-                  required
-                  disabled={loadingSettings || savingSettings}
-                  value={fromName}
-                  onChange={(e) => setFromName(e.target.value)}
-                  placeholder={t.settings.senderNamePlaceholder}
-                  className="w-full h-10 px-3 rounded-lg border border-[#e5e5e0] bg-[#ffffff] text-[#1b1c1a] font-body-md text-body-md focus:outline-none focus:border-[#1b1c1a]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-label-sm text-label-sm uppercase tracking-wider text-[#1b1c1a] font-semibold mb-1">
-                  {t.settings.senderEmail}
-                </label>
-                <input
-                  type="email"
-                  required
-                  disabled={loadingSettings || savingSettings}
-                  value={fromEmail}
-                  onChange={(e) => setFromEmail(e.target.value)}
-                  placeholder={t.settings.senderEmailPlaceholder}
-                  className="w-full h-10 px-3 rounded-lg border border-[#e5e5e0] bg-[#ffffff] text-[#1b1c1a] font-body-md text-body-md focus:outline-none focus:border-[#1b1c1a]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-label-sm text-label-sm uppercase tracking-wider text-[#1b1c1a] font-semibold mb-1">
-                  {t.settings.replyTo}
-                </label>
-                <input
-                  type="email"
-                  required
-                  disabled={loadingSettings || savingSettings}
-                  value={replyTo}
-                  onChange={(e) => setReplyTo(e.target.value)}
-                  placeholder={t.settings.replyToPlaceholder}
-                  className="w-full h-10 px-3 rounded-lg border border-[#e5e5e0] bg-[#ffffff] text-[#1b1c1a] font-body-md text-body-md focus:outline-none focus:border-[#1b1c1a]"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loadingSettings || savingSettings}
-                className="w-full h-10 rounded-lg bg-[#30312f] text-[#f2f0ed] hover:bg-[#5c5e63] font-label-md text-label-md font-semibold transition-colors flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">save</span>
-                <span>{savingSettings ? (locale === 'en' ? 'Saving...' : 'Salvataggio...') : t.settings.saveSenderButton}</span>
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Colonna Destra (7 col): Suite Gestione & Configurazione SMTP */}
-        <div className="lg:col-span-7 bg-[#ffffff] rounded-xl border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] p-space-lg flex flex-col justify-between gap-space-md">
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-space-sm border-b border-[#e5e5e0] gap-2">
-              <div className="flex items-center gap-space-sm">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${connections.length > 0 ? 'bg-[#f5f3f0] text-[#036e13]' : 'bg-[#fff1f0] text-[#cf1322]'}`}>
-                  <span className="material-symbols-outlined text-[20px]">dns</span>
-                </div>
-                <div>
-                  <h3 className="font-headline-md text-headline-md text-[#1b1c1a]">
-                    {locale === 'en' ? 'SMTP Outbound Gateway' : 'Gateway SMTP & Server di Spedizione'}
-                  </h3>
-                  <span className="font-label-sm text-label-sm text-[#5c5e63]">
-                    {locale === 'en' ? 'Multi-tenant isolated email dispatcher' : 'Isolamento caselle con crittografia AES-256'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Tab Selector: Caselle Collegate vs Aggiungi Nuova */}
-              <div className="flex items-center gap-1 p-1 bg-[#f5f3f0] rounded-lg border border-[#e5e5e0]">
-                <button
-                  type="button"
-                  onClick={() => { setSmtpTab('list'); setSmtpFormMsg(null); }}
-                  className={`px-3 py-1.5 rounded-md font-label-sm text-xs font-semibold transition-all cursor-pointer ${
-                    smtpTab === 'list' ? 'bg-[#ffffff] text-[#1b1c1a] shadow-xs' : 'text-[#5c5e63] hover:text-[#1b1c1a]'
-                  }`}
-                >
-                  {locale === 'en' ? `Connected (${connections.length})` : `Caselle (${connections.length})`}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setSmtpTab('new'); setSmtpFormMsg(null); }}
-                  className={`px-3 py-1.5 rounded-md font-label-sm text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
-                    smtpTab === 'new' ? 'bg-[#ffffff] text-[#036e13] shadow-xs' : 'text-[#5c5e63] hover:text-[#1b1c1a]'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[14px]">add</span>
-                  <span>{locale === 'en' ? 'Add SMTP' : 'Nuova Casella'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* TAB 1: LISTA CASELLE CONNESSE */}
-            {smtpTab === 'list' && (
-              <div className="mt-space-md space-y-3">
-                {connections.length === 0 ? (
-                  <div className="p-6 rounded-xl border border-dashed border-[#e5e5e0] text-center bg-[#faf9f6]">
-                    <span className="material-symbols-outlined text-[32px] text-[#cf1322] block mx-auto mb-2">
-                      warning
-                    </span>
-                    <h4 className="font-headline-sm text-base text-[#1b1c1a] font-bold">
-                      {locale === 'en' ? 'No verified SMTP mailbox found' : 'Nessuna casella SMTP configurata'}
-                    </h4>
-                    <p className="font-body-md text-xs text-[#5c5e63] mt-1 max-w-md mx-auto">
-                      {locale === 'en'
-                        ? 'To guarantee mailbox isolation and high deliverability, please configure your SMTP connection.'
-                        : 'Per garantire l’isolamento della reputazione e la massima deliverability, configura subito la tua casella mittente protetta.'}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setSmtpTab('new')}
-                      className="mt-4 px-4 py-2 bg-[#5cb855] hover:bg-[#4ea547] text-white font-label-md text-xs font-semibold rounded-lg shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">add</span>
-                      <span>{locale === 'en' ? 'Configure SMTP Mailbox' : 'Configura Casella SMTP Adesso'}</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {connections.map((conn) => {
-                      const isSelected = activeConnectionId === conn.id;
-                      const isTestingThis = testingConnId === conn.id;
-                      const isDeletingThis = deletingConnId === conn.id;
-
-                      return (
-                        <div
-                          key={conn.id}
-                          className={`p-space-md rounded-xl border transition-all ${
-                            isSelected
-                              ? 'bg-[#fbfcfb] border-[#5cb855] shadow-xs'
-                              : 'bg-[#ffffff] border-[#e5e5e0] hover:border-[#cfceca]'
-                          }`}
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div className="flex items-center gap-3">
-                              <button
-                                type="button"
-                                onClick={() => setActiveConnectionId(conn.id)}
-                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors ${
-                                  isSelected ? 'border-[#036e13] bg-[#036e13]' : 'border-[#d0cfcb]'
-                                }`}
-                                title={isSelected ? 'Casella attiva predefinita' : 'Imposta come predefinita'}
-                              >
-                                {isSelected && <span className="w-2 h-2 rounded-full bg-white"></span>}
-                              </button>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-title-sm text-sm font-bold text-[#1b1c1a]">
-                                    {conn.from_email}
-                                  </span>
-                                  {conn.is_verified ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ecf8eb] text-[#036e13] text-[10px] font-bold">
-                                      <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                                      VERIFICATO
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fff1f0] text-[#cf1322] text-[10px] font-bold">
-                                      DA VERIFICARE
-                                    </span>
-                                  )}
-                                  {isSelected && (
-                                    <span className="px-2 py-0.5 rounded-md bg-[#f5f3f0] text-[#1b1c1a] text-[10px] font-semibold border border-[#e5e5e0]">
-                                      ATTIVA
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="font-body-md text-xs text-[#5c5e63] mt-0.5">
-                                  {conn.host}:{conn.port} ({conn.secure ? 'SSL' : 'TLS'}) • Mittente: <span className="font-semibold text-[#1b1c1a]">{conn.from_name}</span>
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 self-end sm:self-auto">
-                              <button
-                                type="button"
-                                disabled={isTestingThis}
-                                onClick={() => handleTestExistingConnection(conn.id)}
-                                className="h-8 px-2.5 rounded-md bg-[#f5f3f0] hover:bg-[#eae8e5] text-[#1b1c1a] font-label-sm text-xs font-semibold border border-[#e5e5e0] transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                                title="Verifica connessione dal vivo"
-                              >
-                                <span className={`material-symbols-outlined text-[14px] ${isTestingThis ? 'animate-spin' : ''}`}>
-                                  sync
-                                </span>
-                                <span>{isTestingThis ? 'Verifica...' : 'Collauda'}</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                disabled={isDeletingThis}
-                                onClick={() => handleDeleteConnection(conn.id)}
-                                className="h-8 w-8 rounded-md bg-[#fff1f0] hover:bg-[#ffdad6] text-[#cf1322] border border-[#ffb4ab]/40 transition-colors flex items-center justify-center cursor-pointer disabled:opacity-50"
-                                title="Elimina casella SMTP"
-                              >
-                                <span className="material-symbols-outlined text-[16px]">
-                                  delete
-                                </span>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Test result feedback for this connection */}
-                          {connTestResult && connTestResult.id === conn.id && (
-                            <div
-                              className={`p-2.5 mt-3 rounded-lg flex items-center gap-2 font-body-md text-xs border ${
-                                connTestResult.success
-                                  ? 'bg-[#ecf8eb] border-[#5cb855]/30 text-[#036e13]'
-                                  : 'bg-[#ffdad6] border-[#ffb4ab] text-[#ba1a1a]'
-                              }`}
-                            >
-                              <span className="material-symbols-outlined text-[16px]">
-                                {connTestResult.success ? 'check_circle' : 'error'}
-                              </span>
-                              <span>{connTestResult.text}</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* TAB 2: CONFIGURA NUOVA CASELLA SMTP */}
-            {smtpTab === 'new' && (
-              <form onSubmit={handleSaveNewSmtp} className="mt-space-md space-y-space-md">
-                {/* Provider Quick Presets */}
-                <div>
-                  <label className="block font-label-sm text-label-sm uppercase tracking-wider text-[#1b1c1a] font-semibold mb-1.5">
-                    {locale === 'en' ? 'Provider Preset' : 'Seleziona Provider Preconfigurato'}
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    {[
-                      { id: 'hostinger', label: 'Hostinger' },
-                      { id: 'google', label: 'Google / Gmail' },
-                      { id: 'aruba', label: 'Aruba' },
-                      { id: 'office365', label: 'Microsoft 365' },
-                      { id: 'custom', label: 'Personalizzato' },
-                    ].map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => handleSelectPreset(p.id as any)}
-                        className={`h-9 px-2 rounded-lg font-label-sm text-xs font-semibold border transition-all cursor-pointer ${
-                          newSmtpProvider === p.id
-                            ? 'bg-[#1b1c1a] text-white border-[#1b1c1a] shadow-xs'
-                            : 'bg-[#f5f3f0] hover:bg-[#eae8e5] text-[#1b1c1a] border-[#e5e5e0]'
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {newSmtpProvider === 'google' && (
-                    <div className="mt-2 p-2.5 bg-[#e8f0fe] border border-[#d2e3fc] rounded-lg text-[#1a73e8] font-body-md text-xs flex items-start gap-2">
-                      <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5">info</span>
-                      <span>
-                        Per Gmail e Google Workspace è obbligatorio utilizzare una <strong>Password per le app</strong> (generata in Sicurezza Account Google &gt; Verifica in 2 passaggi &gt; Password per le app).
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-                  <div>
-                    <label className="block font-label-sm text-label-sm uppercase tracking-wider text-[#1b1c1a] font-semibold mb-1">
-                      {locale === 'en' ? 'Mailbox / Sender Email *' : 'Email Mittente Casella *'}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        required
-                        value={newSmtpEmail}
-                        onChange={(e) => setNewSmtpEmail(e.target.value)}
-                        onBlur={handleEmailBlur}
-                        placeholder="es. info@tuodominio.com"
-                        className="w-full h-10 px-3 pr-8 rounded-lg border border-[#e5e5e0] bg-[#ffffff] text-[#1b1c1a] font-body-md text-body-md focus:outline-none focus:border-[#1b1c1a]"
-                      />
-                      {detectingSmtp && (
-                        <div className="absolute right-2.5 top-2.5">
-                          <span className="w-4 h-4 border-2 border-[#036e13] border-t-transparent rounded-full animate-spin block"></span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-label-sm text-label-sm uppercase tracking-wider text-[#1b1c1a] font-semibold mb-1">
-                      {locale === 'en' ? 'Sender Display Name *' : 'Nome Mittente Visualizzato *'}
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newSmtpFromName}
-                      onChange={(e) => setNewSmtpFromName(e.target.value)}
-                      placeholder="es. Stefano Martini | ARKITECNA"
-                      className="w-full h-10 px-3 rounded-lg border border-[#e5e5e0] bg-[#ffffff] text-[#1b1c1a] font-body-md text-body-md focus:outline-none focus:border-[#1b1c1a]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-label-sm text-label-sm uppercase tracking-wider text-[#1b1c1a] font-semibold mb-1">
-                      {t.settings.serverHostLabel} *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newSmtpHost}
-                      onChange={(e) => setNewSmtpHost(e.target.value)}
-                      placeholder="es. smtp.hostinger.com"
-                      className="w-full h-10 px-3 rounded-lg border border-[#e5e5e0] bg-[#ffffff] text-[#1b1c1a] font-body-md text-body-md focus:outline-none focus:border-[#1b1c1a]"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block font-label-sm text-label-sm uppercase tracking-wider text-[#1b1c1a] font-semibold mb-1">
-                        {t.settings.serverPortLabel} *
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        value={newSmtpPort}
-                        onChange={(e) => {
-                          setNewSmtpPort(e.target.value);
-                          if (e.target.value === '465') setNewSmtpSecure(true);
-                          else if (e.target.value === '587') setNewSmtpSecure(false);
-                        }}
-                        className="w-full h-10 px-3 rounded-lg border border-[#e5e5e0] bg-[#ffffff] text-[#1b1c1a] font-body-md text-body-md focus:outline-none focus:border-[#1b1c1a]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-label-sm text-label-sm uppercase tracking-wider text-[#1b1c1a] font-semibold mb-1">
-                        Sicurezza
-                      </label>
-                      <div className="h-10 flex items-center px-2 bg-[#f5f3f0] border border-[#e5e5e0] rounded-lg">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={newSmtpSecure}
-                            onChange={(e) => setNewSmtpSecure(e.target.checked)}
-                            className="rounded border-[#e5e5e0] text-[#036e13] focus:ring-0"
-                          />
-                          <span>SSL/TLS</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-label-sm text-label-sm uppercase tracking-wider text-[#1b1c1a] font-semibold mb-1">
-                      {t.settings.serverUserLabel} *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newSmtpUsername}
-                      onChange={(e) => setNewSmtpUsername(e.target.value)}
-                      placeholder="es. info@tuodominio.com"
-                      className="w-full h-10 px-3 rounded-lg border border-[#e5e5e0] bg-[#ffffff] text-[#1b1c1a] font-body-md text-body-md focus:outline-none focus:border-[#1b1c1a]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-label-sm text-label-sm uppercase tracking-wider text-[#1b1c1a] font-semibold mb-1">
-                      {t.settings.smtpPassword} *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={newSmtpPassword}
-                        onChange={(e) => setNewSmtpPassword(e.target.value)}
-                        placeholder="••••••••••••••••"
-                        className="w-full h-10 px-3 pr-10 rounded-lg border border-[#e5e5e0] bg-[#ffffff] text-[#1b1c1a] font-body-md text-body-md focus:outline-none focus:border-[#1b1c1a]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-2.5 top-2.5 text-[#5c5e63] hover:text-[#1b1c1a]"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">
-                          {showPassword ? 'visibility_off' : 'visibility'}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {smtpFormMsg && (
-                  <div
-                    className={`p-space-sm rounded-lg flex items-center gap-2 font-body-md text-body-md border ${
-                      smtpFormMsg.success
-                        ? 'bg-[#ecf8eb] border-[#5cb855]/30 text-[#036e13]'
-                        : 'bg-[#ffdad6] border-[#ffb4ab] text-[#ba1a1a]'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">
-                      {smtpFormMsg.success ? 'check_circle' : 'error'}
-                    </span>
-                    <span>{smtpFormMsg.text}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  {connections.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setSmtpTab('list')}
-                      className="h-10 px-4 rounded-lg bg-[#f5f3f0] hover:bg-[#eae8e5] text-[#1b1c1a] font-label-md text-xs font-semibold border border-[#e5e5e0] transition-colors cursor-pointer"
-                    >
-                      {locale === 'en' ? 'Cancel' : 'Annulla'}
-                    </button>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={verifyingSmtp}
-                    className="h-10 px-6 rounded-lg bg-[#5cb855] hover:bg-[#4ea547] text-white font-label-md text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    <span className={`material-symbols-outlined text-[16px] ${verifyingSmtp ? 'animate-spin' : ''}`}>
-                      {verifyingSmtp ? 'sync' : 'lock'}
-                    </span>
-                    <span>
-                      {verifyingSmtp
-                        ? (locale === 'en' ? 'Verifying & Saving...' : 'Verifica e Cifratura...')
-                        : (locale === 'en' ? 'Verify & Secure Mailbox' : 'Verifica e Salva Casella SMTP')}
-                    </span>
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-
-        {/* Card 3: Collaudo Invio Email di Test Reale */}
-        <div className="lg:col-span-12 bg-[#ffffff] rounded-xl border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] p-space-lg flex flex-col justify-between gap-space-md">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md pb-space-sm border-b border-[#e5e5e0]">
-            <div className="flex items-center gap-space-sm">
-              <div className="w-10 h-10 rounded-lg bg-[#f5f3f0] flex items-center justify-center text-[#036e13]">
-                <span className="material-symbols-outlined text-[20px]">send</span>
+                <label className={label}>{c.fromName}</label>
+                <input className={input} disabled={!canManage} value={form.from_name} onChange={(e) => update('from_name', e.target.value)} />
               </div>
               <div>
-                <h3 className="font-headline-md text-headline-md text-[#1b1c1a]">{t.settings.testSendSectionTitle}</h3>
-                <span className="font-label-sm text-label-sm text-[#5c5e63]">
-                  {t.settings.testSendSectionSub}
-                </span>
+                <label className={label}>{c.fromEmail}</label>
+                <input type="email" className={input} disabled={!canManage} value={form.from_email} onChange={(e) => update('from_email', e.target.value)} />
               </div>
-            </div>
-            {connections.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="font-label-sm text-xs text-[#5c5e63]">Spedisci da:</span>
-                <select
-                  value={activeConnectionId || ''}
-                  onChange={(e) => setActiveConnectionId(e.target.value)}
-                  className="h-8 px-2.5 rounded-lg border border-[#e5e5e0] bg-[#f5f3f0] text-[#1b1c1a] font-label-sm text-xs font-semibold focus:outline-none"
-                >
-                  {connections.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.from_email} ({c.host})
-                    </option>
+              <div>
+                <label className={label}>{c.replyTo}</label>
+                <input type="email" className={input} disabled={!canManage} value={form.reply_to} onChange={(e) => update('reply_to', e.target.value)} />
+              </div>
+              <div>
+                <label className={label}>{c.timezone}</label>
+                <select className={input} disabled={!canManage} value={form.preferred_timezone} onChange={(e) => update('preferred_timezone', e.target.value)}>
+                  {TIMEZONE_OPTIONS.map((tz) => (
+                    <option key={tz.value} value={tz.value}>{tz.label}</option>
                   ))}
+                  {!TIMEZONE_OPTIONS.some((tz) => tz.value === form.preferred_timezone) ? (
+                    <option value={form.preferred_timezone}>{form.preferred_timezone}</option>
+                  ) : null}
                 </select>
               </div>
-            )}
+              <div>
+                <label className={label}>{c.window}</label>
+                <div className="flex items-center gap-2">
+                  <input type="time" className={input} disabled={!canManage} value={form.send_window_start} onChange={(e) => update('send_window_start', e.target.value)} />
+                  <span className="text-[#5c5e63]">–</span>
+                  <input type="time" className={input} disabled={!canManage} value={form.send_window_end} onChange={(e) => update('send_window_end', e.target.value)} />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className={section}>
+            <h2 className={heading}>{c.smtp}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-2">
+                <label className={label}>{c.host}</label>
+                <input className={input} disabled={!canManage} value={form.smtp_host} onChange={(e) => update('smtp_host', e.target.value)} placeholder="smtp.example.com" />
+              </div>
+              <div>
+                <label className={label}>{c.port}</label>
+                <select className={input} disabled={!canManage} value={form.smtp_port} onChange={(e) => update('smtp_port', e.target.value)}>
+                  <option value="465">465 · SSL</option>
+                  <option value="587">587 · STARTTLS</option>
+                  <option value="2525">2525</option>
+                  <option value="25">25</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className={label}>{c.user}</label>
+                <input className={input} disabled={!canManage} value={form.smtp_user} onChange={(e) => update('smtp_user', e.target.value)} autoComplete="off" />
+              </div>
+              <div>
+                <label className={label}>{c.password}</label>
+                <input
+                  type="password"
+                  className={input}
+                  disabled={!canManage}
+                  value={form.smtp_password}
+                  onChange={(e) => update('smtp_password', e.target.value)}
+                  placeholder={settings?.smtp_pass_set ? '••••••••' : ''}
+                  autoComplete="new-password"
+                />
+                {settings?.smtp_pass_set ? <p className="mt-1 text-xs text-[#5c5e63]">{c.passwordKeep}</p> : null}
+              </div>
+            </div>
+          </section>
+
+          <section className={section}>
+            <div>
+              <h2 className={heading}>{c.imap}</h2>
+              <p className="text-xs text-[#5c5e63] mt-0.5">{c.imapHint}</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-2">
+                <label className={label}>{c.host}</label>
+                <input className={input} disabled={!canManage} value={form.imap_host} onChange={(e) => update('imap_host', e.target.value)} placeholder="imap.example.com" />
+              </div>
+              <div>
+                <label className={label}>{c.port}</label>
+                <input type="number" min={1} max={65535} className={input} disabled={!canManage} value={form.imap_port} onChange={(e) => update('imap_port', e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={label}>{c.user}</label>
+                <input className={input} disabled={!canManage} value={form.imap_user} onChange={(e) => update('imap_user', e.target.value)} autoComplete="off" />
+              </div>
+              <div>
+                <label className={label}>{c.password}</label>
+                <input
+                  type="password"
+                  className={input}
+                  disabled={!canManage}
+                  value={form.imap_password}
+                  onChange={(e) => update('imap_password', e.target.value)}
+                  placeholder={settings?.imap_pass_set ? '••••••••' : ''}
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+          </section>
+
+          {feedback ? (
+            <p role="status" className={`text-sm ${feedback.ok ? 'text-[#036e13]' : 'text-[#b3261e]'}`}>{feedback.text}</p>
+          ) : null}
+
+          {canManage ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="submit" disabled={busy !== null} className={primary}>
+                {busy === 'save' ? c.saving : c.save}
+              </button>
+              <button type="button" disabled={busy !== null || !settings?.smtp_pass_set} onClick={() => runTest('test')} className={secondary}>
+                {busy === 'test' ? c.testing : c.test}
+              </button>
+              <button type="button" disabled={busy !== null || !settings?.imap_host} onClick={() => runTest('imap')} className={secondary}>
+                {busy === 'imap' ? c.testing : c.testImap}
+              </button>
+            </div>
+          ) : null}
+        </form>
+      ) : null}
+
+      {form && canManage ? (
+        <form onSubmit={sendTest} className="mt-4 flex flex-wrap items-end gap-2" noValidate>
+          <div className="flex-1 min-w-[220px]">
+            <label className={label}>{c.sendTestTo}</label>
+            <input type="email" className={input} value={testTo} onChange={(e) => setTestTo(e.target.value)} />
           </div>
-
-          <form onSubmit={handleSendTestEmail} className="flex flex-col sm:flex-row items-center gap-space-md">
-            <div className="flex-1 w-full">
-              <input
-                type="email"
-                required
-                value={testRecipient}
-                onChange={(e) => setTestRecipient(e.target.value)}
-                placeholder={t.settings.testSendPlaceholder}
-                className="w-full h-11 px-3 rounded-lg border border-[#e5e5e0] bg-[#ffffff] text-[#1b1c1a] font-body-md text-body-md focus:outline-none focus:border-[#1b1c1a]"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={sendingTestEmail || !testRecipient}
-              className="w-full sm:w-auto h-11 px-space-lg bg-[#5cb855] hover:bg-[#4ea547] text-[#ffffff] font-label-md text-label-md font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 shrink-0 cursor-pointer"
-            >
-              <span className={`material-symbols-outlined text-[16px] ${sendingTestEmail ? 'animate-spin' : ''}`}>
-                send
-              </span>
-              <span>{sendingTestEmail ? t.settings.testSendRunning : t.settings.testSendButton}</span>
-            </button>
-          </form>
-
-          {sendResult && (
-            <div
-              className={`p-space-sm rounded-lg flex items-center gap-2 font-body-md text-body-md border ${
-                sendResult.success
-                  ? 'bg-[#ecf8eb] border-[#5cb855]/30 text-[#036e13]'
-                  : 'bg-[#ffdad6] border-[#ffb4ab] text-[#ba1a1a]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[18px]">
-                {sendResult.success ? 'check_circle' : 'error'}
-              </span>
-              <span>{sendResult.text}</span>
-            </div>
-          )}
-        </div>
-      </div>
+          <button type="submit" disabled={busy !== null || !settings?.is_verified || !testTo.trim()} className={secondary}>
+            {busy === 'send' ? c.sending : c.sendTest}
+          </button>
+        </form>
+      ) : null}
     </div>
   );
 }

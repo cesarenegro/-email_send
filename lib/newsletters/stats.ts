@@ -16,16 +16,16 @@ export async function getNewsletterStats(
 ): Promise<NewsletterStats> {
   const [totalRes, sentRes, failedRes] = await Promise.all([
     supabase
-      .from('newsletter_subscribers')
+      .from('mail_newsletter_subscribers')
       .select('*', { count: 'exact', head: true })
       .eq('newsletter_id', newsletterId),
     supabase
-      .from('newsletter_subscribers')
+      .from('mail_newsletter_subscribers')
       .select('*', { count: 'exact', head: true })
       .eq('newsletter_id', newsletterId)
       .eq('status', 'sent'),
     supabase
-      .from('newsletter_subscribers')
+      .from('mail_newsletter_subscribers')
       .select('*', { count: 'exact', head: true })
       .eq('newsletter_id', newsletterId)
       .eq('status', 'failed'),

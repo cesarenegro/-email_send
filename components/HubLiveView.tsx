@@ -49,63 +49,53 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
     secure?: boolean;
   } | null>(null);
 
+  const [leadResearchEnabled, setLeadResearchEnabled] = useState(false);
+
   useEffect(() => {
+    let cancelled = false;
     async function fetchSmtp() {
       try {
-        const res = await fetch('/api/smtp/connections', { cache: 'no-store' });
-        let active = null;
-        if (res.ok) {
-          const data = await res.json();
-          const list = Array.isArray(data) ? data : data?.connections || [];
-          active = list.find((c: any) => c.is_verified || c.status === 'connected') || list[0];
+        const [setRes, wsRes] = await Promise.all([
+          fetch('/api/settings', { cache: 'no-store' }),
+          fetch('/api/workspace', { cache: 'no-store' }),
+        ]);
+        if (wsRes.ok) {
+          const ws = await wsRes.json();
+          if (!cancelled) setLeadResearchEnabled(Boolean(ws?.lead_research_enabled));
         }
-
-        if (active) {
-          const pName = active.host?.toLowerCase().includes('hostinger')
+        if (!setRes.ok) {
+          if (!cancelled) setSmtpTelemetry({ configured: false, provider: locale === 'en' ? 'No SMTP' : 'Nessun SMTP' });
+          return;
+        }
+        const setData = await setRes.json();
+        if (cancelled) return;
+        if (setData.smtp_host && setData.is_verified) {
+          const host = String(setData.smtp_host).toLowerCase();
+          const pName = host.includes('hostinger')
             ? 'Hostinger SMTP'
-            : active.host?.toLowerCase().includes('office365') || active.host?.toLowerCase().includes('outlook')
+            : host.includes('office365') || host.includes('outlook')
             ? 'Microsoft 365'
-            : active.host?.toLowerCase().includes('google') || active.host?.toLowerCase().includes('gmail')
+            : host.includes('google') || host.includes('gmail')
             ? 'Google Workspace'
-            : active.name || active.host || 'SMTP';
-
+            : setData.smtp_host;
           setSmtpTelemetry({
             configured: true,
             provider: pName,
-            host: active.host,
-            port: Number(active.port) || 465,
-            secure: active.secure ?? (Number(active.port) === 465),
+            host: setData.smtp_host,
+            port: Number(setData.smtp_port) || 465,
+            secure: Number(setData.smtp_port) === 465,
           });
           return;
         }
-
-        // Fallback: se l'utente usa l'SMTP di sistema/admin (Hostinger) configurato su server
-        const setRes = await fetch('/api/settings', { cache: 'no-store' });
-        if (setRes.ok) {
-          const setData = await setRes.json();
-          if (setData.smtp_host) {
-            const pName = setData.smtp_host.toLowerCase().includes('hostinger')
-              ? 'Hostinger SMTP'
-              : setData.smtp_host.toLowerCase().includes('google')
-              ? 'Google Workspace'
-              : 'Hostinger SMTP';
-            setSmtpTelemetry({
-              configured: true,
-              provider: pName,
-              host: setData.smtp_host,
-              port: Number(setData.smtp_port) || 465,
-              secure: Number(setData.smtp_port) === 465,
-            });
-            return;
-          }
-        }
-
         setSmtpTelemetry({ configured: false, provider: locale === 'en' ? 'No SMTP' : 'Nessun SMTP' });
       } catch {
-        setSmtpTelemetry({ configured: false, provider: locale === 'en' ? 'No SMTP' : 'Nessun SMTP' });
+        if (!cancelled) setSmtpTelemetry({ configured: false, provider: locale === 'en' ? 'No SMTP' : 'Nessun SMTP' });
       }
     }
     fetchSmtp();
+    return () => {
+      cancelled = true;
+    };
   }, [locale]);
 
   const hasActivity = stats.campaignsTotal > 0 || stats.newslettersTotal > 0 || stats.todaySends > 0;
@@ -481,7 +471,8 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
           </div>
         </div>
 
-        {/* Card 3: Ricerca Leads */}
+        {/* Card 3: Ricerca Leads (modulo opzionale, LEAD_RESEARCH_ENABLED) */}
+        {leadResearchEnabled ? (
         <div className="bg-[#E0CDB2] rounded-xl border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.03)] p-space-lg flex flex-col justify-between relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#036e13]/10 rounded-bl-full pointer-events-none transition-transform duration-500 group-hover:scale-110"></div>
           <div>
@@ -585,6 +576,7 @@ export default function HubLiveView({ stats }: { stats: HubStats }) {
             </Link>
           </div>
         </div>
+        ) : null}
       </div>
 
       {/* Section Three: Attività Recente & Stato Code */}

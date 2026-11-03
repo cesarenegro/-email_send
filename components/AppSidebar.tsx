@@ -6,8 +6,9 @@ import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { KONTA_ROLE_LABELS, readStoredOrganizationId, writeStoredOrganizationId, type KontaRole } from '@/lib/konta/workspace';
 
-function detectProviderName(host?: string, name?: string): string {
+function detectProviderName(host?: string): string {
   const h = (host || '').toLowerCase();
   if (h.includes('hostinger')) return 'Hostinger SMTP';
   if (h.includes('gmail') || h.includes('google')) return 'Google / Gmail';
@@ -16,18 +17,26 @@ function detectProviderName(host?: string, name?: string): string {
   if (h.includes('sendgrid')) return 'SendGrid';
   if (h.includes('brevo') || h.includes('sendinblue')) return 'Brevo SMTP';
   if (h.includes('mailgun')) return 'Mailgun';
-  if (name && name !== 'Casella Principale') return name;
   if (host) return host;
-  return 'SMTP Relay';
+  return 'SMTP';
+}
+
+interface WorkspaceInfo {
+  user: { id: string; email: string };
+  memberships: Array<{ organization_id: string; role: KontaRole; name: string }>;
+  active_organization_id: string | null;
+  lead_research_enabled?: boolean;
 }
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const supabase = createClient();
   const { t, locale } = useTranslation();
 
-  const [userEmail, setUserEmail] = useState<string>('cesare@arkitecna.com');
-  const [userName, setUserName] = useState<string>('Stefano Martini');
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [organizationName, setOrganizationName] = useState<string>('');
+  const [roleLabel, setRoleLabel] = useState<string>('');
+  const [membershipCount, setMembershipCount] = useState<number>(0);
+  const [leadResearchEnabled, setLeadResearchEnabled] = useState<boolean>(false);
   const [activeCampaignsCount, setActiveCampaignsCount] = useState<number>(0);
   const [todaySends, setTodaySends] = useState<number>(0);
   const [smtpTelemetry, setSmtpTelemetry] = useState<{
@@ -36,95 +45,88 @@ export default function AppSidebar() {
     isOperational: boolean;
     isConfigured: boolean;
   }>({
-    providerName: 'SMTP Relay',
-    statusLabel: t.hub.regular,
-    isOperational: true,
-    isConfigured: true,
+    providerName: 'SMTP',
+    statusLabel: '',
+    isOperational: false,
+    isConfigured: false,
   });
   const dailyLimit = 80;
 
   useEffect(() => {
+    let cancelled = false;
     async function loadData() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email) {
-          setUserEmail(user.email);
-          const namePart = user.user_metadata?.full_name || user.email.split('@')[0];
-          setUserName(namePart);
+        const wsRes = await fetch('/api/workspace', { cache: 'no-store' });
+        if (!wsRes.ok) return;
+        const ws = (await wsRes.json()) as WorkspaceInfo;
+        if (cancelled) return;
+        setUserEmail(ws.user?.email || '');
+        setMembershipCount(ws.memberships?.length || 0);
+        setLeadResearchEnabled(Boolean(ws.lead_research_enabled));
+        const active = ws.memberships?.find((m) => m.organization_id === ws.active_organization_id) || null;
+        if (active) {
+          setOrganizationName(active.name);
+          setRoleLabel(KONTA_ROLE_LABELS[active.role] || active.role);
+          if (readStoredOrganizationId() !== active.organization_id) writeStoredOrganizationId(active.organization_id);
         }
 
-        // Active campaigns count
+        const orgId = ws.active_organization_id;
+        if (!orgId) return;
+
+        const supabase = createClient();
         const { count: activeCount } = await supabase
-          .from('campaigns')
+          .from('mail_campaigns')
           .select('id', { count: 'exact', head: true })
+          .eq('organization_id', orgId)
           .eq('status', 'active');
-        if (activeCount !== null && activeCount !== undefined) {
-          setActiveCampaignsCount(activeCount);
-        }
+        if (!cancelled && typeof activeCount === 'number') setActiveCampaignsCount(activeCount);
 
-        // Today's sent emails from email_logs
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
         const { count: logCount } = await supabase
-          .from('email_logs')
+          .from('mail_email_logs')
           .select('id', { count: 'exact', head: true })
+          .eq('organization_id', orgId)
           .eq('event_type', 'sent')
           .gte('created_at', startOfDay.toISOString());
-        if (logCount !== null && logCount !== undefined) {
-          setTodaySends(logCount);
-        }
+        if (!cancelled && typeof logCount === 'number') setTodaySends(logCount);
 
-        // Detect user SMTP connection dynamically
-        try {
-          const res = await fetch('/api/smtp/connections');
-          if (res.ok) {
-            const connections = await res.json();
-            if (Array.isArray(connections) && connections.length > 0) {
-              const verified = connections.find((c: { is_verified?: boolean }) => c.is_verified);
-              const active = verified || connections[0];
-              const provName = detectProviderName(active.host, active.name);
-              const isOp = !!active.is_verified;
-              setSmtpTelemetry({
-                providerName: provName,
-                statusLabel: isOp
-                  ? t.hub.regular
-                  : (locale === 'en' ? 'Unverified' : 'Da verificare'),
-                isOperational: isOp,
-                isConfigured: true,
-              });
-            } else {
-              // No user-specific SMTP connections
-              const isPrimaryAdmin = user?.email === 'cesare@arkitecna.com';
-              if (isPrimaryAdmin) {
-                setSmtpTelemetry({
-                  providerName: 'Hostinger SMTP',
-                  statusLabel: t.hub.regular,
-                  isOperational: true,
-                  isConfigured: true,
-                });
-              } else {
-                setSmtpTelemetry({
-                  providerName: locale === 'en' ? 'No SMTP' : 'Nessun SMTP',
-                  statusLabel: locale === 'en' ? 'Not Configured' : 'Non configurato',
-                  isOperational: false,
-                  isConfigured: false,
-                });
-              }
-            }
-          }
-        } catch {
-          // Keep neutral fallback on network/fetch error
+        const setRes = await fetch('/api/settings', { cache: 'no-store' });
+        if (setRes.ok) {
+          const s = await setRes.json();
+          if (cancelled) return;
+          const configured = Boolean(s.smtp_host);
+          const verified = Boolean(s.is_verified);
+          setSmtpTelemetry({
+            providerName: configured ? detectProviderName(s.smtp_host) : locale === 'en' ? 'No SMTP' : 'Nessun SMTP',
+            statusLabel: verified
+              ? t.hub.regular
+              : configured
+              ? locale === 'en' ? 'Unverified' : 'Da verificare'
+              : locale === 'en' ? 'Not configured' : 'Non configurato',
+            isOperational: verified,
+            isConfigured: configured,
+          });
         }
       } catch (err) {
         console.error('Error fetching sidebar telemetry:', err);
       }
     }
     loadData();
-  }, [supabase, t.hub.regular, locale]);
+    return () => {
+      cancelled = true;
+    };
+  }, [t.hub.regular, locale]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/landing';
+    try {
+      await fetch('/api/workspace', { method: 'DELETE' });
+      writeStoredOrganizationId(null);
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } finally {
+      window.location.href = '/login';
+    }
   };
 
   if (pathname === '/login') {
@@ -132,52 +134,25 @@ export default function AppSidebar() {
   }
 
   const navItems = [
-    {
-      href: '/',
-      label: t.navigation.hub,
-      icon: 'grid_view',
-      exact: true,
-    },
+    { href: '/', label: t.navigation.hub, icon: 'grid_view', exact: true },
     {
       href: '/campaigns',
       label: t.navigation.campaigns,
       icon: 'send',
       badge: activeCampaignsCount > 0 ? activeCampaignsCount : undefined,
     },
-    {
-      href: '/newsletters',
-      label: t.navigation.newsletters,
-      icon: 'article',
-    },
-    {
-      href: '/lead-research',
-      label: t.navigation.leadResearch,
-      icon: 'person_search',
-    },
-    {
-      href: '/settings',
-      label: t.navigation.settings,
-      icon: 'tune',
-    },
-    {
-      href: '/faq',
-      label: t.navigation.faq,
-      icon: 'help_outline',
-    },
-    {
-      href: '/guida',
-      label: t.navigation.userGuide,
-      icon: 'menu_book',
-    },
+    { href: '/newsletters', label: t.navigation.newsletters, icon: 'article' },
+    ...(leadResearchEnabled ? [{ href: '/lead-research', label: t.navigation.leadResearch, icon: 'person_search' }] : []),
+    { href: '/settings', label: t.navigation.settings, icon: 'tune' },
+    { href: '/faq', label: t.navigation.faq, icon: 'help_outline' },
+    { href: '/guida', label: t.navigation.userGuide, icon: 'menu_book' },
   ];
 
   const quotaPercent = Math.min(100, Math.round((todaySends / dailyLimit) * 100));
 
   return (
     <aside className="fixed left-0 top-0 h-full w-72 bg-[#f5f3f0] border-r border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between p-space-md">
-      {/* Brand & Nav */}
       <div className="flex flex-col gap-space-md">
-        {/* Brand Header */}
         <div className="flex flex-col px-space-xs pt-space-xs">
           <Link href="/landing" title={t.common.appName} className="flex items-center gap-space-sm group">
             <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center transition-transform group-hover:scale-105 shadow-xs border border-[#e5e5e0]">
@@ -194,7 +169,24 @@ export default function AppSidebar() {
           </Link>
         </div>
 
-        {/* Primary CTA */}
+        {/* Organizzazione attiva */}
+        <div className="px-space-xs">
+          <Link
+            href="/workspace"
+            className="block rounded-lg border border-[#e5e5e0] bg-white px-3 py-2 hover:border-[#036e13] transition-colors"
+            title={locale === 'en' ? 'Switch organization' : 'Cambia organizzazione'}
+          >
+            <span className="block text-[10px] uppercase tracking-widest text-[#5c5e63] font-semibold">
+              {locale === 'en' ? 'Organization' : 'Organizzazione'}
+            </span>
+            <span className="flex items-center justify-between gap-2 mt-0.5">
+              <span className="text-sm font-semibold text-[#1b1c1a] truncate">{organizationName || '…'}</span>
+              {membershipCount > 1 ? <span className="material-symbols-outlined text-[16px] text-[#5c5e63]">swap_horiz</span> : null}
+            </span>
+            {roleLabel ? <span className="block text-[11px] text-[#5c5e63]">{roleLabel}</span> : null}
+          </Link>
+        </div>
+
         <div className="px-space-xs">
           <Link
             href="/campaigns/new"
@@ -208,7 +200,6 @@ export default function AppSidebar() {
           </Link>
         </div>
 
-        {/* Navigation Items */}
         <nav className="flex flex-col gap-1 px-space-xs">
           {navItems.map((item) => {
             const isActive = item.exact
@@ -240,9 +231,7 @@ export default function AppSidebar() {
         </nav>
       </div>
 
-      {/* Bottom Area: Telemetry & User Account */}
       <div className="flex flex-col gap-space-sm">
-        {/* Dynamic SMTP Live Gauge Card */}
         <div className="p-space-sm rounded-xl bg-[#ffffff] border border-[#e5e5e0] shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col gap-space-xs">
           <div className="flex items-center justify-between">
             <span
@@ -286,33 +275,20 @@ export default function AppSidebar() {
               style={{ width: `${Math.max(5, quotaPercent)}%` }}
             ></div>
           </div>
-          <div className="flex items-center justify-between pt-0.5 text-[#5c5e63] font-label-sm text-label-sm">
-            <span>Throttling</span>
-            <span className="uppercase font-semibold text-[#1b1c1a]">
-              {smtpTelemetry.isConfigured ? 'Safe Mode' : (locale === 'en' ? 'Inactive' : 'Inattivo')}
-            </span>
-          </div>
         </div>
 
-        {/* Language Switcher in Sidebar */}
         <div className="px-space-xs flex justify-center">
           <LanguageSwitcher variant="light" className="w-full justify-center" />
         </div>
 
-        {/* User Card & Logout */}
         <div className="p-space-xs flex items-center justify-between border-t border-[#e5e5e0]/60 pt-space-xs">
-          <div className="flex items-center gap-space-sm">
-            <div className="w-8 h-8 rounded-full bg-[#036e13] flex items-center justify-center text-[#ffffff] font-semibold text-xs shadow-xs">
+          <div className="flex items-center gap-space-sm min-w-0">
+            <div className="w-8 h-8 rounded-full bg-[#036e13] flex items-center justify-center text-[#ffffff] font-semibold text-xs shadow-xs shrink-0">
               <span className="material-symbols-outlined text-[#ffffff] text-[18px]">person</span>
             </div>
-            <div className="flex flex-col leading-tight">
-              <span className="font-title-sm text-title-sm text-[#1b1c1a] text-[13px] truncate max-w-[120px]">
-                {userName}
-              </span>
-              <span className="font-label-sm text-label-sm text-[#5c5e63] truncate max-w-[120px]">
-                {userEmail}
-              </span>
-            </div>
+            <span className="font-label-sm text-label-sm text-[#5c5e63] truncate max-w-[150px]" title={userEmail}>
+              {userEmail}
+            </span>
           </div>
           <button
             onClick={handleLogout}

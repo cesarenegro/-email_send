@@ -1,6 +1,6 @@
-import { createClient } from '@/lib/supabase/server';
+import { getTenantOrNull } from '@/lib/konta/session';
 import CampaignsLiveView from '@/components/CampaignsLiveView';
-import { CampaignWithStats } from '@/types/database';
+import { Campaign, CampaignWithStats } from '@/types/database';
 import { enrichCampaignsWithStats } from '@/lib/campaigns/stats';
 
 export const dynamic = 'force-dynamic';
@@ -9,14 +9,19 @@ export default async function CampaignsPage() {
   let campaignsWithStats: CampaignWithStats[] = [];
 
   try {
-    const supabase = await createClient();
-    const { data: campaigns } = await supabase
-      .from('campaigns')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const tenant = await getTenantOrNull();
 
-    if (campaigns && campaigns.length > 0) {
-      campaignsWithStats = await enrichCampaignsWithStats(supabase, campaigns);
+    if (tenant) {
+      const supabase = tenant.supabase;
+      const { data: campaigns } = await supabase
+        .from('mail_campaigns')
+        .select('*')
+        .eq('organization_id', tenant.organizationId)
+        .order('created_at', { ascending: false });
+
+      if (campaigns && campaigns.length > 0) {
+        campaignsWithStats = await enrichCampaignsWithStats(supabase, campaigns as Campaign[]);
+      }
     }
   } catch (err) {
     console.error('Error fetching campaigns list:', err);

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { getTenantOrNull } from '@/lib/konta/session';
 import HubLiveView from '@/components/HubLiveView';
 
 export const dynamic = 'force-dynamic';
@@ -25,14 +25,16 @@ export default async function HomePage() {
     status: string;
     subject: string;
   } | null = null;
+  let todayErrors = 0;
+  let hourlySends: number[] = new Array(10).fill(0);
+  let globalPlacementRate = 100;
 
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const tenant = await getTenantOrNull();
 
-    if (user) {
+    if (tenant) {
+      const supabase = tenant.supabase;
+      const orgId = tenant.organizationId;
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
 
@@ -50,57 +52,61 @@ export default async function HomePage() {
         totalErrorLogsRes,
       ] = await Promise.all([
         supabase
-          .from('campaigns')
+          .from('mail_campaigns')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id),
+          .eq('organization_id', orgId),
         supabase
-          .from('campaigns')
+          .from('mail_campaigns')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
+          .eq('organization_id', orgId)
           .eq('status', 'active'),
         supabase
-          .from('newsletters')
+          .from('mail_newsletters')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id),
+          .eq('organization_id', orgId),
         supabase
-          .from('newsletters')
+          .from('mail_newsletters')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
+          .eq('organization_id', orgId)
           .eq('status', 'scheduled'),
         supabase
-          .from('newsletters')
+          .from('mail_newsletters')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
+          .eq('organization_id', orgId)
           .eq('status', 'sending'),
         supabase
-          .from('email_logs')
+          .from('mail_email_logs')
           .select('created_at, event_type')
+          .eq('organization_id', orgId)
           .gte('created_at', startOfDay.toISOString()),
         supabase
-          .from('campaign_leads')
+          .from('mail_campaign_leads')
           .select('id', { count: 'exact', head: true })
+          .eq('organization_id', orgId)
           .eq('status', 'pending'),
         supabase
-          .from('campaigns')
+          .from('mail_campaigns')
           .select('id, name, status, updated_at')
-          .eq('user_id', user.id)
+          .eq('organization_id', orgId)
           .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle(),
         supabase
-          .from('newsletters')
+          .from('mail_newsletters')
           .select('id, title, status, subject')
-          .eq('user_id', user.id)
+          .eq('organization_id', orgId)
           .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle(),
         supabase
-          .from('email_logs')
+          .from('mail_email_logs')
           .select('id', { count: 'exact', head: true })
+          .eq('organization_id', orgId)
           .eq('event_type', 'sent'),
         supabase
-          .from('email_logs')
+          .from('mail_email_logs')
           .select('id', { count: 'exact', head: true })
+          .eq('organization_id', orgId)
           .eq('event_type', 'error'),
       ]);
 
@@ -114,12 +120,12 @@ export default async function HomePage() {
       const totalSentAll = totalSentLogsRes.count || 0;
       const totalErrorsAll = totalErrorLogsRes.count || 0;
       const allTimeAttempts = totalSentAll + totalErrorsAll;
-      const globalPlacementRate = allTimeAttempts > 0 
-        ? Math.round((totalSentAll / allTimeAttempts) * 100) 
+      globalPlacementRate = allTimeAttempts > 0
+        ? Math.round((totalSentAll / allTimeAttempts) * 100)
         : 100;
 
-      const hourlySends = new Array(10).fill(0);
-      let todayErrors = 0;
+      hourlySends = new Array(10).fill(0);
+      todayErrors = 0;
 
       if (todayLogsRes.data) {
         for (const log of todayLogsRes.data) {
@@ -140,12 +146,14 @@ export default async function HomePage() {
         const camp = latestCampRes.data;
         const [totalRes, sentRes] = await Promise.all([
           supabase
-            .from('campaign_leads')
+            .from('mail_campaign_leads')
             .select('id', { count: 'exact', head: true })
+            .eq('organization_id', orgId)
             .eq('campaign_id', camp.id),
           supabase
-            .from('campaign_leads')
+            .from('mail_campaign_leads')
             .select('id', { count: 'exact', head: true })
+            .eq('organization_id', orgId)
             .eq('campaign_id', camp.id)
             .eq('status', 'sent'),
         ]);
@@ -163,25 +171,6 @@ export default async function HomePage() {
       if (latestNlRes.data) {
         latestNewsletter = latestNlRes.data;
       }
-
-      return (
-        <HubLiveView
-          stats={{
-            campaignsTotal,
-            campaignsActive,
-            newslettersTotal,
-            newslettersScheduled,
-            newslettersSending,
-            todaySends,
-            todayErrors,
-            hourlySends,
-            pendingLeadsCount,
-            latestCampaign,
-            latestNewsletter,
-            globalPlacementRate,
-          }}
-        />
-      );
     }
   } catch (err) {
     console.error('Error fetching hub data:', err);
@@ -196,12 +185,12 @@ export default async function HomePage() {
         newslettersScheduled,
         newslettersSending,
         todaySends,
-        todayErrors: 0,
-        hourlySends: new Array(10).fill(0),
+        todayErrors,
+        hourlySends,
         pendingLeadsCount,
         latestCampaign,
         latestNewsletter,
-        globalPlacementRate: 100,
+        globalPlacementRate,
       }}
     />
   );
