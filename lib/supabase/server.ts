@@ -1,12 +1,16 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getKontaPublicEnv } from '@/lib/konta/env';
 
+/**
+ * Client Supabase SSR legato ai cookie della richiesta, puntato al progetto KONTA.
+ * Opera sotto RLS con l'identità dell'utente: mai la chiave segreta.
+ */
 export async function createClient() {
   const cookieStore = await cookies();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co';
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+  const { url, publishableKey } = getKontaPublicEnv();
 
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
+  return createServerClient(url, publishableKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -17,7 +21,7 @@ export async function createClient() {
             cookieStore.set(name, value, options);
           });
         } catch {
-          // Can be called from Server Components where set is not supported
+          // Chiamato da Server Component: i cookie si scrivono solo nel middleware o nelle route.
         }
       },
     },

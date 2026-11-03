@@ -5,9 +5,11 @@ import { usePathname } from 'next/navigation';
 import AppSidebar from '@/components/AppSidebar';
 import AppHeader from '@/components/AppHeader';
 
+const STANDALONE = new Set(['/login', '/login/pro', '/workspace', '/landing']);
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isStandalonePage = pathname === '/login' || pathname === '/landing' || pathname.startsWith('/landing');
+  const isStandalonePage = STANDALONE.has(pathname) || pathname.startsWith('/landing');
 
   if (isStandalonePage) {
     return <main className="min-h-screen bg-[#fbf9f6]">{children}</main>;

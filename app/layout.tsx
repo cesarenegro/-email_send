@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import AppShell from '@/components/AppShell';
-import OnboardingController from '@/components/OnboardingController';
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mailk.arkai.dev';
 
@@ -138,7 +137,6 @@ export default function RootLayout({
       </head>
       <body className="min-h-full bg-[#fbf9f6] text-[#1b1c1a] antialiased">
         <LanguageProvider>
-          <OnboardingController />
           <AppShell>{children}</AppShell>
         </LanguageProvider>
       </body>
