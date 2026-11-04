@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getVerifiedUser, listActiveMemberships, readActiveOrganizationCookie } from '@/lib/konta/session';
 import { MAILK_ORG_COOKIE, isUuid } from '@/lib/konta/workspace';
 import { isLeadResearchEnabled } from '@/lib/konta/env';
+import { readMailkOrganizationState } from '@/lib/konta/entitlements-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,11 +22,16 @@ export async function GET() {
     const memberships = await listActiveMemberships(supabase, user.id);
     const active = await readActiveOrganizationCookie();
     const activeMembership = memberships.find((m) => m.organization_id === active) || null;
+    // Stato `mailk` dell'organizzazione attiva (null se nessuna scelta o RPC non disponibile).
+    const product = activeMembership
+      ? await readMailkOrganizationState(supabase, activeMembership.organization_id)
+      : null;
     return NextResponse.json({
       user,
       memberships,
       active_organization_id: activeMembership?.organization_id ?? null,
       lead_research_enabled: isLeadResearchEnabled(),
+      mailk_state: product?.kind === 'ok' ? product.state : null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

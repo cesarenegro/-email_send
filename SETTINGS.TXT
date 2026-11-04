@@ -1,7 +1,7 @@
 ================================================================================
 MAIL-K (ecosistema KONTA) - OPERATIONAL INVENTORY & PROJECT SETTINGS
 ================================================================================
-Last updated: 2026-11-04 07:10 +08:00
+Last updated: 2026-11-04 09:30 +08:00
 Branch: konta-ecosystem = main, IN PRODUZIONE dal 2026-11-03 sera (commit 4324e07)
 Produzione attuale: main @ 4324e07 su https://mailk.arkai.dev con il progetto Supabase KONTA
   (yyzqtaqpbudnkgbvymrf). Il vecchio progetto cayceyagmorwlbmmvyoc non è più usato.
@@ -45,6 +45,10 @@ Authentication: Supabase Auth del progetto KONTA (stesso account di KONTA PRO / 
     lib/konta/entitlements-server.ts → requireTenant (scritture solo con `mailk` active/trial_active/
     cancel_scheduled; altrimenti 403 PRODUCT_READ_ONLY; funzione assente = solo controllo di ruolo).
     Fonte: crm_product_access con product_key = 'mailk' (sola lettura da Mail-K).
+  - Prova gratuita 14 giorni (decisione 2026-11-04; riga creata dalla migrazione K-CRM kcrm_10):
+    con mailk = trial_active la ricerca nuovi lead (app/api/lead-research/**) risponde 403
+    TRIAL_FEATURE_LOCKED (lib/konta/lead-research-gate.ts, lib/konta/trial-features.ts); la voce di menu
+    ha il lucchetto; l'hub avvisa se manca la casella SMTP propria.
   - OAuth Google / Facebook (scope email) / LinkedIn OIDC: lib/konta/account-client.ts
     signInWithProvider → /auth/callback?next=… Componenti MONTATI dopo approvazione del mock (4/11/2026):
     OAuthButtons.tsx in LoginForm, KontaAppsMenu.tsx in AppHeader, MailkPlanModal.tsx in Hub (link
@@ -174,6 +178,8 @@ test-storage-isolation.mjs  bucket mail-images: upload solo nella propria organi
 test-konta-entitlements.mjs node --test: abilitazioni, instradamento, menu App KONTA, cookie condiviso
 test-konta-account-local.mjs login owner-a, cookie host-only/condiviso, RPC konta_my_entitlements,
                             con --app http://localhost:3200 scrittura bloccata 403 PRODUCT_READ_ONLY
+test-konta-trial-local.mjs  prova gratuita: righe temporanee mailk trial_active/active, Lead Research
+                            403 TRIAL_FEATURE_LOCKED (pulizia garantita); richiede LEAD_RESEARCH_ENABLED=true
 Test logici: scripts/verify-logic.ts (npx tsx), scripts/test-phase3-release.mjs (PDF e sanitizzazione).
 Script legacy del vecchio progetto: eliminati (2026-11-03).
 

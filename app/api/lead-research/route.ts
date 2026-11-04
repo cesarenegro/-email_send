@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { CreateLeadResearchJobSchema } from '@/types/lead-research';
 import { SKU_CATALOG, CURRENT_PRICING_VERSION } from '@/lib/lead-research/pricing';
 import { isLeadResearchEnabled } from '@/lib/konta/env';
+import { leadResearchTrialLockResponse } from '@/lib/konta/lead-research-gate';
 
 export async function GET() {
   if (!isLeadResearchEnabled()) return NextResponse.json({ error: 'Modulo Lead Research non disponibile in questo spazio di lavoro.', code: 'FEATURE_DISABLED' }, { status: 503 });
@@ -14,6 +15,9 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
   }
+
+  const trialLocked = await leadResearchTrialLockResponse(supabase);
+  if (trialLocked) return trialLocked;
 
   const { data: jobs, error } = await supabase
     .from('lead_research_jobs')
@@ -59,6 +63,9 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
   }
+
+  const trialLocked = await leadResearchTrialLockResponse(supabase);
+  if (trialLocked) return trialLocked;
 
   const body = await request.json();
   const parsed = CreateLeadResearchJobSchema.safeParse(body);

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { generateXlsxBuffer, generateCsvString } from '@/lib/lead-research/export';
 import { LeadResearchResult } from '@/types/lead-research';
 import { isLeadResearchEnabled } from '@/lib/konta/env';
+import { leadResearchTrialLockResponse } from '@/lib/konta/lead-research-gate';
 
 export async function GET(
   request: NextRequest,
@@ -18,6 +19,9 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
   }
+
+  const trialLocked = await leadResearchTrialLockResponse(supabase);
+  if (trialLocked) return trialLocked;
 
   // 1. Fetch job with ownership check
   const { data: job, error: jobError } = await supabase

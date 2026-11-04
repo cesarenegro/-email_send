@@ -41,6 +41,8 @@ const COPY = {
     senderOk: 'Mittente verificato',
     senderTodo: 'Mittente da configurare',
     senderUnverified: 'Mittente da verificare',
+    smtpMissing: 'Per inviare devi prima configurare la tua casella SMTP.',
+    smtpMissingAction: 'Vai a Impostazioni',
     configure: 'Impostazioni',
     campaigns: 'Campagne in corso',
     newsletters: 'Newsletter in programma',
@@ -63,6 +65,8 @@ const COPY = {
     senderOk: 'Sender verified',
     senderTodo: 'Sender not configured',
     senderUnverified: 'Sender not verified',
+    smtpMissing: 'To send you first need to configure your own SMTP mailbox.',
+    smtpMissingAction: 'Go to Settings',
     configure: 'Settings',
     campaigns: 'Running campaigns',
     newsletters: 'Scheduled newsletters',
@@ -118,6 +122,8 @@ export default function Hub({ data }: { data: HubData | null }) {
   const senderLabel = data.sender.verified ? c.senderOk : data.sender.configured ? c.senderUnverified : c.senderTodo;
   const nextWhen = formatWhen(data.nextDue, locale);
 
+  // Prova o piano attivo senza casella SMTP configurata: l'invio richiede la casella propria dell'azienda.
+  const smtpMissing = !data.sender.configured && data.mailkState !== null && isKontaStateOperational(data.mailkState);
   const readOnlyState = data.mailkState && !isKontaStateOperational(data.mailkState) ? data.mailkState : null;
 
   return (
@@ -129,6 +135,17 @@ export default function Hub({ data }: { data: HubData | null }) {
           state={readOnlyState}
           onClose={() => setPlanModalClosed(true)}
         />
+      ) : null}
+      {smtpMissing ? (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#f2c46d] bg-[#fff6d6] px-4 py-3">
+          <p className="flex items-center gap-2 text-sm font-semibold text-[#644000]">
+            <span className="material-symbols-outlined text-[20px]">warning</span>
+            {c.smtpMissing}
+          </p>
+          <Link href="/settings" className="h-9 px-4 rounded-lg bg-[#1b1c1a] text-[#f2f0ed] text-sm font-semibold hover:bg-[#30312f] flex items-center">
+            {c.smtpMissingAction}
+          </Link>
+        </div>
       ) : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>

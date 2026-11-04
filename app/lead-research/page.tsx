@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n/useTranslation';
 import { LeadResearchJob, LeadResearchResult, LeadResearchSku } from '@/types/lead-research';
+import { LEAD_RESEARCH_TRIAL_LOCK_MESSAGE, TRIAL_FEATURE_LOCKED_CODE } from '@/lib/konta/trial-features';
 
 function LeadResearchContent() {
   const { t, locale } = useTranslation();
@@ -26,6 +27,8 @@ function LeadResearchContent() {
   const [exclusions, setExclusions] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  // Prova gratuita: il server risponde 403 TRIAL_FEATURE_LOCKED (la ricerca di nuovi lead richiede un piano attivo).
+  const [trialLocked, setTrialLocked] = useState<boolean>(false);
 
   // Table filter
   const [searchFilter, setSearchFilter] = useState<string>('');
@@ -34,7 +37,10 @@ function LeadResearchContent() {
   const fetchJobs = async () => {
     try {
       const res = await fetch('/api/lead-research');
-      if (res.ok) {
+      if (res.status === 403) {
+        const body = await res.json().catch(() => ({}));
+        if (body?.code === TRIAL_FEATURE_LOCKED_CODE) setTrialLocked(true);
+      } else if (res.ok) {
         const data = await res.json();
         setJobs(data);
         if (data.length > 0 && !selectedJob) {
@@ -140,6 +146,28 @@ function LeadResearchContent() {
       r.category?.toLowerCase().includes(q)
     );
   });
+
+  if (trialLocked) {
+    return (
+      <div className="w-full px-gutter pb-space-xl pt-space-md">
+        <div className="max-w-xl rounded-xl border border-[#e5e5e0] bg-white p-6">
+          <div className="flex items-center gap-2 text-[#1b1c1a]">
+            <span className="material-symbols-outlined text-[22px]">lock</span>
+            <h1 className="font-headline-md text-xl">{locale === 'en' ? 'Lead Research' : 'Ricerca Leads'}</h1>
+          </div>
+          <p role="status" className="mt-3 text-sm text-[#5c5e63]">
+            {LEAD_RESEARCH_TRIAL_LOCK_MESSAGE[locale === 'en' ? 'en' : 'it']}
+          </p>
+          <a
+            href="https://konta.arkai.dev/prezzi"
+            className="mt-4 inline-flex h-10 items-center rounded-lg bg-[#1b1c1a] px-4 text-sm font-semibold text-[#f2f0ed] hover:bg-[#30312f] transition"
+          >
+            {locale === 'en' ? 'See prices on konta.arkai.dev' : 'Vedi i prezzi su konta.arkai.dev'}
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full overflow-hidden px-gutter pb-space-xl pt-space-md">

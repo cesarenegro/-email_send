@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTranslation } from '@/lib/i18n/useTranslation';
+import { LEAD_RESEARCH_TRIAL_LOCK_MESSAGE, isLeadResearchLockedByState } from '@/lib/konta/trial-features';
 import { KONTA_ROLE_LABELS, readStoredOrganizationId, writeStoredOrganizationId, type KontaRole } from '@/lib/konta/workspace';
 
 interface WorkspaceInfo {
@@ -12,6 +13,7 @@ interface WorkspaceInfo {
   memberships: Array<{ organization_id: string; role: KontaRole; name: string }>;
   active_organization_id: string | null;
   lead_research_enabled?: boolean;
+  mailk_state?: string | null;
 }
 
 export default function AppSidebar() {
@@ -23,6 +25,7 @@ export default function AppSidebar() {
   const [roleLabel, setRoleLabel] = useState<string>('');
   const [membershipCount, setMembershipCount] = useState<number>(0);
   const [leadResearchEnabled, setLeadResearchEnabled] = useState<boolean>(false);
+  const [leadResearchLocked, setLeadResearchLocked] = useState<boolean>(false);
   const [activeCampaignsCount, setActiveCampaignsCount] = useState<number>(0);
 
   useEffect(() => {
@@ -36,6 +39,7 @@ export default function AppSidebar() {
         setUserEmail(ws.user?.email || '');
         setMembershipCount(ws.memberships?.length || 0);
         setLeadResearchEnabled(Boolean(ws.lead_research_enabled));
+        setLeadResearchLocked(isLeadResearchLockedByState(ws.mailk_state));
         const active = ws.memberships?.find((m) => m.organization_id === ws.active_organization_id) || null;
         if (active) {
           setOrganizationName(active.name);
@@ -89,7 +93,17 @@ export default function AppSidebar() {
       badge: activeCampaignsCount > 0 ? activeCampaignsCount : undefined,
     },
     { href: '/newsletters', label: t.navigation.newsletters, icon: 'article' },
-    ...(leadResearchEnabled ? [{ href: '/lead-research', label: t.navigation.leadResearch, icon: 'person_search' }] : []),
+    ...(leadResearchEnabled
+      ? [
+          {
+            href: '/lead-research',
+            label: t.navigation.leadResearch,
+            icon: 'person_search',
+            locked: leadResearchLocked,
+            lockedMessage: LEAD_RESEARCH_TRIAL_LOCK_MESSAGE[locale === 'en' ? 'en' : 'it'],
+          },
+        ]
+      : []),
     { href: '/settings', label: t.navigation.settings, icon: 'tune' },
     { href: '/faq', label: t.navigation.faq, icon: 'help_outline' },
     { href: '/guida', label: t.navigation.userGuide, icon: 'menu_book' },
@@ -152,6 +166,7 @@ export default function AppSidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                title={'locked' in item && item.locked ? item.lockedMessage : undefined}
                 className={`flex items-center justify-between px-space-sm py-2 rounded-lg transition-colors font-body-md text-body-md ${
                   isActive
                     ? 'bg-[#e4e2df] text-[#1b1c1a] font-semibold shadow-xs'
@@ -162,6 +177,9 @@ export default function AppSidebar() {
                   <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                   <span>{item.label}</span>
                 </span>
+                {'locked' in item && item.locked ? (
+                  <span className="material-symbols-outlined text-[16px] text-[#5c5e63]" aria-label={item.lockedMessage}>lock</span>
+                ) : null}
                 {item.badge !== undefined && (
                   <span className="px-1.5 py-0.5 rounded-full bg-[#e4e2df] font-label-sm text-label-sm text-[#1b1c1a]">
                     {item.badge}

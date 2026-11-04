@@ -1,7 +1,7 @@
 # SESSION HANDOVER — MAIL-K → ecosistema KONTA (tappe M0 + M1)
 
 **Created:** 2026-10-11 13:38 +08:00
-**Last modified:** 2026-11-04 07:10 +08:00
+**Last modified:** 2026-11-04 09:30 +08:00
 **Local timezone:** Asia/Makassar (+08:00)
 **Agent:** Claude Fable 5.1; dal 2026-11-04 06:00 +08:00 Claude Opus 5.5; dal 07:00 Claude Sonnet 5.5 (sessioni avviate dal coordinatore KONTA)
 **Cartella di lavoro:** `E:\Projects\KONTA MASTER\KONTA MAIL-K` (spostata il 2026-11-03 da `E:\Projects\@EMAIL BULK`; repo git, remoto e progetto Vercel invariati)
@@ -247,6 +247,29 @@ Applicato `E:\Projects\KONTA MASTER\CONTRATTO_ACCOUNT_UNICO.md` §2–§4. Solo 
 
 **Interfaccia in sola consultazione:** spariscono i tasti dell'hub e compare il modale all'hub, ma "Nuovo invio" nella barra laterale e "Invia/Ricevi" restano visibili e ricevono 403 con il messaggio di sola consultazione (da nascondere/disabilitare in un passo successivo, se il proprietario lo vuole).
 
+## 5-quaterdecies. Prova gratuita Mail-K: Lead Research bloccata, avviso SMTP (2026-11-04)
+
+Decisione del proprietario (4/11/2026): ogni nuova azienda ha 14 giorni di prova Mail-K (riga `crm_product_access`, `product_key = 'mailk'`, `access_state = 'trial_active'`, `valid_until` = +14 giorni; la riga la crea la migrazione K-CRM `kcrm_10`, non Mail-K). Solo aggiunte.
+
+- **Ricerca nuovi lead (Lead Research) non inclusa nella prova.** `lib/konta/trial-features.ts` (costanti e messaggio, usabile da server e browser) e `lib/konta/lead-research-gate.ts` (`leadResearchTrialLockResponse`): con stato `mailk` dell'organizzazione attiva (cookie `mailk_org`) = `trial_active` le route utente rispondono **403** con `code: 'TRIAL_FEATURE_LOCKED'` e messaggio "La ricerca di nuovi lead non è inclusa nella prova gratuita: disponibile con un piano attivo." Aggiunto dopo i controlli esistenti (modulo attivo, utente) in `app/api/lead-research/route.ts` (GET, POST), `[id]/route.ts`, `[id]/start`, `[id]/cancel`, `[id]/export`. NON toccate: `app/api/staff/lead-research/[id]` (revisione umana, non per organizzazione) e `app/api/cron/lead-research` (chiave segreta). Nessuna organizzazione scelta, RPC assente o risposta non valida → nessun blocco in più (comportamento di prima).
+- **UI.** `/api/workspace` restituisce anche `mailk_state`; `components/AppSidebar.tsx` mostra la voce Ricerca Leads con lucchetto e il messaggio (tooltip); `app/lead-research/page.tsx` mostra il messaggio e il link a `https://konta.arkai.dev/prezzi` al posto del modulo quando il server risponde `TRIAL_FEATURE_LOCKED`. **La voce resta nascosta quando il modulo è spento** (`LEAD_RESEARCH_ENABLED` non è `true`, come oggi in produzione): mostrare un lucchetto su una funzione che non esiste prometterebbe un servizio non disponibile. Il lucchetto compare quando il modulo viene acceso.
+- **SMTP proprio.** L'invio lo richiedeva già (`resolveOrganizationTransport`, nessun ripiego): invariato. `components/konta/Hub.tsx` aggiunge un avviso giallo "Per inviare devi prima configurare la tua casella SMTP." con tasto verso `/settings` quando l'organizzazione è in prova o attiva (`isKontaStateOperational`) e `mail_sender_settings.smtp_host` è vuoto. Stato `mailk` sconosciuto (RPC assente) → nessun avviso.
+
+| Verifica (2026-11-04, locale, owner-a, dev server con `LEAD_RESEARCH_ENABLED=true`) | Esito |
+|---|---|
+| `npx tsc --noEmit` | exit 0 |
+| `npm run build` | 1° tentativo fermato dall'avviso di sicurezza Next.js (noto), 2° exit 0 |
+| `node --test scripts/konta/test-konta-entitlements.mjs` | 8/8 |
+| `node scripts/konta/test-konta-trial-local.mjs --app http://localhost:3200` | mailk `trial_active`: `/api/workspace` → `mailk_state`; GET/POST `/api/lead-research`, GET `[id]`, `start`, `cancel`, `export` → 403 `TRIAL_FEATURE_LOCKED` col messaggio italiano. Stessa organizzazione con mailk `active`: nessuna delle sei risponde più `TRIAL_FEATURE_LOCKED`. Senza riga mailk: nessun blocco. Righe di prova create e rimosse dallo script (0 rimaste). |
+| Browser, sede senza SMTP con mailk `trial_active` | avviso SMTP giallo con "Vai a Impostazioni"; voce Lead Research con lucchetto; `/lead-research` mostra messaggio e link prezzi |
+| Browser, sede con SMTP configurato | nessun avviso |
+
+**NON VERIFICATO / da sapere:**
+- Con stato non bloccato le route Lead Research rispondono 500 sul DB locale perché le tabelle `lead_research_*` non esistono sul progetto KONTA (già noto, modulo non migrato); non è una conseguenza di questa modifica. Il blocco è provato, il funzionamento del modulo a piano attivo no.
+- Il controllo vale per l'organizzazione attiva nel cookie `mailk_org`: un utente con più organizzazioni vede il blocco solo su quelle in prova.
+- La pagina di blocco e il tooltip li ho visti in inglese (lingua del browser di prova); il messaggio italiano è provato sulle risposte API.
+- Il lint segnala 4 errori già presenti in `app/api/lead-research/route.ts` e `app/lead-research/page.tsx` (`prefer-const`, `setState` negli effetti, `any`): righe non toccate.
+
 ## 6. Istruzioni per riprendere
 
 ```bash
@@ -256,5 +279,6 @@ node scripts/konta/test-tenant-isolation.mjs
 node --test scripts/konta/test-konta-entitlements.mjs
 npm run dev -- --port 3200
 node scripts/konta/test-konta-account-local.mjs --app http://localhost:3200
+# prova gratuita (dev server con LEAD_RESEARCH_ENABLED=true): node scripts/konta/test-konta-trial-local.mjs --app http://localhost:3200
 ```
 Login locale: `owner-a@test.local` / `owner-b@test.local` (seed K-CRM, password nel seed di K-CRM). Per l'invio reale impostare in `/settings` una casella SMTP vera di un'organizzazione e `MAILK_TEST_EMAIL_TO` in `.env.local`.

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isLeadResearchEnabled } from '@/lib/konta/env';
+import { leadResearchTrialLockResponse } from '@/lib/konta/lead-research-gate';
 
 export async function POST(
   request: NextRequest,
@@ -17,6 +18,9 @@ export async function POST(
   if (!user) {
     return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
   }
+
+  const trialLocked = await leadResearchTrialLockResponse(supabase);
+  if (trialLocked) return trialLocked;
 
   const { data: job, error: jobError } = await supabase
     .from('lead_research_jobs')
