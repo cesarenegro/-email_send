@@ -42,5 +42,28 @@ export function sharedSessionCookieOptions(
 ): KontaCookieOptions | undefined {
   const domain = readSharedCookieDomain(env);
   if (!domain) return undefined;
+  purgeHostOnlyAuthCookies(domain);
   return { domain, path: '/', sameSite: 'lax', secure: true };
+}
+
+/**
+ * Passaggio al cookie condiviso (4/11/2026): i browser che avevano già aperto una sessione
+ * conservano copie "host-only" dei cookie Supabase con lo STESSO nome di quelle nuove su
+ * `.arkai.dev`. Il browser le invia entrambe e la libreria può leggere quella vecchia
+ * (es. il code verifier PKCE di un tentativo precedente), facendo fallire l'accesso con Google
+ * ("link non valido") o riaprendo una sessione scaduta. Una volta per pagina, nel browser,
+ * elimina SOLO le copie host-only: un cookie scritto senza `Domain` non tocca quello condiviso.
+ */
+let hostOnlyAuthCookiesPurged = false;
+export function purgeHostOnlyAuthCookies(domain: string): void {
+  if (hostOnlyAuthCookiesPurged || typeof document === 'undefined' || typeof location === 'undefined') return;
+  hostOnlyAuthCookiesPurged = true;
+  const host = location.hostname.toLowerCase();
+  if (!('.' + host).endsWith(domain)) return;
+  for (const part of document.cookie.split(';')) {
+    const name = part.split('=')[0]?.trim();
+    if (name && /^sb-.+-auth-token/.test(name)) {
+      document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax; Secure`;
+    }
+  }
 }
